@@ -1,0 +1,61 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+bun.lockb
+
+# Build output
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Bun compiled binaries
+*.bun
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+bun-debug.log*
+
+# Coverage / test
+coverage/
+.nyc_output/
+*.lcov
+
+# Local data (DevMetrics-specific)
+.devmetrics/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+*.db-shm
+*.db-wal
+
+# Docker volumes
+postgres-data/
+clickhouse-data/
+redis-data/
+
+# Claude Code local
+.claude/settings.local.json
