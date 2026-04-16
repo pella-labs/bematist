@@ -1,0 +1,27 @@
+{
+  "name": "@bematist/collector",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "bin": {
+    "bematist": "./src/cli.ts"
+  },
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "start": "bun src/index.ts",
+    "build": "bun build --compile --minify --sourcemap --target=bun src/cli.ts --outfile dist/bematist",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@bematist/sdk": "workspace:*",
+    "@bematist/schema": "workspace:*",
+    "@bematist/fixtures": "workspace:*",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.6.3"
+  }
+}

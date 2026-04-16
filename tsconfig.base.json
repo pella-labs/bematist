@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023"],
+    "types": ["bun"],
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": false,
+
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+
+    "jsx": "preserve",
+    "allowJs": false,
+    "noEmit": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "@bematist/schema": ["packages/schema/src/index.ts"],
+      "@bematist/schema/*": ["packages/schema/src/*"],
+      "@bematist/sdk": ["packages/sdk/src/index.ts"],
+      "@bematist/sdk/*": ["packages/sdk/src/*"],
+      "@bematist/otel": ["packages/otel/src/index.ts"],
+      "@bematist/api": ["packages/api/src/index.ts"],
+      "@bematist/ui": ["packages/ui/src/index.ts"],
+      "@bematist/redact": ["packages/redact/src/index.ts"],
+      "@bematist/embed": ["packages/embed/src/index.ts"],
+      "@bematist/scoring": ["packages/scoring/src/index.ts"],
+      "@bematist/clio": ["packages/clio/src/index.ts"],
+      "@bematist/fixtures": ["packages/fixtures/src/index.ts"],
+      "@bematist/fixtures/*": ["packages/fixtures/*"],
+      "@bematist/config": ["packages/config/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "build", ".next", "out"]
+}

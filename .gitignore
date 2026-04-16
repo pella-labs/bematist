@@ -59,3 +59,5 @@ redis-data/
 
 # Claude Code local
 .claude/settings.local.json
+.claude/skills/
+.agents/skills/
