@@ -1,6 +1,6 @@
 # Bematist
 
-> Repo slug for **DevMetrics** — open-source AI-engineering analytics platform. See `dev-docs/PRD.md` (locked) and `CLAUDE.md` (conventions).
+> Open-source AI-engineering analytics platform. See `dev-docs/PRD.md` (locked) and `CLAUDE.md` (conventions).
 
 ## Quickstart
 
@@ -43,6 +43,6 @@ The dev Postgres binds to host port **5433** (not 5432) to avoid collision with 
 
 ## Locked rules
 
-- Product name is **DevMetrics**; repo slug is `bematist`; workspace packages are `@bematist/*` per decision from Sprint 0 kickoff.
+- Product name is **Bematist**; workspace packages are `@bematist/*`.
 - Tier-B privacy default (not C). See `CLAUDE.md` §"Privacy Model Rules".
 - No Pharos anything (PRD §D1).

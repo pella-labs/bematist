@@ -21,7 +21,7 @@ function makeEvent(overrides: Partial<Event> = {}): Event {
   };
 }
 
-function postEvents(body: unknown, auth = "Bearer dm_test_abc"): Promise<Response> {
+function postEvents(body: unknown, auth = "Bearer bm_test_abc"): Promise<Response> {
   return handle(
     new Request("http://localhost/v1/events", {
       method: "POST",
@@ -94,7 +94,7 @@ describe("ingest server", () => {
   });
 
   test("POST /v1/events with invalid JSON → 400", async () => {
-    const res = await postEvents("{not json", "Bearer dm_test_abc");
+    const res = await postEvents("{not json", "Bearer bm_test_abc");
     expect(res.status).toBe(400);
   });
 

@@ -43,8 +43,8 @@ coverage/
 .nyc_output/
 *.lcov
 
-# Local data (DevMetrics-specific)
-.devmetrics/
+# Local data (Bematist-specific)
+.bematist/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal

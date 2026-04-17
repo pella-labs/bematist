@@ -1,4 +1,4 @@
-# DevMetrics — Workstreams
+# Bematist — Workstreams
 
 > **This is a guide, not a lock.** The contracts referenced here are starting points so 5 people can build in parallel without colliding. Any owner can propose changes via PR — the goal is unblocking parallel work, not freezing the design. Iterate as we learn. If a contract turns out to be wrong, change it; just ping the consumers in the PR description.
 >
@@ -6,7 +6,7 @@
 
 ## Why workstreams
 
-DevMetrics has too many moving parts (collector, ingest, dashboard, scoring, AI pipeline, privacy/redaction, storage, compliance) for 5 people to coordinate ad-hoc. Each workstream has one primary owner, a clear scope, and a small set of contracts they own at the seams with other workstreams. The owner is the decider for their workstream's internals; the contracts are how they communicate with the rest.
+Bematist has too many moving parts (collector, ingest, dashboard, scoring, AI pipeline, privacy/redaction, storage, compliance) for 5 people to coordinate ad-hoc. Each workstream has one primary owner, a clear scope, and a small set of contracts they own at the seams with other workstreams. The owner is the decider for their workstream's internals; the contracts are how they communicate with the rest.
 
 PRD §10 already groups the work as B–I. We keep those names so the PRD line numbers stay meaningful.
 
@@ -215,7 +215,7 @@ If you're blocked and the table doesn't list it: ping the contract owner in chat
 
 Things to actively reject in PRs (from CLAUDE.md / PRD §2.3):
 
-- Anything Pharos-shaped (IPC, Electron, `pharos-ade.com` upload). DevMetrics is independent (D1).
+- Anything Pharos-shaped (IPC, Electron, `pharos-ade.com` upload). Bematist is independent (D1).
 - Per-engineer leaderboards, performance scores, real-time per-IC feeds, autonomous coaching.
 - IDE plugin surfaces (we observe agents, not editors).
 - Cross-tenant benchmarking.

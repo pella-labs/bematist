@@ -2,7 +2,7 @@
   "name": "bematist",
   "version": "0.0.0",
   "private": true,
-  "description": "DevMetrics — open-source AI-engineering analytics platform (repo slug: bematist)",
+  "description": "Bematist — open-source AI-engineering analytics platform.",
   "license": "Apache-2.0",
   "packageManager": "bun@1.2.0",
   "workspaces": [
