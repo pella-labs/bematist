@@ -4,7 +4,37 @@
 **Project:** bematist (DevMetrics)
 **Workstream:** D (owns contract 09); this ticket touches contract 05 owned by H, but D coordinates because the fix pattern matches the one already applied to 03 + 06
 **Date:** 2026-04-17
+**Status:** ✅ **Verified no-op on 2026-04-17** — see Resolution section below.
 **Previous work:** `D1-00` (env autoload). See `docs/DEVLOG.md`.
+
+---
+
+## Resolution (2026-04-17)
+
+Both drifts called out in GH issue #3's "Known contract drift" section were **already fixed** before Sprint 1 started. Verified by grep across `contracts/`:
+
+### Drift 1 — Contract 09 CH DDL
+
+> Issue #3: `ReplacingMergeTree(client_event_id)` → must change to `ReplacingMergeTree(ts)` via additive changelog.
+
+**Status:** ✅ Already fixed. Contract 09 line 88 reads `ENGINE = ReplacingMergeTree(ts)`, with a clear 2026-04-16 Changelog entry at line 228 documenting the rationale (CH 25+ rejects UUID as version column).
+
+### Drift 2 — Contract 05 imports
+
+> Issue #3: `@devmetrics/*` in imports; paths are `@bematist/*`.
+
+**Status:** ✅ Already fixed. `grep '@devmetrics' contracts/05-embed-provider.md` returns zero hits. The only `devmetrics` references in contract 05 are CLI-command mentions (`devmetrics doctor`), which are correct — `devmetrics` is the locked product-facing binary name per PRD D32.
+
+### Evidence
+
+- `grep -rn '@devmetrics' contracts/` returns two hits — both in **Changelog entries** of contracts 03 and 06 documenting the historical rename (correct to keep as audit trail, not drift to fix).
+- Contract 05 has zero code-path references to the old namespace.
+
+### No code change required
+
+No branch push or PR needed. This primer is kept as the audit trail proving the verification was performed. The Deliverables section below is preserved for completeness but should not be re-executed.
+
+---
 
 ---
 
