@@ -22,7 +22,9 @@ test("migrate() creates all tables on empty db", () => {
   try {
     migrate(db);
     const names = db
-      .query<{ name: string }, []>("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+      .query<{ name: string }, []>(
+        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name",
+      )
       .all()
       .map((r) => r.name);
     expect(names).toContain("events");
@@ -52,9 +54,7 @@ test("migrate() is idempotent", () => {
   try {
     migrate(db);
     expect(() => migrate(db)).not.toThrow();
-    const rows = db
-      .query<{ version: number }, []>("SELECT version FROM schema_migrations")
-      .all();
+    const rows = db.query<{ version: number }, []>("SELECT version FROM schema_migrations").all();
     expect(rows.length).toBe(1);
     expect(rows[0]?.version).toBe(1);
   } finally {

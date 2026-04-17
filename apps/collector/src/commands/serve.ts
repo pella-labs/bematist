@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite";
-import { egressSqlite } from "@bematist/config";
-import { mkdirSync, existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { egressSqlite } from "@bematist/config";
 import { buildRegistry } from "../adapters";
 import { SqliteCursorStore } from "../cursor/store";
 import { Journal } from "../egress/journal";
@@ -94,9 +94,7 @@ export async function runServe(): Promise<void> {
         break;
       }
       const sleep = flush.retryAfterSeconds ?? 0;
-      await new Promise((r) =>
-        setTimeout(r, Math.max(FLUSH_INTERVAL_MS, sleep * 1000)),
-      );
+      await new Promise((r) => setTimeout(r, Math.max(FLUSH_INTERVAL_MS, sleep * 1000)));
     } catch (e) {
       log.warn({ err: String(e) }, "serve loop error");
       await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));

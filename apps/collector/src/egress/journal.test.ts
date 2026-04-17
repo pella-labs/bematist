@@ -49,6 +49,7 @@ const sampleEvent = {
   session_id: "s1",
   event_seq: 0,
   dev_metrics: { event_kind: "session_start" },
+  cost_estimated: false,
 } as const;
 
 test("enqueue inserts a pending row", () => {

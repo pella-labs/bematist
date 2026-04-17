@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite";
-import { egressSqlite } from "@bematist/config";
-import { mkdirSync, existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { egressSqlite } from "@bematist/config";
 import { buildRegistry } from "../adapters";
 import { SqliteCursorStore } from "../cursor/store";
 import { Journal } from "../egress/journal";
@@ -57,11 +57,7 @@ export async function runDryRun(_args: string[]): Promise<void> {
   });
 
   console.log(
-    JSON.stringify(
-      { enqueued: events.length, wouldSubmit: events.length, result },
-      null,
-      2,
-    ),
+    JSON.stringify({ enqueued: events.length, wouldSubmit: events.length, result }, null, 2),
   );
   log.info({ events: events.length }, "dry-run complete");
   db.close();

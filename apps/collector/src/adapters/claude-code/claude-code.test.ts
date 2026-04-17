@@ -100,11 +100,7 @@ test("poll() reads real-session fixture and emits canonical Events", async () =>
   // Mirror the fixture shape under dir/projects/<proj>/sessions/<file>.jsonl.
   const sub = require("node:path").join(dir, "projects", "proj-a", "sessions");
   require("node:fs").mkdirSync(sub, { recursive: true });
-  const srcFix = require("node:path").join(
-    __dirname,
-    "fixtures",
-    "real-session.jsonl",
-  );
+  const srcFix = require("node:path").join(__dirname, "fixtures", "real-session.jsonl");
   require("node:fs").copyFileSync(srcFix, require("node:path").join(sub, "s1.jsonl"));
 
   const prev = process.env.CLAUDE_CONFIG_DIR;

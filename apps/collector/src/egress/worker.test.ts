@@ -50,6 +50,7 @@ const ev = (n: number) => ({
   session_id: "s1",
   event_seq: n,
   dev_metrics: { event_kind: "session_start" as const },
+  cost_estimated: false,
 });
 
 test("202 marks all submitted", async () => {
@@ -59,7 +60,7 @@ test("202 marks all submitted", async () => {
   const result = await flushOnce(j, {
     endpoint: "https://ingest.test",
     token: "dm_x",
-    fetch: fetchMock as typeof fetch,
+    fetch: fetchMock as unknown as typeof fetch,
     dryRun: false,
   });
   expect(result.submitted).toBe(1);
@@ -81,7 +82,7 @@ test("207 splits succeeded vs failed per index", async () => {
   const result = await flushOnce(j, {
     endpoint: "https://ingest.test",
     token: "dm_x",
-    fetch: fetchMock as typeof fetch,
+    fetch: fetchMock as unknown as typeof fetch,
     dryRun: false,
   });
   expect(result.submitted).toBe(1);
@@ -96,7 +97,7 @@ test("400 marks failed with non-retry reason", async () => {
   const result = await flushOnce(j, {
     endpoint: "https://ingest.test",
     token: "dm_x",
-    fetch: fetchMock as typeof fetch,
+    fetch: fetchMock as unknown as typeof fetch,
     dryRun: false,
   });
   expect(result.failed).toBe(1);
@@ -109,7 +110,7 @@ test("401 returns fatal", async () => {
   const result = await flushOnce(j, {
     endpoint: "https://ingest.test",
     token: "dm_x",
-    fetch: fetchMock as typeof fetch,
+    fetch: fetchMock as unknown as typeof fetch,
     dryRun: false,
   });
   expect(result.fatal).toBe(true);
@@ -125,7 +126,7 @@ test("429 returns retryAfterSeconds from header", async () => {
   const result = await flushOnce(j, {
     endpoint: "https://ingest.test",
     token: "dm_x",
-    fetch: fetchMock as typeof fetch,
+    fetch: fetchMock as unknown as typeof fetch,
     dryRun: false,
   });
   expect(result.retryAfterSeconds).toBe(7);
@@ -134,11 +135,12 @@ test("429 returns retryAfterSeconds from header", async () => {
 
 test("500 marks failed but not fatal", async () => {
   j.enqueue(ev(0));
-  const fetchMock = async () => new Response(JSON.stringify({ error: "upstream" }), { status: 500 });
+  const fetchMock = async () =>
+    new Response(JSON.stringify({ error: "upstream" }), { status: 500 });
   const result = await flushOnce(j, {
     endpoint: "https://ingest.test",
     token: "dm_x",
-    fetch: fetchMock as typeof fetch,
+    fetch: fetchMock as unknown as typeof fetch,
     dryRun: false,
   });
   expect(result.failed).toBe(1);
@@ -155,7 +157,7 @@ test("dryRun=true skips network and keeps rows pending", async () => {
   const result = await flushOnce(j, {
     endpoint: "https://ingest.test",
     token: "dm_x",
-    fetch: fetchMock as typeof fetch,
+    fetch: fetchMock as unknown as typeof fetch,
     dryRun: true,
   });
   expect(calls.length).toBe(0);

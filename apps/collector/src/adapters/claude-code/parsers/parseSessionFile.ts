@@ -58,15 +58,19 @@ export function parseLines(lines: string[]): ParsedSession {
     const rid = parsed.requestId;
     if (usage && rid) {
       const prior = perRequestUsage.get(rid) ?? {};
-      perRequestUsage.set(rid, {
-        input_tokens: max(prior.input_tokens, usage.input_tokens),
-        output_tokens: max(prior.output_tokens, usage.output_tokens),
-        cache_read_input_tokens: max(prior.cache_read_input_tokens, usage.cache_read_input_tokens),
-        cache_creation_input_tokens: max(
-          prior.cache_creation_input_tokens,
-          usage.cache_creation_input_tokens,
-        ),
-      });
+      const input = max(prior.input_tokens, usage.input_tokens);
+      const output = max(prior.output_tokens, usage.output_tokens);
+      const cacheRead = max(prior.cache_read_input_tokens, usage.cache_read_input_tokens);
+      const cacheCreation = max(
+        prior.cache_creation_input_tokens,
+        usage.cache_creation_input_tokens,
+      );
+      const next: RawClaudeUsage = {};
+      if (input !== undefined) next.input_tokens = input;
+      if (output !== undefined) next.output_tokens = output;
+      if (cacheRead !== undefined) next.cache_read_input_tokens = cacheRead;
+      if (cacheCreation !== undefined) next.cache_creation_input_tokens = cacheCreation;
+      perRequestUsage.set(rid, next);
     }
   }
 

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { PRICING_PIN, isPricingStale, pricingVersionString } from "./pricing";
+import { isPricingStale, PRICING_PIN, pricingVersionString } from "./pricing";
 
 test("PRICING_PIN is a non-empty SHA-ish string", () => {
   expect(PRICING_PIN).toMatch(/^[a-f0-9]{7,40}$/);

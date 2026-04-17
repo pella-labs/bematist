@@ -1,5 +1,5 @@
-import type { Adapter, AdapterContext } from "@bematist/sdk";
 import type { Event } from "@bematist/schema";
+import type { Adapter, AdapterContext } from "@bematist/sdk";
 import { log } from "../logger";
 import { Semaphore } from "./semaphore";
 

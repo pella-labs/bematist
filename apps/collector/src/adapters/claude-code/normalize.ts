@@ -11,15 +11,18 @@ export interface ServerIdentity {
   tier: "A" | "B" | "C";
 }
 
-const MODEL_PRICING_PER_MTOK: Record<string, { input: number; output: number; cacheRead: number; cacheCreation: number }> = {
+const MODEL_PRICING_PER_MTOK: Record<
+  string,
+  { input: number; output: number; cacheRead: number; cacheCreation: number }
+> = {
   // Values in USD per million tokens. Anchored to the LiteLLM pin in @bematist/config.
   // For M1 we carry a minimal table covering the 4.5 / 4.6 family; fully loaded table
   // lands as a generated JSON in M2 via packages/config/pricing.ts.
   "claude-sonnet-4-5": { input: 3.0, output: 15.0, cacheRead: 0.3, cacheCreation: 3.75 },
   "claude-sonnet-4-6": { input: 3.0, output: 15.0, cacheRead: 0.3, cacheCreation: 3.75 },
-  "claude-opus-4-6":   { input: 15.0, output: 75.0, cacheRead: 1.5, cacheCreation: 18.75 },
-  "claude-opus-4-7":   { input: 15.0, output: 75.0, cacheRead: 1.5, cacheCreation: 18.75 },
-  "claude-haiku-4-5":  { input: 0.8, output: 4.0, cacheRead: 0.08, cacheCreation: 1.0 },
+  "claude-opus-4-6": { input: 15.0, output: 75.0, cacheRead: 1.5, cacheCreation: 18.75 },
+  "claude-opus-4-7": { input: 15.0, output: 75.0, cacheRead: 1.5, cacheCreation: 18.75 },
+  "claude-haiku-4-5": { input: 0.8, output: 4.0, cacheRead: 0.08, cacheCreation: 1.0 },
 };
 
 export function normalizeSession(
@@ -109,7 +112,8 @@ function mapLine(
 
   if (line.type === "message" && line.message?.role === "assistant") {
     const model = line.message?.model;
-    const usage = (line.requestId && parsed.perRequestUsage.get(line.requestId)) || line.message?.usage;
+    const usage =
+      (line.requestId && parsed.perRequestUsage.get(line.requestId)) || line.message?.usage;
     const cost = usage && model ? computeCostUsd(model, usage) : undefined;
     return [
       {

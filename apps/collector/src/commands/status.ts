@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite";
-import { egressSqlite } from "@bematist/config";
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { egressSqlite } from "@bematist/config";
 import { buildRegistry } from "../adapters";
 import { Journal } from "../egress/journal";
 import { migrate } from "../egress/migrations";

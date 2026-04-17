@@ -1,6 +1,6 @@
-import { afterEach, expect, test } from "bun:test";
-import type { Adapter, AdapterContext } from "@bematist/sdk";
+import { expect, test } from "bun:test";
 import type { Event } from "@bematist/schema";
+import type { Adapter, AdapterContext } from "@bematist/sdk";
 import { runOnce } from "./index";
 
 function mkLogger() {

@@ -1,5 +1,5 @@
 /**
- * Raw JSONL shapes emitted by Claude Code to ~/.claude/projects/*/sessions/*.jsonl.
+ * Raw JSONL shapes emitted by Claude Code to `~/.claude/projects/<hash>/sessions/<ulid>.jsonl`.
  * These reflect the shape as of Claude Code v1.0.35; field drift is expected and
  * handled by making every property optional + a fail-loud `unknown` catch-all.
  *
