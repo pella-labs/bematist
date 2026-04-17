@@ -40,6 +40,13 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Check OTLP generated bindings are in sync with vendored proto
+        # `buf generate` + `git diff --exit-code src/gen` — fails if someone
+        # edited packages/otel/vendor/opentelemetry-proto/** without
+        # regenerating packages/otel/src/gen/**. buf CLI ships prebuilt via
+        # @bufbuild/buf (no protoc install needed).
+        run: bun run check:otel-generated
+
       - name: Lint
         run: bun run lint
 

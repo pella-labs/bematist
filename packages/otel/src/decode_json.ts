@@ -1,34 +1,27 @@
 // Proto3-JSON decoder for OTLP Export*ServiceRequest payloads.
 //
-// Validates shape via duck-typing (cheap; full zod would dominate the request
-// budget). Throws `OtlpDecodeError` with `code:"OTLP_DECODE"` on malformed
-// input — the OTLP HTTP handler maps this to a 400 response.
+// Backed by @bufbuild/protobuf's `fromJson` + buf-generated bindings from the
+// vendored opentelemetry-proto v1.5.0 tree. The runtime follows the
+// proto3-JSON spec natively — hex trace/span IDs, int64-as-string,
+// lowerCamelCase keys, enum-as-int-or-name — exactly what the collector
+// emits. Sprint-1 Phase 5 shipped a duck-typed hand-rolled version; this file
+// replaces it per D-S1-12. Public exports (`decodeTracesJson` /
+// `decodeMetricsJson` / `decodeLogsJson` / `OtlpDecodeError`) are unchanged.
 //
-// Proto3-JSON quirks handled:
-//   - Keys arrive lowerCamelCase.
-//   - traceId/spanId stay as hex strings (never base64-decoded).
-//   - Enum fields (span.kind, status.code) arrive as ints; left as numbers.
-//   - Int64 (startTimeUnixNano etc.) arrive as either string OR number;
-//     normalized to string for nano timestamps and to number for small counts.
-//   - Unknown fields are ignored.
+// Unknown fields ignored by default (bufbuild's `fromJson` option
+// `ignoreUnknownFields` is false by default — we opt into `true` to match the
+// old handler's tolerant behaviour; the OTLP spec marks unknown fields as MAY
+// be ignored, and rejecting would fight forward compatibility).
 
+import { fromJson, type JsonValue } from "@bufbuild/protobuf";
+import { exportLogsToPublic, exportMetricsToPublic, exportTracesToPublic } from "./adapt";
+import { ExportLogsServiceRequestSchema } from "./gen/opentelemetry/proto/collector/logs/v1/logs_service_pb";
+import { ExportMetricsServiceRequestSchema } from "./gen/opentelemetry/proto/collector/metrics/v1/metrics_service_pb";
+import { ExportTraceServiceRequestSchema } from "./gen/opentelemetry/proto/collector/trace/v1/trace_service_pb";
 import type {
-  AnyValue,
   ExportLogsServiceRequest,
   ExportMetricsServiceRequest,
   ExportTraceServiceRequest,
-  KeyValue,
-  LogRecord,
-  Metric,
-  NumberDataPoint,
-  Resource,
-  ResourceLogs,
-  ResourceMetrics,
-  ResourceSpans,
-  ScopeLogs,
-  ScopeMetrics,
-  ScopeSpans,
-  Span,
 } from "./types";
 
 export class OtlpDecodeError extends Error {
@@ -39,253 +32,159 @@ export class OtlpDecodeError extends Error {
   }
 }
 
-function assertOrThrow(cond: unknown, msg: string): asserts cond {
-  if (!cond) throw new OtlpDecodeError(msg);
-}
+const FROM_JSON_OPTS = { ignoreUnknownFields: true } as const;
 
 function isObject(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === "object" && !Array.isArray(v);
 }
 
-function decodeAnyValue(raw: unknown): AnyValue {
-  assertOrThrow(isObject(raw), "AnyValue must be an object");
-  const out: AnyValue = {};
-  if (typeof raw.stringValue === "string") out.stringValue = raw.stringValue;
-  if (typeof raw.boolValue === "boolean") out.boolValue = raw.boolValue;
-  if (typeof raw.intValue === "string" || typeof raw.intValue === "number") {
-    out.intValue = raw.intValue;
+// OTLP/JSON spec override: trace_id / span_id / parent_span_id are encoded as
+// LOWERCASE HEX strings, NOT base64. Everywhere else, `bytes` fields follow
+// the default proto3-JSON base64 encoding. @bufbuild/protobuf's `fromJson`
+// doesn't know about that per-field override (nothing in the .proto file
+// carries it — the OTLP HTTP spec defines it out-of-band), so we walk the
+// incoming JSON tree and convert hex → base64 for those three fields before
+// handing off to `fromJson`.
+//
+// Ref: https://opentelemetry.io/docs/specs/otlp/#json-protobuf-encoding
+// Ref: ExportTraceServiceRequest shape — `Span.trace_id` (32 hex),
+//      `Span.span_id` (16 hex), `Span.parent_span_id` (16 hex).
+//
+// We also convert LogRecord.trace_id / LogRecord.span_id (same field names).
+
+const HEX_RE = /^[0-9a-fA-F]*$/;
+
+function hexToBase64(hex: string): string {
+  if (hex.length === 0) return "";
+  const bytes = new Uint8Array(Math.floor(hex.length / 2));
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
   }
-  if (typeof raw.doubleValue === "number") out.doubleValue = raw.doubleValue;
-  if (typeof raw.bytesValue === "string") out.bytesValue = raw.bytesValue;
-  if (isObject(raw.arrayValue) && Array.isArray((raw.arrayValue as { values?: unknown }).values)) {
-    out.arrayValue = {
-      values: (raw.arrayValue as { values: unknown[] }).values.map(decodeAnyValue),
-    };
+  // btoa via binary string — bytes are all 0..255 so String.fromCharCode is
+  // safe for our trace/span ID lengths (≤32 bytes).
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!);
+  return btoa(bin);
+}
+
+function convertIdField(
+  obj: Record<string, unknown>,
+  field: "traceId" | "spanId" | "parentSpanId",
+): void {
+  const v = obj[field];
+  if (typeof v !== "string" || v.length === 0) return;
+  // Heuristic: a valid hex string of even length → convert. If it's already
+  // base64 (would contain non-hex chars like '+' / '/' / '='), leave it alone.
+  if (v.length % 2 === 0 && HEX_RE.test(v)) {
+    obj[field] = hexToBase64(v);
   }
-  if (
-    isObject(raw.kvlistValue) &&
-    Array.isArray((raw.kvlistValue as { values?: unknown }).values)
-  ) {
-    out.kvlistValue = {
-      values: (raw.kvlistValue as { values: unknown[] }).values.map(decodeKeyValue),
-    };
-  }
-  return out;
 }
 
-function decodeKeyValue(raw: unknown): KeyValue {
-  assertOrThrow(isObject(raw), "KeyValue must be an object");
-  assertOrThrow(typeof raw.key === "string", "KeyValue.key must be a string");
-  assertOrThrow("value" in raw, "KeyValue.value missing");
-  return { key: raw.key, value: decodeAnyValue(raw.value) };
+function normalizeIdsInSpan(sp: unknown): void {
+  if (!isObject(sp)) return;
+  convertIdField(sp, "traceId");
+  convertIdField(sp, "spanId");
+  convertIdField(sp, "parentSpanId");
 }
 
-function decodeKeyValueList(raw: unknown): KeyValue[] {
-  if (raw === undefined) return [];
-  assertOrThrow(Array.isArray(raw), "attributes must be an array");
-  return raw.map(decodeKeyValue);
+function normalizeIdsInLogRecord(lr: unknown): void {
+  if (!isObject(lr)) return;
+  convertIdField(lr, "traceId");
+  convertIdField(lr, "spanId");
 }
 
-function decodeResource(raw: unknown): Resource {
-  assertOrThrow(isObject(raw), "Resource must be an object");
-  return { attributes: decodeKeyValueList(raw.attributes) };
-}
-
-function normalizeNano(raw: unknown): string | number {
-  // Big nanos are usually strings in proto3-JSON; pass through unchanged.
-  // If a number arrives, coerce to a JS number IF it fits without precision
-  // loss in float64 (≤ Number.MAX_SAFE_INTEGER), else stringify.
-  if (typeof raw === "string") return raw;
-  if (typeof raw === "number") {
-    if (Number.isFinite(raw) && Math.abs(raw) <= Number.MAX_SAFE_INTEGER) return raw;
-    return String(raw);
-  }
-  // Missing → "0" (the mapper drops/defaults).
-  return "0";
-}
-
-function decodeSpan(raw: unknown): Span {
-  assertOrThrow(isObject(raw), "Span must be an object");
-  assertOrThrow(typeof raw.traceId === "string", "Span.traceId must be a hex string");
-  assertOrThrow(typeof raw.spanId === "string", "Span.spanId must be a hex string");
-  assertOrThrow(typeof raw.name === "string", "Span.name must be a string");
-  const span: Span = {
-    traceId: raw.traceId,
-    spanId: raw.spanId,
-    name: raw.name,
-    startTimeUnixNano: normalizeNano(raw.startTimeUnixNano),
-    endTimeUnixNano: normalizeNano(raw.endTimeUnixNano),
-    attributes: decodeKeyValueList(raw.attributes),
-  };
-  if (typeof raw.parentSpanId === "string") span.parentSpanId = raw.parentSpanId;
-  if (typeof raw.kind === "number") span.kind = raw.kind;
-  if (isObject(raw.status)) {
-    const s: { code?: number; message?: string } = {};
-    if (typeof (raw.status as { code?: unknown }).code === "number") {
-      s.code = (raw.status as { code: number }).code;
+function normalizeTraceIdsInBody(body: Record<string, unknown>): void {
+  const resourceSpans = body.resourceSpans;
+  if (!Array.isArray(resourceSpans)) return;
+  for (const rs of resourceSpans) {
+    if (!isObject(rs)) continue;
+    const scopeSpans = (rs as { scopeSpans?: unknown }).scopeSpans;
+    if (!Array.isArray(scopeSpans)) continue;
+    for (const ss of scopeSpans) {
+      if (!isObject(ss)) continue;
+      const spans = (ss as { spans?: unknown }).spans;
+      if (!Array.isArray(spans)) continue;
+      for (const sp of spans) normalizeIdsInSpan(sp);
     }
-    if (typeof (raw.status as { message?: unknown }).message === "string") {
-      s.message = (raw.status as { message: string }).message;
+  }
+}
+
+function normalizeLogIdsInBody(body: Record<string, unknown>): void {
+  const resourceLogs = body.resourceLogs;
+  if (!Array.isArray(resourceLogs)) return;
+  for (const rl of resourceLogs) {
+    if (!isObject(rl)) continue;
+    const scopeLogs = (rl as { scopeLogs?: unknown }).scopeLogs;
+    if (!Array.isArray(scopeLogs)) continue;
+    for (const sl of scopeLogs) {
+      if (!isObject(sl)) continue;
+      const logRecords = (sl as { logRecords?: unknown }).logRecords;
+      if (!Array.isArray(logRecords)) continue;
+      for (const lr of logRecords) normalizeIdsInLogRecord(lr);
     }
-    span.status = s;
   }
-  return span;
 }
 
-function decodeScopeSpans(raw: unknown): ScopeSpans {
-  assertOrThrow(isObject(raw), "ScopeSpans must be an object");
-  const spans = raw.spans;
-  assertOrThrow(spans === undefined || Array.isArray(spans), "ScopeSpans.spans must be an array");
-  const out: ScopeSpans = {
-    spans: spans ? (spans as unknown[]).map(decodeSpan) : [],
-  };
-  if (isObject(raw.scope)) {
-    const sc: { name?: string; version?: string; attributes?: KeyValue[] } = {
-      attributes: decodeKeyValueList((raw.scope as { attributes?: unknown }).attributes),
-    };
-    if (typeof raw.scope.name === "string") sc.name = raw.scope.name;
-    if (typeof raw.scope.version === "string") sc.version = raw.scope.version;
-    out.scope = sc;
+function wrap<T>(fn: () => T): T {
+  try {
+    return fn();
+  } catch (e) {
+    if (e instanceof OtlpDecodeError) throw e;
+    throw new OtlpDecodeError(e instanceof Error ? e.message : String(e));
   }
-  return out;
 }
 
-function decodeResourceSpans(raw: unknown): ResourceSpans {
-  assertOrThrow(isObject(raw), "ResourceSpans must be an object");
-  const scopeSpans = raw.scopeSpans;
-  assertOrThrow(
-    scopeSpans === undefined || Array.isArray(scopeSpans),
-    "ResourceSpans.scopeSpans must be an array",
-  );
-  const out: ResourceSpans = {
-    scopeSpans: scopeSpans ? (scopeSpans as unknown[]).map(decodeScopeSpans) : [],
-  };
-  if (raw.resource !== undefined) out.resource = decodeResource(raw.resource);
-  return out;
+function cloneJson<T>(v: T): T {
+  // We deep-clone the incoming JSON (structuredClone) before mutating ID
+  // fields so we don't surprise the caller. The OTLP request bodies are
+  // already JSON-parsed objects — structuredClone is fast enough.
+  return structuredClone(v);
 }
 
 export function decodeTracesJson(body: unknown): ExportTraceServiceRequest {
-  assertOrThrow(isObject(body), "ExportTraceServiceRequest must be an object");
-  assertOrThrow(
-    Array.isArray(body.resourceSpans),
-    "ExportTraceServiceRequest.resourceSpans missing or not an array",
-  );
-  return {
-    resourceSpans: (body.resourceSpans as unknown[]).map(decodeResourceSpans),
-  };
-}
-
-// ---- Metrics (minimal) ---------------------------------------------------
-
-function decodeNumberDataPoint(raw: unknown): NumberDataPoint {
-  assertOrThrow(isObject(raw), "NumberDataPoint must be an object");
-  const dp: NumberDataPoint = {
-    attributes: decodeKeyValueList(raw.attributes),
-  };
-  if (raw.startTimeUnixNano !== undefined)
-    dp.startTimeUnixNano = normalizeNano(raw.startTimeUnixNano);
-  if (raw.timeUnixNano !== undefined) dp.timeUnixNano = normalizeNano(raw.timeUnixNano);
-  if (typeof raw.asDouble === "number") dp.asDouble = raw.asDouble;
-  if (typeof raw.asInt === "string" || typeof raw.asInt === "number") dp.asInt = raw.asInt;
-  return dp;
-}
-
-function decodeMetric(raw: unknown): Metric {
-  assertOrThrow(isObject(raw), "Metric must be an object");
-  assertOrThrow(typeof raw.name === "string", "Metric.name must be a string");
-  // Flatten Sum / Gauge / Histogram envelopes; only the dataPoints we use.
-  let dataPoints: NumberDataPoint[] | undefined;
-  for (const env of ["sum", "gauge"] as const) {
-    const node = (raw as Record<string, unknown>)[env];
-    if (isObject(node) && Array.isArray((node as { dataPoints?: unknown }).dataPoints)) {
-      dataPoints = (node as { dataPoints: unknown[] }).dataPoints.map(decodeNumberDataPoint);
-      break;
-    }
+  if (!isObject(body)) {
+    throw new OtlpDecodeError("ExportTraceServiceRequest must be an object");
   }
-  const out: Metric = { name: raw.name };
-  if (typeof raw.unit === "string") out.unit = raw.unit;
-  if (dataPoints !== undefined) out.dataPoints = dataPoints;
-  return out;
-}
-
-function decodeScopeMetrics(raw: unknown): ScopeMetrics {
-  assertOrThrow(isObject(raw), "ScopeMetrics must be an object");
-  const metrics = raw.metrics;
-  assertOrThrow(
-    metrics === undefined || Array.isArray(metrics),
-    "ScopeMetrics.metrics must be an array",
+  if (!Array.isArray(body.resourceSpans)) {
+    throw new OtlpDecodeError("ExportTraceServiceRequest.resourceSpans missing or not an array");
+  }
+  const normalized = cloneJson(body);
+  normalizeTraceIdsInBody(normalized);
+  return wrap(() =>
+    exportTracesToPublic(
+      fromJson(ExportTraceServiceRequestSchema, normalized as JsonValue, FROM_JSON_OPTS),
+    ),
   );
-  return { metrics: metrics ? (metrics as unknown[]).map(decodeMetric) : [] };
-}
-
-function decodeResourceMetrics(raw: unknown): ResourceMetrics {
-  assertOrThrow(isObject(raw), "ResourceMetrics must be an object");
-  const sm = raw.scopeMetrics;
-  assertOrThrow(
-    sm === undefined || Array.isArray(sm),
-    "ResourceMetrics.scopeMetrics must be an array",
-  );
-  const out: ResourceMetrics = {
-    scopeMetrics: sm ? (sm as unknown[]).map(decodeScopeMetrics) : [],
-  };
-  if (raw.resource !== undefined) out.resource = decodeResource(raw.resource);
-  return out;
 }
 
 export function decodeMetricsJson(body: unknown): ExportMetricsServiceRequest {
-  assertOrThrow(isObject(body), "ExportMetricsServiceRequest must be an object");
-  assertOrThrow(
-    Array.isArray(body.resourceMetrics),
-    "ExportMetricsServiceRequest.resourceMetrics missing or not an array",
+  if (!isObject(body)) {
+    throw new OtlpDecodeError("ExportMetricsServiceRequest must be an object");
+  }
+  if (!Array.isArray(body.resourceMetrics)) {
+    throw new OtlpDecodeError(
+      "ExportMetricsServiceRequest.resourceMetrics missing or not an array",
+    );
+  }
+  return wrap(() =>
+    exportMetricsToPublic(
+      fromJson(ExportMetricsServiceRequestSchema, body as JsonValue, FROM_JSON_OPTS),
+    ),
   );
-  return {
-    resourceMetrics: (body.resourceMetrics as unknown[]).map(decodeResourceMetrics),
-  };
-}
-
-// ---- Logs (minimal) ------------------------------------------------------
-
-function decodeLogRecord(raw: unknown): LogRecord {
-  assertOrThrow(isObject(raw), "LogRecord must be an object");
-  const lr: LogRecord = { attributes: decodeKeyValueList(raw.attributes) };
-  if (raw.timeUnixNano !== undefined) lr.timeUnixNano = normalizeNano(raw.timeUnixNano);
-  if (raw.observedTimeUnixNano !== undefined)
-    lr.observedTimeUnixNano = normalizeNano(raw.observedTimeUnixNano);
-  if (typeof raw.severityNumber === "number") lr.severityNumber = raw.severityNumber;
-  if (raw.body !== undefined) lr.body = decodeAnyValue(raw.body);
-  if (typeof raw.traceId === "string") lr.traceId = raw.traceId;
-  if (typeof raw.spanId === "string") lr.spanId = raw.spanId;
-  return lr;
-}
-
-function decodeScopeLogs(raw: unknown): ScopeLogs {
-  assertOrThrow(isObject(raw), "ScopeLogs must be an object");
-  const logRecords = raw.logRecords;
-  assertOrThrow(
-    logRecords === undefined || Array.isArray(logRecords),
-    "ScopeLogs.logRecords must be an array",
-  );
-  return { logRecords: logRecords ? (logRecords as unknown[]).map(decodeLogRecord) : [] };
-}
-
-function decodeResourceLogs(raw: unknown): ResourceLogs {
-  assertOrThrow(isObject(raw), "ResourceLogs must be an object");
-  const sl = raw.scopeLogs;
-  assertOrThrow(sl === undefined || Array.isArray(sl), "ResourceLogs.scopeLogs must be an array");
-  const out: ResourceLogs = {
-    scopeLogs: sl ? (sl as unknown[]).map(decodeScopeLogs) : [],
-  };
-  if (raw.resource !== undefined) out.resource = decodeResource(raw.resource);
-  return out;
 }
 
 export function decodeLogsJson(body: unknown): ExportLogsServiceRequest {
-  assertOrThrow(isObject(body), "ExportLogsServiceRequest must be an object");
-  assertOrThrow(
-    Array.isArray(body.resourceLogs),
-    "ExportLogsServiceRequest.resourceLogs missing or not an array",
+  if (!isObject(body)) {
+    throw new OtlpDecodeError("ExportLogsServiceRequest must be an object");
+  }
+  if (!Array.isArray(body.resourceLogs)) {
+    throw new OtlpDecodeError("ExportLogsServiceRequest.resourceLogs missing or not an array");
+  }
+  const normalized = cloneJson(body);
+  normalizeLogIdsInBody(normalized);
+  return wrap(() =>
+    exportLogsToPublic(
+      fromJson(ExportLogsServiceRequestSchema, normalized as JsonValue, FROM_JSON_OPTS),
+    ),
   );
-  return {
-    resourceLogs: (body.resourceLogs as unknown[]).map(decodeResourceLogs),
-  };
 }

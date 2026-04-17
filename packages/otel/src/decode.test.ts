@@ -1,88 +1,66 @@
 import { describe, expect, test } from "bun:test";
+import { create, toBinary } from "@bufbuild/protobuf";
+import { ExportTraceServiceRequestSchema } from "./gen/opentelemetry/proto/collector/trace/v1/trace_service_pb";
 import {
-  concat,
   decodeLogsJson,
   decodeMetricsJson,
   decodeTracesJson,
   decodeTracesProto,
-  decodeVarint,
-  encodeBytes,
-  encodeFixed64,
-  encodeLengthDelimited,
-  encodeString,
-  encodeVarint,
-  encodeVarintField,
   OtlpDecodeError,
 } from "./index";
 
-describe("varint", () => {
-  test("decodeVarint of [0x96, 0x01] === 150 (proto wire spec example)", () => {
-    const r = decodeVarint(Uint8Array.from([0x96, 0x01]));
-    expect(r.value).toBe(150);
-    expect(r.next).toBe(2);
-  });
-
-  test("encodeVarint(300) === [0xac, 0x02]", () => {
-    const out = encodeVarint(300);
-    expect(Array.from(out)).toEqual([0xac, 0x02]);
-  });
-
-  test("encode/decode round-trip for assorted values", () => {
-    for (const n of [0, 1, 127, 128, 300, 16384, 1_000_000, 2 ** 31 - 1]) {
-      const r = decodeVarint(encodeVarint(n));
-      expect(r.value).toBe(n);
-    }
-  });
-
-  test("truncated varint throws OtlpDecodeError", () => {
-    expect(() => decodeVarint(Uint8Array.from([0x80]))).toThrow(OtlpDecodeError);
-  });
-});
-
 describe("decodeTracesProto", () => {
-  test("round-trips a hand-built ExportTraceServiceRequest with 1 span", () => {
-    // KeyValue { key=1: "gen_ai.system", value=2: AnyValue{string=1: "anthropic"} }
-    const anyValStr = encodeString(1, "anthropic");
-    const anyVal = encodeLengthDelimited(2, anyValStr);
-    const kv = concat(encodeString(1, "gen_ai.system"), anyVal);
+  test("round-trips an ExportTraceServiceRequest with 1 span (bufbuild-built fixture)", () => {
+    // Build the request via the generated `create()` factory, serialize with
+    // `toBinary`, then run the public decoder — exercises the full
+    // bufbuild-descriptors → public-shape adapter path.
+    const traceIdBytes = new Uint8Array(16);
+    for (let i = 0; i < 16; i++) traceIdBytes[i] = i + 1;
+    const spanIdBytes = new Uint8Array(8);
+    for (let i = 0; i < 8; i++) spanIdBytes[i] = i + 1;
 
-    // KeyValue { key="dev_metrics.event_kind", value=string "llm_request" }
-    const kindAnyValStr = encodeString(1, "llm_request");
-    const kindAnyVal = encodeLengthDelimited(2, kindAnyValStr);
-    const kvKind = concat(encodeString(1, "dev_metrics.event_kind"), kindAnyVal);
+    const req = create(ExportTraceServiceRequestSchema, {
+      resourceSpans: [
+        {
+          resource: {
+            attributes: [
+              {
+                key: "service.name",
+                value: { value: { case: "stringValue", value: "claude-code" } },
+              },
+            ],
+          },
+          scopeSpans: [
+            {
+              spans: [
+                {
+                  traceId: traceIdBytes,
+                  spanId: spanIdBytes,
+                  name: "gen_ai.request.create",
+                  startTimeUnixNano: 1_737_000_000_000_000_000n,
+                  endTimeUnixNano: 1_737_000_000_500_000_000n,
+                  attributes: [
+                    {
+                      key: "gen_ai.system",
+                      value: { value: { case: "stringValue", value: "anthropic" } },
+                    },
+                    {
+                      key: "dev_metrics.event_kind",
+                      value: { value: { case: "stringValue", value: "llm_request" } },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
 
-    // Span { trace_id=1: bytes(16), span_id=2: bytes(8), name=5: "gen_ai.request",
-    //        start_time_unix_nano=7: fixed64, end_time_unix_nano=8: fixed64,
-    //        attributes=9: KeyValue (twice) }
-    const traceId = new Uint8Array(16);
-    for (let i = 0; i < 16; i++) traceId[i] = i + 1;
-    const spanId = new Uint8Array(8);
-    for (let i = 0; i < 8; i++) spanId[i] = i + 1;
-    const spanBody = concat(
-      encodeBytes(1, traceId),
-      encodeBytes(2, spanId),
-      encodeString(5, "gen_ai.request.create"),
-      encodeFixed64(7, 1_737_000_000_000_000_000n),
-      encodeFixed64(8, 1_737_000_000_500_000_000n),
-      encodeLengthDelimited(9, kv),
-      encodeLengthDelimited(9, kvKind),
-    );
-
-    // ScopeSpans { spans = 2: repeated Span }
-    const scopeSpansBody = encodeLengthDelimited(2, spanBody);
-    const scopeSpans = encodeLengthDelimited(2, scopeSpansBody);
-    // Resource { attributes=1: KeyValue("service.name","claude-code") }
-    const svcNameVal = encodeLengthDelimited(2, encodeString(1, "claude-code"));
-    const svcNameKv = concat(encodeString(1, "service.name"), svcNameVal);
-    const resource = encodeLengthDelimited(1, svcNameKv);
-    // ResourceSpans { resource=1, scope_spans=2 }
-    const resourceSpans = concat(encodeLengthDelimited(1, resource), scopeSpans);
-    // ExportTraceServiceRequest { resource_spans=1 }
-    const buf = encodeLengthDelimited(1, resourceSpans);
-
-    const req = decodeTracesProto(buf);
-    expect(req.resourceSpans.length).toBe(1);
-    const rs = req.resourceSpans[0]!;
+    const buf = toBinary(ExportTraceServiceRequestSchema, req);
+    const decoded = decodeTracesProto(buf);
+    expect(decoded.resourceSpans.length).toBe(1);
+    const rs = decoded.resourceSpans[0]!;
     expect(rs.resource?.attributes[0]?.key).toBe("service.name");
     expect(rs.resource?.attributes[0]?.value.stringValue).toBe("claude-code");
     expect(rs.scopeSpans.length).toBe(1);
@@ -99,14 +77,36 @@ describe("decodeTracesProto", () => {
     );
   });
 
-  test("skips unknown fields gracefully", () => {
-    // varint at field 99 (unknown to ExportTraceServiceRequest), then a real
-    // resource_spans field — decoder must skip the unknown and decode the rest.
-    const unknown = encodeVarintField(99, 42);
-    const resourceSpans = encodeLengthDelimited(1, new Uint8Array(0));
-    const buf = concat(unknown, resourceSpans);
-    const req = decodeTracesProto(buf);
-    expect(req.resourceSpans.length).toBe(1);
+  test("int64 nano values past 2^53 come back as decimal strings", () => {
+    const req = create(ExportTraceServiceRequestSchema, {
+      resourceSpans: [
+        {
+          scopeSpans: [
+            {
+              spans: [
+                {
+                  traceId: new Uint8Array(16).fill(1),
+                  spanId: new Uint8Array(8).fill(2),
+                  name: "x",
+                  startTimeUnixNano: 1_737_000_000_000_000_000n,
+                  endTimeUnixNano: 1_737_000_000_500_000_000n,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const decoded = decodeTracesProto(toBinary(ExportTraceServiceRequestSchema, req));
+    const sp = decoded.resourceSpans[0]?.scopeSpans[0]?.spans[0];
+    if (!sp) throw new Error("sp missing");
+    expect(typeof sp.startTimeUnixNano).toBe("string");
+    expect(sp.startTimeUnixNano).toBe("1737000000000000000");
+  });
+
+  test("non-Uint8Array input → OtlpDecodeError", () => {
+    // @ts-expect-error intentional bad type for runtime guard
+    expect(() => decodeTracesProto("not bytes")).toThrow(OtlpDecodeError);
   });
 });
 
@@ -183,7 +183,10 @@ describe("decodeTracesJson", () => {
                   traceId: "00112233445566778899aabbccddeeff",
                   spanId: "0011223344556677",
                   name: "x",
-                  // Small enough to be safe-int.
+                  // Small enough to be safe-int; bufbuild's proto3-JSON accepts a
+                  // JS number for int64 fields as long as it fits without
+                  // precision loss, and our adapter lowers safe-int bigints
+                  // back to JS numbers.
                   startTimeUnixNano: 1_737_000_000,
                   endTimeUnixNano: 1_737_000_500,
                 },

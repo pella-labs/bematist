@@ -1,14 +1,18 @@
 // Bematist — @bematist/otel public surface.
 //
-// Sprint 1 Phase 5: hand-rolled minimal proto3 + proto3-JSON decoder for
-// OTLP ExportTraceServiceRequest, plus a stable mapping API to bematist
-// EventDraft. The runtime decoder is intentionally narrow — Sprint 2 swaps
-// `decode_proto.ts` for `@bufbuild/protobuf` generated runtime once Bun ≥
-// 1.3.4 + buf CI step land (D-S1-12, coord Jorge/Sebastian). The public
-// mapping API stays stable across the swap.
+// Sprint-1 Phase 5 shipped a hand-rolled proto3 + proto3-JSON decoder as a
+// stop-gap; the Sprint-1 follow-up (D-S1-12) replaces it with
+// @bufbuild/protobuf + vendored opentelemetry-proto v1.5.0 + buf-generated
+// bindings in `src/gen/`. The public mapping API stays stable across the
+// swap — callers continue to import `decodeTracesProto`, `decodeTracesJson`,
+// `OtlpDecodeError`, `mapTracesToEvents`, etc. exactly as before.
 
 export * from "./decode_json";
 export * from "./decode_proto";
 export * from "./kv";
 export * from "./map";
 export * from "./types";
+// Test-only wire helpers kept for map.test.ts fixtures (the fixture code is
+// self-describing — every wire byte visible). New code should use `create()`
+// + `toBinary()` from @bufbuild/protobuf + the schemas in ./gen/ instead.
+export * from "./varint";

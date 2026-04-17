@@ -18,7 +18,9 @@
       "!**/*.sqlite",
       "!**/*.db",
       "!bun.lock",
-      "!**/next-env.d.ts"
+      "!**/next-env.d.ts",
+      "!packages/otel/src/gen",
+      "!packages/otel/vendor"
     ]
   },
   "formatter": {
