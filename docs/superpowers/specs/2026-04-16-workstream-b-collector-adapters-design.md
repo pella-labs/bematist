@@ -43,14 +43,14 @@ Built once, consumed by every adapter + every CLI command. The design choices he
 
 Single Bun-compiled binary `bematist-cli`. Two modes:
 
-- **`bematist serve`** — long-running collector daemon. Runs adapter poll loops, egress worker, optional OTLP receiver, optional local web at `:9873`. Registered as a user-level service via `bematist install` (launchd on macOS, systemd-user on Linux, Windows Service / Task Scheduler on Windows).
-- **`bematist <cmd>`** — one-shot CLI (status, audit, doctor, purge, erase, outcomes, waste, prompts, export, scan, policy, dry-run). Reads the same SQLite data store as the daemon; no RPC needed.
+- **`devmetrics serve`** — long-running collector daemon. Runs adapter poll loops, egress worker, optional OTLP receiver, optional local web at `:9873`. Registered as a user-level service via `devmetrics install` (launchd on macOS, systemd-user on Linux, Windows Service / Task Scheduler on Windows).
+- **`devmetrics <cmd>`** — one-shot CLI (status, audit, doctor, purge, erase, outcomes, waste, prompts, export, scan, policy, dry-run). Reads the same SQLite data store as the daemon; no RPC needed.
 
 **Hardening at startup, every mode** (CLAUDE.md §Security Rules):
 
 - `process.setrlimit?.("core", 0)` (Bun NAPI) + equivalent syscall fallback. `ulimit -c 0` for the process group.
 - `Dockerfile` entrypoint also sets `ulimit -c 0` + `RLIMIT_CORE=0`.
-- `bematist doctor` verifies both at runtime.
+- `devmetrics doctor` verifies both at runtime.
 - `process.on("SIGTERM"|"SIGINT", gracefulShutdown)` — AbortController broadcasts to all adapters; egress worker drains; SQLite WAL checkpoints; exits `0`.
 
 ### 3.2 Adapter orchestrator
@@ -90,7 +90,7 @@ CREATE TABLE cursors (
   PRIMARY KEY (adapter_id, key)
 ) STRICT;
 
-CREATE TABLE redaction_counts (    -- per-run counters for `bematist status`
+CREATE TABLE redaction_counts (    -- per-run counters for `devmetrics status`
   run_id       TEXT NOT NULL,
   marker_type  TEXT NOT NULL,
   count        INTEGER NOT NULL,
@@ -115,8 +115,8 @@ WAL mode on (`PRAGMA journal_mode=WAL`) — safe for concurrent daemon + CLI rea
 
 **Why SQLite over append-only JSONL:**
 
-- `bematist audit --tail` wants structured queries ("show me last 100 events to tenant X"), not file regex.
-- `bematist purge --session <id>` is a targeted DELETE.
+- `devmetrics audit --tail` wants structured queries ("show me last 100 events to tenant X"), not file regex.
+- `devmetrics purge --session <id>` is a targeted DELETE.
 - `retry_count` and `last_error` need UPDATE, which plays poorly with append-only semantics.
 - Pinakes lineage uses SQLite too — we mine the same pattern.
 
@@ -176,7 +176,7 @@ Adapters call `attachPromptRecord` whenever they have prompt text for a Tier B+ 
 1. **Redact** — imports `@bematist/redact` from Walid's package. Runs synchronously. Counters returned for the `redaction_report`.
 2. **Abstract** — priority chain implemented in `packages/clio/src/abstract/`:
    - `mcp.ts` — calls local MCP endpoint if available (probe via health check on `ctx.dataDir/.mcp-endpoints.json` written by whichever Claude Code / Codex session is running). Pin the MCP protocol version; open question (contract 06) — start with the minimum needed and bump.
-   - `ollama.ts` — POSTs to `http://localhost:11434/api/generate` with Qwen 2.5-7B, 60s timeout. Bundled config ships a recommended `Modelfile` text template but we do NOT download the model — user's responsibility, documented in `bematist doctor`.
+   - `ollama.ts` — POSTs to `http://localhost:11434/api/generate` with Qwen 2.5-7B, 60s timeout. Bundled config ships a recommended `Modelfile` text template but we do NOT download the model — user's responsibility, documented in `devmetrics doctor`.
    - `skip.ts` — returns `{ abstract_pending: true }`; server retries on its permitted models.
 3. **Verify** — same priority chain but with the "does this contain identifying content" prompt from contract 06. `YES` → function returns `null` (drop); **no retry ever**.
 4. **Embed** — `packages/clio/src/embed/xenova.ts` lazy-loads `@xenova/transformers` MiniLM-L6 on first call, caches loaded model in-process. Keys by `sha256(abstract)` in a separate `clio_embeddings` table (same SQLite file). ~80% cache hit expected on real corpora.
@@ -212,7 +212,7 @@ clio:
   reviewBeforePublish: false       # optional user review before egress
 ```
 
-`bematist policy show` prints the effective resolved policy. `bematist policy set <key>=<value>` edits the file with atomic write + `.bak` (Phase 0 P0 onboarding safety). `bematist dry-run` forces egress worker into log-only mode.
+`devmetrics policy show` prints the effective resolved policy. `devmetrics policy set <key>=<value>` edits the file with atomic write + `.bak` (Phase 0 P0 onboarding safety). `devmetrics dry-run` forces egress worker into log-only mode.
 
 ---
 
@@ -247,7 +247,7 @@ Sprint 1 primary deliverable. The one adapter that must emit real events at M1.
 
 **Fidelity:** `"full"` (per CLAUDE.md adapter matrix). Caveats set only when both `CLAUDE_CODE_ENABLE_TELEMETRY=0` and `~/.claude/projects` missing → `status: "disabled"`.
 
-**Hook fallback — M2.** Append a `SessionStart` + `SessionStop` hook entry to `~/.claude/settings.json` via `bematist install --with-claude-hooks`. Writes use atomic-write + `.bak` + diff preview; honor `CLAUDE_CONFIG_DIR`; never clobber unrelated keys (Phase 0 P0 onboarding safety, D17).
+**Hook fallback — M2.** Append a `SessionStart` + `SessionStop` hook entry to `~/.claude/settings.json` via `devmetrics install --with-claude-hooks`. Writes use atomic-write + `.bak` + diff preview; honor `CLAUDE_CONFIG_DIR`; never clobber unrelated keys (Phase 0 P0 onboarding safety, D17).
 
 #### 4.1.1 OTLP HTTP receiver — M2
 
@@ -295,7 +295,7 @@ Adapter SDK consumer entrypoint. Ship one real example adapter (probably a simpl
 - `durationMs = lastTimestamp − firstTimestamp` for Claude sessions; unit test with a fixture containing a mid-session 30-minute idle gap.
 - Safe file reader: `readline` over `createReadStream` with no size cap; test with a 60 MB synthetic JSONL fixture.
 - Pricing-version on every `cost_usd` event (D21); banner rendering is Sandesh's concern — we just emit the field.
-- LiteLLM JSON freshness probe — daemon fetches `model_prices_and_context_window.json` on boot + every 24 h; emits a `health().caveats` warning if older than 7 days. Path: `packages/config/src/pricing.ts`. Pinned commit SHA in `bematist --version`.
+- LiteLLM JSON freshness probe — daemon fetches `model_prices_and_context_window.json` on boot + every 24 h; emits a `health().caveats` warning if older than 7 days. Path: `packages/config/src/pricing.ts`. Pinned commit SHA in `devmetrics --version`.
 - Onboarding safety: atomic write + `.bak` + unified diff preview for every file the installer touches (`~/.claude/settings.json`, `~/.continue/config.json`, etc.); honor `CLAUDE_CONFIG_DIR`; never clobber foreign keys (read-modify-write on a parsed object, preserve unknown keys).
 
 **M2 (cross-adapter scope):**
@@ -304,7 +304,7 @@ Adapter SDK consumer entrypoint. Ship one real example adapter (probably a simpl
 
 ### 5.2 AI-Assisted commit trailer (D29) — M2
 
-`bematist policy set ai-assisted-trailer=on` enables a local `post-commit` git hook:
+`devmetrics policy set ai-assisted-trailer=on` enables a local `post-commit` git hook:
 
 ```bash
 #!/usr/bin/env bash
@@ -316,7 +316,7 @@ msg=$(git log -1 --pretty=%B)
 printf '%s\n\nAI-Assisted: bematist-%s\n' "$msg" "$sid" | git commit --amend -F -
 ```
 
-Hook file written atomically via `bematist install`. Active session id is whatever adapter emitted the most recent event in the last 15 min (simple heuristic; documented). Never amends commits that already carry the trailer.
+Hook file written atomically via `devmetrics install`. Active session id is whatever adapter emitted the most recent event in the last 15 min (simple heuristic; documented). Never amends commits that already carry the trailer.
 
 ### 5.3 CLI commands
 
@@ -324,30 +324,30 @@ Hook file written atomically via `bematist install`. Active session id is whatev
 
 | Command | Behavior |
 |---|---|
-| `bematist status` | Adapter list + health + last event timestamp + queue depth + binary SHA. |
-| `bematist audit --tail [-n N]` | Dumps last N `events` rows from the egress journal as newline-delimited JSON. |
-| `bematist dry-run` | Forces egress worker into log-only mode for the current process. |
-| `bematist policy show` / `set k=v` | Prints / edits the policy YAML. |
-| `bematist doctor` | ulimit check, binary signature SHA, ingest reachability, adapter health, LiteLLM freshness. |
-| `bematist purge --session <id>` | DELETE from events WHERE json_extract(body_json,'$.session_id')=? — local only. |
-| `bematist outcomes` | Cost per merged PR / commit / green test for this project. Reads local egress journal + git log; for Sprint 2 the ingest join-side version is not required. |
-| `bematist waste` | In-session anti-pattern report (heuristic Waste Radar — PRD §8.2). |
-| `bematist prompts` | Personal prompt-quality patterns with cohort sizes (local abstracted-prompt view, read-only). |
+| `devmetrics status` | Adapter list + health + last event timestamp + queue depth + binary SHA. |
+| `devmetrics audit --tail [-n N]` | Dumps last N `events` rows from the egress journal as newline-delimited JSON. |
+| `devmetrics dry-run` | Forces egress worker into log-only mode for the current process. |
+| `devmetrics policy show` / `set k=v` | Prints / edits the policy YAML. |
+| `devmetrics doctor` | ulimit check, binary signature SHA, ingest reachability, adapter health, LiteLLM freshness. |
+| `devmetrics purge --session <id>` | DELETE from events WHERE json_extract(body_json,'$.session_id')=? — local only. |
+| `devmetrics outcomes` | Cost per merged PR / commit / green test for this project. Reads local egress journal + git log; for Sprint 2 the ingest join-side version is not required. |
+| `devmetrics waste` | In-session anti-pattern report (heuristic Waste Radar — PRD §8.2). |
+| `devmetrics prompts` | Personal prompt-quality patterns with cohort sizes (local abstracted-prompt view, read-only). |
 
 **M3:**
 
 | Command | Behavior |
 |---|---|
-| `bematist install` | Installer — detects every IDE on the machine, configures adapters, registers daemon (launchd/systemd/service). Runs Phase 0 P0 onboarding-safe writes. |
-| `bematist erase --user <id> --org <id>` | POST `/v1/gdpr/erase` on ingest (triggers Jorge's partition-drop worker); after 202 response, local SQLite is also wiped for that scope. |
-| `bematist export --compliance` | Phase-2-only per PRD; signed JSON bundle + SHA-256 manifest. Scaffolded in M3, full rollout post-MVP. |
-| `bematist scan --phi` | Phase-3-only per PRD; scaffolded-not-implemented at M3. |
-| `bematist serve --embedded` | Single-binary solo mode: starts bundled Postgres+TimescaleDB via Docker-in-binary or a child process, plus a tiny Next.js static export at `:9873`. Scope for M3 is "works on a demo machine"; production hardening Phase 2. |
+| `devmetrics install` | Installer — detects every IDE on the machine, configures adapters, registers daemon (launchd/systemd/service). Runs Phase 0 P0 onboarding-safe writes. |
+| `devmetrics erase --user <id> --org <id>` | POST `/v1/gdpr/erase` on ingest (triggers Jorge's partition-drop worker); after 202 response, local SQLite is also wiped for that scope. |
+| `devmetrics export --compliance` | Phase-2-only per PRD; signed JSON bundle + SHA-256 manifest. Scaffolded in M3, full rollout post-MVP. |
+| `devmetrics scan --phi` | Phase-3-only per PRD; scaffolded-not-implemented at M3. |
+| `devmetrics serve --embedded` | Single-binary solo mode: starts bundled Postgres+TimescaleDB via Docker-in-binary or a child process, plus a tiny Next.js static export at `:9873`. Scope for M3 is "works on a demo machine"; production hardening Phase 2. |
 
 ### 5.4 Binary build + signing — M3
 
 - `bun build --compile --target bun-<platform>` for macos-arm64, macos-x64, linux-x64, linux-arm64, windows-x64. One GH Actions matrix job per target.
-- Output binaries consumed by Sebastian's SLSA L3 + Sigstore + cosign reusable workflow. David's job: produce the binaries and supply the metadata (`bematist --version` prints build SHA + pricing-version pin); **Sebastian owns the signing pipeline itself**.
+- Output binaries consumed by Sebastian's SLSA L3 + Sigstore + cosign reusable workflow. David's job: produce the binaries and supply the metadata (`devmetrics --version` prints build SHA + pricing-version pin); **Sebastian owns the signing pipeline itself**.
 - Distro packages (Homebrew formula, apt `.deb`, AUR PKGBUILD, Chocolatey `.nuspec`) authored by Sebastian; David provides a stable CLI surface and release asset names.
 
 ---
@@ -378,7 +378,7 @@ Per CLAUDE.md §Testing Rules and user's `tdd.md`:
 - ☐ Sandesh's single dashboard tile (cost-over-7d) renders from real data — not a mock.
 - ☐ Phase 0 P0 for Claude Code: `parseSessionFile` dedup, `durationMs` fix, safe file reader, pricing-version stamped, onboarding safety on any file write.
 - ☐ Egress journal survives a kill -9 + restart: pending rows still pending, no dupes on resend (SETNX on ingest side proves this).
-- ☐ `bematist status` + `bematist audit --tail` + `bematist dry-run` work.
+- ☐ `devmetrics status` + `devmetrics audit --tail` + `devmetrics dry-run` work.
 - ☐ M0 contract drift (`@devmetrics/*` → `@bematist/*`) fixed with additive changelog bump on contracts 01/03/06.
 
 **PR:** single branch into `main`, reviewed by at least one consumer (Walid or Jorge makes sense — Walid sees the wire, Jorge sees the landing).
@@ -401,10 +401,10 @@ All merge-blockers from WORKSTREAMS.md §M2 that touch David + Collector-owned:
 ### 7.3 M3 gate — "PoC ship"
 
 - ☐ `bun build --compile` produces per-OS binaries for macOS-arm64 / macOS-x64 / linux-x64 / linux-arm64 / windows-x64.
-- ☐ Binaries consumed by Sebastian's SLSA L3 + Sigstore + cosign signed-release workflow. David's side: stable CLI surface + release asset names + `bematist --version` prints build SHA + pricing-version pin.
-- ☐ `bematist install` works on a fresh user account on each target OS; writes a systemd-user / launchd / Windows Service unit; registers adapter configs for every IDE it detects.
-- ☐ `bematist erase` round-trip verified (INT12 GDPR E2E per CLAUDE.md §Testing Rules).
-- ☐ `bematist serve --embedded` brings up the local stack and opens `:9873` on a demo machine.
+- ☐ Binaries consumed by Sebastian's SLSA L3 + Sigstore + cosign signed-release workflow. David's side: stable CLI surface + release asset names + `devmetrics --version` prints build SHA + pricing-version pin.
+- ☐ `devmetrics install` works on a fresh user account on each target OS; writes a systemd-user / launchd / Windows Service unit; registers adapter configs for every IDE it detects.
+- ☐ `devmetrics erase` round-trip verified (INT12 GDPR E2E per CLAUDE.md §Testing Rules).
+- ☐ `devmetrics serve --embedded` brings up the local stack and opens `:9873` on a demo machine.
 - ☐ 15-minute fresh-install → capture → dashboard tile test passes on macOS, Windows, Linux (PRD §10 Phase 1 acceptance).
 - ☐ All Phase 0 P0 items verified green (D17 full checklist).
 - ☐ `export --compliance` and `scan --phi` scaffolded (not full rollout — Phase 2/3 per PRD).
@@ -420,7 +420,7 @@ All merge-blockers from WORKSTREAMS.md §M2 that touch David + Collector-owned:
 - **`bun build --compile` maturity.** Native compilation story is maturing; Windows-x64 especially may have quirks. Mitigation: CI matrix catches breakage early; fallback is `bun install -g bematist-cli` which is Node-ish (Bun-runtime-required) — less elegant but ships.
 - **MCP surface for "user's own Claude Code / Codex abstractor".** No stable cross-vendor contract yet; pin to the version we observe at implementation time, design a swap-able provider interface in `packages/clio/src/abstract/`, bump as upstream evolves.
 - **Cross-platform paths in discovery.** `~/.claude/projects/` is a POSIX shape; Windows is `%AppData%\.claude\projects\`. Abstracted via `packages/config/src/paths.ts`; test with a mock filesystem.
-- **`RLIMIT_CORE` on Windows.** Not a direct concept. Use `SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX)` as the closest analog; `bematist doctor` explains the platform difference.
+- **`RLIMIT_CORE` on Windows.** Not a direct concept. Use `SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX)` as the closest analog; `devmetrics doctor` explains the platform difference.
 - **`ai-assisted-trailer` on repos with `pre-commit` hook frameworks.** Husky / lefthook may overwrite or chain our hook. Mitigation: our installer detects those frameworks and instead adds a `lefthook.yml` / `.husky/post-commit` entry; falls back to direct hook file if none detected. Document limitation.
 
 ---

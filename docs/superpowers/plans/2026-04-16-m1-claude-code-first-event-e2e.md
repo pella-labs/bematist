@@ -433,7 +433,7 @@ export interface HardenReport {
  *   - Disable core dumps (ulimit -c 0 / RLIMIT_CORE=0 on POSIX).
  *   - Suppress GPF error dialogs on Windows.
  *
- * Best-effort: failures log a warning but never throw. `bematist doctor`
+ * Best-effort: failures log a warning but never throw. `devmetrics doctor`
  * verifies the effective state at runtime.
  */
 export function harden(): HardenReport {
@@ -463,7 +463,7 @@ export function harden(): HardenReport {
   } else if (p === "win32") {
     // Closest Windows analog to "no core dump": suppress GPF dialogs so
     // crashes terminate instead of popping up a modal. Implemented by
-    // kernel32!SetErrorMode. Best-effort only; `bematist doctor` reports.
+    // kernel32!SetErrorMode. Best-effort only; `devmetrics doctor` reports.
     notes.push("win32: SetErrorMode handled by Bun runtime; no additional action");
   }
 
@@ -2847,7 +2847,7 @@ async function main() {
 }
 
 function printHelp() {
-  console.log(`bematist — collector CLI (M1)
+  console.log(`devmetrics — collector CLI (M1)
 
 Commands:
   status            Adapter health + last event + queue depth
@@ -3383,7 +3383,7 @@ Open `docs/superpowers/specs/2026-04-16-workstream-b-collector-adapters-design.m
 - ☐ Event flows: adapter → egress journal → worker → ingest /v1/events → 202 Accepted → `submitted_at` set
 - ☐ P0 fixes for Claude Code: `parseSessionFile` dedup, `durationMs` fix, safe file reader, pricing-version stamped, onboarding safety helper
 - ☐ Egress journal survives kill -9 + restart with no duplicate sends
-- ☐ `bematist status` + `bematist audit --tail` + `bematist dry-run` work
+- ☐ `devmetrics status` + `devmetrics audit --tail` + `devmetrics dry-run` work
 - ☐ M0 contract drift (`@devmetrics/*` → `@bematist/*`) fixed with additive changelogs
 
 The remaining two M1 gate lines (Jorge's `dev_daily_rollup` populates; Sandesh's tile renders) are verified in the M1 integration window, not by David alone — they're part of the checkpoint PR review, not the branch.

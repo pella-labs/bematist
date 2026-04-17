@@ -1,4 +1,7 @@
 #!/usr/bin/env bun
+// DevMetrics — CLI entrypoint (bun --compile target). Binary name: devmetrics (PRD §D32).
+// Internal code slug / workspace package is `@bematist/collector`; user-facing
+// binary + help text + error messages use the product name "devmetrics".
 import { runAudit } from "./commands/audit";
 import { runDryRun } from "./commands/dryRun";
 import { runServe } from "./commands/serve";
@@ -29,14 +32,14 @@ async function main() {
       printHelp();
       return;
     default:
-      console.error(`bematist: unknown command: ${cmd}`);
+      console.error(`devmetrics: unknown command: ${cmd}`);
       printHelp();
       process.exit(2);
   }
 }
 
 function printHelp() {
-  console.log(`bematist — collector CLI (M1)
+  console.log(`devmetrics — collector CLI (M1)
 
 Commands:
   status            Adapter health + last event + queue depth
@@ -47,6 +50,6 @@ Commands:
 }
 
 main().catch((e) => {
-  console.error("bematist: fatal", e);
+  console.error("devmetrics: fatal", e);
   process.exit(1);
 });
