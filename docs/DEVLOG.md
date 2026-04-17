@@ -18,6 +18,13 @@ Chronological log of tickets worked on. Append-only; one entry per completed tic
 - **Tests added:** None needed.
 - **Follow-ups:** Mention in final Sprint 1 PR description that issue #3's "Known contract drift" bullets are resolved-on-inspection.
 
+## 2026-04-17 — D1-03: projections + EXPLAIN gates landed
+
+- **What shipped:** 2 additive projection migrations (`0008_projection_repo_lookup`, `0009_projection_cluster_lookup`). `events` table setting `deduplicate_merge_projection_mode = 'rebuild'` added (required for projections on RMT tables). `packages/schema/clickhouse/explain.ts` — reusable EXPLAIN helpers (`explainWithProjection`, `explainNatural`, `projectionUsed`). 7 tests.
+- **Branch / PR:** `D1-03-projections-jorge` → PR pending.
+- **Discovery:** CH's optimizer picks the FIRST applicable projection by prefix match on ORDER BY; when multiple projections share an `org_id` prefix, the cluster filter can be served by the repo projection. Tests verify *a* projection is used (not a specific name), which is the real performance gate.
+- **Follow-ups:** D1-04 onwards.
+
 ## 2026-04-17 — D1-02: ClickHouse materialized views landed
 
 - **What shipped:** 6 CH migrations (`0002`–`0007`). Additive `events` columns (`repo_id_hash`, `prompt_cluster_id`). Three event-sourced MVs (`dev_daily_rollup`, `team_weekly_rollup`, `repo_weekly_rollup`). One plain `ReplacingMergeTree(ts)` table (`cluster_assignment_mv`). One MV on top of it (`prompt_cluster_stats`). PG-backed dictionary (`dev_team_dict`). Deterministic seed script (3 orgs, 12 devs, 8k events). 24 CH tests; full workspace test sweep 46/46 green.
