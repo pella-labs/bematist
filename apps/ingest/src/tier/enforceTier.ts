@@ -25,6 +25,17 @@ export interface OrgPolicy {
   tier_default: Tier;
   /** Per-org additions to the Tier-A raw_attrs allowlist (contract 08 §F). */
   raw_attrs_allowlist_extra?: string[];
+  /**
+   * Per-source webhook shared secrets (Phase 6). Map of source→secret. Used
+   * by the verifier in apps/ingest/src/webhooks/router.ts. Absent / missing
+   * entry → 401 on that webhook path.
+   */
+  webhook_secrets?: Partial<Record<"github" | "gitlab" | "bitbucket", string>>;
+  /**
+   * Optional source-IP allowlist applied by the GitLab plaintext verifier.
+   * Empty / undefined → skip IP check (dev mode).
+   */
+  webhook_source_ip_allowlist?: string[];
 }
 
 export interface OrgPolicyStore {

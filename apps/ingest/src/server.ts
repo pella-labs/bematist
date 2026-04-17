@@ -5,6 +5,18 @@ import { getDeps } from "./deps";
 import { logger } from "./logger";
 import { applyTierAAllowlist, enforceTier } from "./tier/enforceTier";
 import { canonicalize } from "./wal/append";
+import { handleWebhook } from "./webhooks/router";
+import type { WebhookSource } from "./webhooks/verify";
+
+// Phase-6 test seam: enforceTier MUST NOT be invoked on /v1/webhooks/* paths
+// (D-S1-32). Tests read `_testHooks.enforceTierCallCount` after posting to
+// a webhook path to assert zero. The counter is bumped ONLY inside handleEvents.
+export const _testHooks = {
+  enforceTierCallCount: 0,
+  reset() {
+    _testHooks.enforceTierCallCount = 0;
+  },
+};
 
 const MAX_EVENTS_PER_REQUEST = 1000;
 const READYZ_PING_TIMEOUT_MS = 2000;
@@ -230,6 +242,7 @@ async function handleEvents(req: Request, auth: AuthContext, requestId: string):
   // (TIER_C_NOT_OPTED_IN) fails the entire batch — privacy violations are
   // not partial-acceptable (contract 02 §Response codes).
   for (let i = 0; i < events.length; i++) {
+    _testHooks.enforceTierCallCount++;
     const res = await enforceTier(events[i], auth, policy);
     if (res.reject) {
       const bodyJson: Record<string, unknown> = {
@@ -450,6 +463,19 @@ export async function handle(req: Request): Promise<Response> {
       return json({ status: "not-ready", deps, checks }, { status: 503 });
     }
     return json({ status: "ready", deps, checks });
+  }
+
+  // Phase 6 webhook routes — flag-gated; raw body captured inside the router
+  // before any JSON parse so HMAC verification sees exact on-the-wire bytes.
+  if (url.pathname.startsWith("/v1/webhooks/")) {
+    if (req.method !== "POST") {
+      return json({ error: "method not allowed" }, { status: 405 });
+    }
+    const source = url.pathname.slice("/v1/webhooks/".length) as WebhookSource;
+    if (source !== "github" && source !== "gitlab" && source !== "bitbucket") {
+      return json({ error: "unknown webhook source", code: "UNKNOWN_SOURCE" }, { status: 404 });
+    }
+    return handleWebhook(req, source, getDeps());
   }
 
   if (url.pathname === "/v1/events") {

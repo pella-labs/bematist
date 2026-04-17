@@ -643,6 +643,60 @@ describe("ingest server", () => {
     expect(() => assertFlagCoherence(flags)).toThrow(FlagIncoherentError);
   });
 
+  // --- Phase 6 meta: enforceTier NEVER invoked on /v1/webhooks/* -----------
+
+  test("Phase 6 (meta) enforceTier spy count stays 0 across webhook path", async () => {
+    const { _testHooks } = await import("./server");
+    const { createInMemoryOrgResolver } = await import("./deps");
+    const { createInMemoryGitEventsStore } = await import("./webhooks/gitEventsStore");
+    const resolver = createInMemoryOrgResolver();
+    resolver.seed("dev", "org_internal_id");
+    const policyStore = new InMemoryOrgPolicyStore();
+    policyStore.seed("org_internal_id", {
+      tier_c_managed_cloud_optin: false,
+      tier_default: "B",
+      webhook_secrets: { github: "s" },
+    });
+    setDeps({
+      orgResolver: resolver,
+      orgPolicyStore: policyStore,
+      gitEventsStore: createInMemoryGitEventsStore(),
+      webhookDedup: new InMemoryDedupStore(),
+      flags: {
+        ENFORCE_TIER_A_ALLOWLIST: false,
+        WAL_APPEND_ENABLED: false,
+        WAL_CONSUMER_ENABLED: false,
+        OTLP_RECEIVER_ENABLED: false,
+        WEBHOOKS_ENABLED: true,
+        CLICKHOUSE_WRITER: "client",
+      },
+    });
+    _testHooks.reset();
+    const res = await handle(
+      new Request("http://localhost/v1/webhooks/github?org=dev", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-github-event": "pull_request",
+          "x-github-delivery": "meta-del",
+          // Bad sig is fine — we're asserting enforceTier is never called
+          // regardless of verification outcome.
+          "x-hub-signature-256": `sha256=${"0".repeat(64)}`,
+        },
+        body: JSON.stringify({
+          action: "opened",
+          pull_request: { node_id: "PR_META" },
+          repository: { node_id: "R_1" },
+        }),
+      }),
+    );
+    // 401 or 200 — either way, enforceTier is a no-touch.
+    expect([200, 401]).toContain(res.status);
+    expect(_testHooks.enforceTierCallCount).toBe(0);
+    resetDeps();
+    beforeAllReseed();
+  });
+
   test("Phase 3 ordering invariant: Tier-B with prompt_text increments no setnx; valid event increments by 1", async () => {
     const spy = makeSpyDedupStore();
     setDeps({ dedupStore: spy });

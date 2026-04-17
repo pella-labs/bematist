@@ -16,6 +16,24 @@ import { type DedupStore, InMemoryDedupStore } from "./dedup/checkDedup";
 import { type Flags, parseFlags } from "./flags";
 import { InMemoryOrgPolicyStore, type OrgPolicyStore } from "./tier/enforceTier";
 import { createInMemoryWalAppender, type WalAppender } from "./wal/append";
+import { createInMemoryGitEventsStore, type GitEventsStore } from "./webhooks/gitEventsStore";
+
+/** Resolves an org slug from a webhook URL query param → internal org id. */
+export interface OrgResolver {
+  bySlug(slug: string): Promise<string | null>;
+}
+
+function createInMemoryOrgResolver(): OrgResolver & { seed(slug: string, id: string): void } {
+  const m = new Map<string, string>();
+  return {
+    async bySlug(slug) {
+      return m.get(slug) ?? null;
+    },
+    seed(slug, id) {
+      m.set(slug, id);
+    },
+  };
+}
 
 export interface Deps {
   store: IngestKeyStore;
@@ -33,6 +51,12 @@ export interface Deps {
    * `/readyz.checks.wal_consumer_lag`. Null → consumer not wired.
    */
   walConsumerLag: (() => Promise<number>) | null;
+  /** Transport dedup for webhooks (Phase 6). Separate from per-event dedupStore. */
+  webhookDedup: DedupStore;
+  /** Git events store (Phase 6) — backs /v1/webhooks/{github,gitlab,bitbucket}. */
+  gitEventsStore: GitEventsStore;
+  /** Resolves ?org=<slug> on webhook paths to an internal org id. */
+  orgResolver: OrgResolver;
 }
 
 function makeDefaultDeps(): Deps {
@@ -57,8 +81,13 @@ function makeDefaultDeps(): Deps {
     clickhouseWriter: createInMemoryClickHouseWriter(),
     flags: parseFlags(process.env as Record<string, string | undefined>),
     walConsumerLag: null,
+    webhookDedup: new InMemoryDedupStore(),
+    gitEventsStore: createInMemoryGitEventsStore(),
+    orgResolver: createInMemoryOrgResolver(),
   };
 }
+
+export { createInMemoryOrgResolver };
 
 // Intentionally mutable: swapped by setDeps() in tests and boot wiring.
 let _deps: Deps = makeDefaultDeps();
