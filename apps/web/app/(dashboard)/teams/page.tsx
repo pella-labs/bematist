@@ -71,8 +71,8 @@ export default async function TeamsPage({
                 aria-current={isSelected ? "true" : undefined}
                 className={
                   isSelected
-                    ? "block cursor-pointer rounded-lg border border-primary bg-card p-5 outline outline-1 -outline-offset-1 outline-primary/40"
-                    : "block cursor-pointer rounded-lg border border-border bg-card p-5 transition-colors hover:border-muted-foreground"
+                    ? "block cursor-pointer rounded-xl border border-primary bg-card p-5 outline outline-1 -outline-offset-1 outline-primary/40"
+                    : "block cursor-pointer rounded-xl border border-border bg-card p-5 transition-colors hover:border-muted-foreground"
                 }
               >
                 <div className="mb-3 flex items-start justify-between">
