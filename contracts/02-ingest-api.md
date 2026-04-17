@@ -108,3 +108,4 @@ Authorization: Bearer dm_<orgId>_<rand>
 
 - 2026-04-16 — initial draft.
 - 2026-04-16 — Sprint-0 M0: reference `ReplacingMergeTree(ts)` instead of `(client_event_id)` in Invariants §3 — see `09-storage-schema.md` Changelog for the CH 25 UUID-version-col constraint.
+- 2026-04-16 — Sprint-1 Phase 1: Bearer `dm_<orgId>_<keyId>_<secret>` is an ingest-key verified via timingSafeEqual + Postgres `ingest_keys` lookup with 60s LRU, NOT a JWT. JWT applies to dashboard sessions and Phase-4 B2B API only. See D-S1-1, D-S1-2.

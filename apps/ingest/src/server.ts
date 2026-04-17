@@ -1,5 +1,6 @@
 import { EventSchema } from "@bematist/schema";
 import { type AuthContext, verifyBearer } from "./auth";
+import { getDeps } from "./deps";
 import { logger } from "./logger";
 
 const MAX_EVENTS_PER_REQUEST = 1000;
@@ -191,11 +192,38 @@ export async function handle(req: Request): Promise<Response> {
     if (req.method !== "POST") {
       return json({ error: "method not allowed" }, { status: 405 });
     }
-    const auth = verifyBearer(req.headers.get("authorization"));
+    const { store, cache, rateLimiter } = getDeps();
+    const auth = await verifyBearer(req.headers.get("authorization"), store, cache);
     if (!auth) {
       return new Response(null, { status: 401 });
     }
-    return handleEvents(req, auth, requestId);
+    // Rate-limit per (orgId, deviceId). deviceId pulled from optional header.
+    const deviceId = req.headers.get("x-device-id") ?? "default";
+    const rl = await rateLimiter.consume(auth.tenantId, deviceId, 1);
+    if (!rl.allowed) {
+      const retryAfter = Math.max(1, Math.ceil(rl.retryAfterMs / 1000)).toString();
+      return new Response(
+        JSON.stringify({
+          error: "rate limit exceeded",
+          code: "RATE_LIMITED",
+          retry_after_ms: rl.retryAfterMs,
+          request_id: requestId,
+        }),
+        {
+          status: 429,
+          headers: {
+            "content-type": "application/json",
+            "retry-after": retryAfter,
+          },
+        },
+      );
+    }
+    const res = await handleEvents(req, auth, requestId);
+    // Best-effort rate-limit remaining header on 2xx.
+    if (Number.isFinite(rl.remaining)) {
+      res.headers.set("x-ratelimit-remaining", String(rl.remaining));
+    }
+    return res;
   }
 
   return json({ error: "not found" }, { status: 404 });
