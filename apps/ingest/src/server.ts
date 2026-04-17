@@ -4,6 +4,7 @@ import { checkDedup } from "./dedup/checkDedup";
 import { getDeps } from "./deps";
 import { logger } from "./logger";
 import { applyTierAAllowlist, enforceTier } from "./tier/enforceTier";
+import { canonicalize } from "./wal/append";
 
 const MAX_EVENTS_PER_REQUEST = 1000;
 const READYZ_PING_TIMEOUT_MS = 2000;
@@ -90,14 +91,19 @@ async function pingTcp(urlStr: string | undefined, defaultPort: number): Promise
   }
 }
 
-async function pingClickHouse(urlStr: string | undefined): Promise<boolean> {
-  if (!urlStr) return false;
+// Phase 4: delegate to deps.clickhouseWriter.ping() so tests can inject an
+// in-memory writer with togglable ping-result. When CLICKHOUSE_URL is unset
+// in dev, treat as configured-OK (same shape as prior TCP ping on empty URL,
+// but flipped: dev convenience — ops environments always set the URL and
+// the injected writer's real ping fires).
+async function clickhousePing(): Promise<boolean> {
+  const { clickhouseWriter } = getDeps();
+  if (!process.env.CLICKHOUSE_URL) {
+    // Unconfigured: treat as OK in dev, matching the dev-compose convention.
+    return true;
+  }
   try {
-    const res = await withTimeout(
-      fetch(new URL("/ping", urlStr).toString(), { method: "GET" }),
-      READYZ_PING_TIMEOUT_MS,
-    );
-    return res.ok;
+    return await withTimeout(clickhouseWriter.ping(), READYZ_PING_TIMEOUT_MS);
   } catch {
     return false;
   }
@@ -124,21 +130,55 @@ async function checkRedisMaxMemoryPolicy(): Promise<RedisMaxMemoryPolicyCheck> {
   }
 }
 
+export interface WalConsumerLagCheck {
+  ok: boolean;
+  lag: number;
+  reason?: "consumer-disabled" | "lag-unavailable";
+}
+
+async function checkWalConsumerLag(): Promise<WalConsumerLagCheck> {
+  const { walConsumerLag } = getDeps();
+  if (!walConsumerLag) {
+    return { ok: true, lag: 0, reason: "consumer-disabled" };
+  }
+  try {
+    const lag = await walConsumerLag();
+    return { ok: lag < 10_000, lag };
+  } catch {
+    return { ok: false, lag: 0, reason: "lag-unavailable" };
+  }
+}
+
 async function readinessChecks(): Promise<{
   postgres: boolean;
   clickhouse: boolean;
   redis: boolean;
   fields_loaded: boolean;
   redis_maxmemory_policy: RedisMaxMemoryPolicyCheck;
+  clickhouse_ping: boolean;
+  wal_consumer_lag: WalConsumerLagCheck;
 }> {
-  const [postgres, clickhouse, redis, redis_maxmemory_policy] = await Promise.all([
-    pingTcp(process.env.DATABASE_URL, 5432),
-    pingClickHouse(process.env.CLICKHOUSE_URL),
-    pingTcp(process.env.REDIS_URL, 6379),
-    checkRedisMaxMemoryPolicy(),
-  ]);
+  const [postgres, clickhouse, redis, redis_maxmemory_policy, wal_consumer_lag] = await Promise.all(
+    [
+      pingTcp(process.env.DATABASE_URL, 5432),
+      clickhousePing(),
+      pingTcp(process.env.REDIS_URL, 6379),
+      checkRedisMaxMemoryPolicy(),
+      checkWalConsumerLag(),
+    ],
+  );
   const fields_loaded = FORBIDDEN_FIELDS.length === EXPECTED_FORBIDDEN_FIELDS_LEN;
-  return { postgres, clickhouse, redis, fields_loaded, redis_maxmemory_policy };
+  return {
+    postgres,
+    clickhouse,
+    redis,
+    fields_loaded,
+    redis_maxmemory_policy,
+    // Phase-4: surface a dedicated `clickhouse_ping` field — the `clickhouse`
+    // bool above remains for backwards-compat of existing `/readyz` consumers.
+    clickhouse_ping: clickhouse,
+    wal_consumer_lag,
+  };
 }
 
 async function handleEvents(req: Request, auth: AuthContext, requestId: string): Promise<Response> {
@@ -266,9 +306,13 @@ async function handleEvents(req: Request, auth: AuthContext, requestId: string):
   // client_event_id is idempotent-accept per contract 02 §Response codes
   // ("repeated client_event_id returns 202 with deduped count incremented;
   // never an error"). Redis unavailable → 503 for the whole batch.
-  const { dedupStore } = getDeps();
+  const { dedupStore, wal, flags } = getDeps();
   let deduped = 0;
   let firstSightCount = 0;
+  // Phase-4: collect first-sight parsed events for WAL append after all
+  // dedup checks succeed. We append once, post-dedup, so partial failures
+  // during dedup don't leave a half-WALed batch.
+  const firstSightEvents: Array<ReturnType<typeof EventSchema.parse>> = [];
   for (const [, parsed] of parsedByIndex) {
     try {
       const { firstSight } = await checkDedup(dedupStore, {
@@ -278,6 +322,7 @@ async function handleEvents(req: Request, auth: AuthContext, requestId: string):
       });
       if (firstSight) {
         firstSightCount++;
+        firstSightEvents.push(parsed);
       } else {
         deduped++;
       }
@@ -294,6 +339,37 @@ async function handleEvents(req: Request, auth: AuthContext, requestId: string):
         {
           error: "dedup store unavailable",
           code: "REDIS_UNAVAILABLE",
+          request_id: requestId,
+        },
+        { status: 503 },
+      );
+    }
+  }
+
+  // Phase-4: append first-sight events to the WAL. This is the ingest-internal
+  // durability seam — the WAL consumer drains the stream and writes to CH.
+  // If WAL is unavailable, fail the batch with 503 WAL_UNAVAILABLE (clients
+  // retry with the same client_event_id, dedup handles the replay).
+  const walEnabled = flags.WAL_APPEND_ENABLED || flags.WAL_CONSUMER_ENABLED;
+  if (walEnabled && firstSightEvents.length > 0) {
+    try {
+      const canonical = firstSightEvents.map((ev) =>
+        canonicalize(ev, { tenantId: auth.tenantId, engineerId: auth.engineerId }),
+      );
+      await wal.append(canonical);
+    } catch (err) {
+      logger.error(
+        {
+          tenant_id: auth.tenantId,
+          request_id: requestId,
+          err: err instanceof Error ? err.message : String(err),
+        },
+        "wal append failed",
+      );
+      return json(
+        {
+          error: "wal unavailable",
+          code: "WAL_UNAVAILABLE",
           request_id: requestId,
         },
         { status: 503 },
@@ -347,14 +423,17 @@ export async function handle(req: Request): Promise<Response> {
       deps.clickhouse &&
       deps.redis &&
       deps.fields_loaded &&
-      deps.redis_maxmemory_policy.ok;
-    // Phase-3: surface composite checks so ops can see per-check state.
+      deps.redis_maxmemory_policy.ok &&
+      deps.wal_consumer_lag.ok;
+    // Phase-3/4: surface composite checks so ops can see per-check state.
     const checks = {
       postgres: deps.postgres,
       clickhouse: deps.clickhouse,
       redis: deps.redis,
       fields_loaded: deps.fields_loaded,
       redis_maxmemory_policy: deps.redis_maxmemory_policy,
+      clickhouse_ping: deps.clickhouse_ping,
+      wal_consumer_lag: deps.wal_consumer_lag,
     };
     if (!ok) {
       const failing = Object.entries({
@@ -363,6 +442,7 @@ export async function handle(req: Request): Promise<Response> {
         redis: deps.redis,
         fields_loaded: deps.fields_loaded,
         redis_maxmemory_policy: deps.redis_maxmemory_policy.ok,
+        wal_consumer_lag: deps.wal_consumer_lag.ok,
       })
         .filter(([, v]) => !v)
         .map(([k]) => k);

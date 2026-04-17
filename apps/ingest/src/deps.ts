@@ -2,14 +2,20 @@
 // Sprint 1 Phase 2 defaults: empty key store (safe-fail), permissive rate
 // limiter, empty in-memory OrgPolicyStore (every org → 500 ORG_POLICY_MISSING
 // until seeded), and noopRedactStage (real pipeline lands Sprint 2).
+// Phase 4 adds `wal` (Redis Streams appender) and `clickhouseWriter` (lazy
+// CH client). Both default to in-memory test doubles so unit tests don't
+// need network.
 // Tests call setDeps({ ... }) in beforeAll to stub.
 
 import { noopRedactStage, type RedactStage } from "@bematist/redact";
 import { permissiveRateLimiter, type RateLimiter } from "./auth/rateLimit";
 import type { IngestKeyStore } from "./auth/verifyIngestKey";
 import { LRUCache } from "./auth/verifyIngestKey";
+import { type ClickHouseWriter, createInMemoryClickHouseWriter } from "./clickhouse";
 import { type DedupStore, InMemoryDedupStore } from "./dedup/checkDedup";
+import { type Flags, parseFlags } from "./flags";
 import { InMemoryOrgPolicyStore, type OrgPolicyStore } from "./tier/enforceTier";
+import { createInMemoryWalAppender, type WalAppender } from "./wal/append";
 
 export interface Deps {
   store: IngestKeyStore;
@@ -19,6 +25,14 @@ export interface Deps {
   orgPolicyStore: OrgPolicyStore;
   redactStage: RedactStage;
   dedupStore: DedupStore;
+  wal: WalAppender;
+  clickhouseWriter: ClickHouseWriter;
+  flags: Flags;
+  /**
+   * Optional lag accessor wired by the WAL consumer at boot. Surfaced on
+   * `/readyz.checks.wal_consumer_lag`. Null → consumer not wired.
+   */
+  walConsumerLag: (() => Promise<number>) | null;
 }
 
 function makeDefaultDeps(): Deps {
@@ -39,6 +53,10 @@ function makeDefaultDeps(): Deps {
     // InMemoryDedupStore satisfies /readyz preflight (returns "noeviction")
     // and is swapped for a real Redis-backed impl at boot on managed stacks.
     dedupStore: new InMemoryDedupStore(),
+    wal: createInMemoryWalAppender(),
+    clickhouseWriter: createInMemoryClickHouseWriter(),
+    flags: parseFlags(process.env as Record<string, string | undefined>),
+    walConsumerLag: null,
   };
 }
 

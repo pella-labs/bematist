@@ -4,10 +4,13 @@ import type { Event } from "@bematist/schema";
 import { createLuaRateLimiter, type LuaRedis, permissiveRateLimiter } from "./auth/rateLimit";
 import type { IngestKeyRow, IngestKeyStore } from "./auth/verifyIngestKey";
 import { LRUCache } from "./auth/verifyIngestKey";
+import { createInMemoryClickHouseWriter } from "./clickhouse";
 import { type DedupStore, dedupKey, InMemoryDedupStore } from "./dedup/checkDedup";
 import { resetDeps, setDeps } from "./deps";
+import { assertFlagCoherence, FlagIncoherentError, parseFlags } from "./flags";
 import { handle } from "./server";
 import { InMemoryOrgPolicyStore } from "./tier/enforceTier";
+import { type CanonicalRow, createInMemoryWalAppender, type WalAppender } from "./wal/append";
 
 function hashSecret(secret: string): string {
   return createHash("sha256").update(secret).digest("hex");
@@ -58,6 +61,7 @@ beforeAll(() => {
       test: { tier_c_managed_cloud_optin: false, tier_default: "B" },
     }),
     dedupStore: new InMemoryDedupStore(),
+    wal: createInMemoryWalAppender(),
   });
 });
 
@@ -539,6 +543,106 @@ describe("ingest server", () => {
     );
   });
 
+  // --- Phase 4 additions (WAL append + CH writer + readyz shape) ----------
+
+  test("Phase 4 (a) POST one valid event → wal.append called once with canonicalized row", async () => {
+    beforeAllReseed();
+    const spy = makeSpyWalAppender();
+    setDeps({ wal: spy });
+    const ev = makeEvent({ session_id: "p4_a", event_seq: 0 });
+    const res = await postEvents({ events: [ev] });
+    expect(res.status).toBe(202);
+    expect(spy.appendCallCount).toBe(1);
+    expect(spy.lastBatch?.length).toBe(1);
+    const row = spy.lastBatch?.[0] as CanonicalRow;
+    // Server-derived identity overrides the wire tenant_id.
+    expect(row.tenant_id).toBe("test");
+    expect(row.client_event_id).toBe(ev.client_event_id);
+    beforeAllReseed();
+  });
+
+  test("Phase 4 (b) 3 events with 1 dup → wal.append called with 2 rows", async () => {
+    beforeAllReseed();
+    const spy = makeSpyWalAppender();
+    setDeps({ wal: spy });
+    const e1 = makeEvent({ session_id: "p4_b", event_seq: 1 });
+    const e2 = makeEvent({ session_id: "p4_b", event_seq: 2 });
+    const e3 = makeEvent({ session_id: "p4_b", event_seq: 3 });
+    // Pre-seed e2 as already-seen.
+    await postEvents({ events: [e2] });
+    spy.reset();
+    const res = await postEvents({ events: [e1, e2, e3] });
+    expect(res.status).toBe(202);
+    const body = (await res.json()) as { accepted: number; deduped: number };
+    expect(body.accepted).toBe(2);
+    expect(body.deduped).toBe(1);
+    expect(spy.appendCallCount).toBe(1);
+    expect(spy.lastBatch?.length).toBe(2);
+    beforeAllReseed();
+  });
+
+  test("Phase 4 (c) WAL throw → 503 WAL_UNAVAILABLE", async () => {
+    beforeAllReseed();
+    const throwing: WalAppender = {
+      async append() {
+        throw new Error("redis:unavailable");
+      },
+      async close() {},
+    };
+    setDeps({ wal: throwing });
+    const res = await postEvents({ events: [makeEvent({ session_id: "p4_c" })] });
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe("WAL_UNAVAILABLE");
+    beforeAllReseed();
+  });
+
+  test("Phase 4 (d) /readyz includes clickhouse_ping via injected CH writer", async () => {
+    const ch = createInMemoryClickHouseWriter();
+    // Force CLICKHOUSE_URL set so clickhousePing actually calls the writer.
+    const originalUrl = process.env.CLICKHOUSE_URL;
+    process.env.CLICKHOUSE_URL = "http://localhost:8123";
+    try {
+      setDeps({ clickhouseWriter: ch });
+      ch.setPingResult(true);
+      let res = await handle(new Request("http://localhost/readyz"));
+      let body = (await res.json()) as {
+        checks: { clickhouse_ping: boolean };
+      };
+      expect(body.checks.clickhouse_ping).toBe(true);
+
+      ch.setPingResult(false);
+      res = await handle(new Request("http://localhost/readyz"));
+      expect(res.status).toBe(503);
+      body = (await res.json()) as { checks: { clickhouse_ping: boolean } };
+      expect(body.checks.clickhouse_ping).toBe(false);
+    } finally {
+      if (originalUrl === undefined) {
+        delete process.env.CLICKHOUSE_URL;
+      } else {
+        process.env.CLICKHOUSE_URL = originalUrl;
+      }
+      beforeAllReseed();
+    }
+  });
+
+  test("Phase 4 (e) /readyz surfaces wal_consumer_lag shape", async () => {
+    const res = await handle(new Request("http://localhost/readyz"));
+    const body = (await res.json()) as {
+      checks: { wal_consumer_lag: { ok: boolean; lag: number; reason?: string } };
+    };
+    expect(body.checks.wal_consumer_lag).toBeDefined();
+    expect(typeof body.checks.wal_consumer_lag.ok).toBe("boolean");
+    expect(typeof body.checks.wal_consumer_lag.lag).toBe("number");
+    // Consumer not wired in tests → reason='consumer-disabled'.
+    expect(body.checks.wal_consumer_lag.reason).toBe("consumer-disabled");
+  });
+
+  test("Phase 4 (f) flag coherence: OTLP_RECEIVER_ENABLED=1 WAL_CONSUMER_ENABLED=0 → throws", () => {
+    const flags = parseFlags({ OTLP_RECEIVER_ENABLED: "1", WAL_CONSUMER_ENABLED: "0" });
+    expect(() => assertFlagCoherence(flags)).toThrow(FlagIncoherentError);
+  });
+
   test("Phase 3 ordering invariant: Tier-B with prompt_text increments no setnx; valid event increments by 1", async () => {
     const spy = makeSpyDedupStore();
     setDeps({ dedupStore: spy });
@@ -575,7 +679,35 @@ function beforeAllReseed(): void {
       test: { tier_c_managed_cloud_optin: false, tier_default: "B" },
     }),
     dedupStore: new InMemoryDedupStore(),
+    wal: createInMemoryWalAppender(),
   });
+}
+
+interface SpyWalAppender extends WalAppender {
+  appendCallCount: number;
+  lastBatch: CanonicalRow[] | null;
+  reset(): void;
+}
+
+function makeSpyWalAppender(): SpyWalAppender {
+  const inner = createInMemoryWalAppender();
+  const spy: SpyWalAppender = {
+    appendCallCount: 0,
+    lastBatch: null,
+    async append(rows) {
+      spy.appendCallCount++;
+      spy.lastBatch = [...rows];
+      return inner.append(rows);
+    },
+    async close() {
+      await inner.close();
+    },
+    reset() {
+      spy.appendCallCount = 0;
+      spy.lastBatch = null;
+    },
+  };
+  return spy;
 }
 
 interface SpyDedupStore extends DedupStore {
