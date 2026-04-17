@@ -8,6 +8,8 @@
 
 **Tech Stack:** Bun 1.2, TypeScript 5.6, `bun:sqlite`, zod 3.23, pino 9, `bun test`. No new npm deps beyond pino (approved per CLAUDE.md §Commands).
 
+**Cross-platform contract:** Every task in this plan MUST produce code and shell commands that work on **macOS + Linux + Windows** (per memory `cross_platform_requirement.md`). Paths via `node:path.join` + `os.homedir()`; shell examples show POSIX and PowerShell variants side-by-side; test fixtures use LF line endings explicitly.
+
 **Source spec:** `docs/superpowers/specs/2026-04-16-workstream-b-collector-adapters-design.md`.
 
 **Reference source:** `pella-labs/pharos` repo (grammata's `src/claude.ts` — reimplement, don't vendor).
@@ -3237,7 +3239,9 @@ Expected: logs "ingest listening" on port 8000.
 
 - [ ] **Step 3: Run the collector in dry-run mode against a known fixture**
 
-Set `CLAUDE_CONFIG_DIR` to a temporary dir containing the fixture JSONL:
+Set `CLAUDE_CONFIG_DIR` to a temporary dir containing the fixture JSONL.
+
+**POSIX (macOS / Linux):**
 
 ```bash
 mkdir -p /tmp/bematist-e2e/projects/proj-a/sessions
@@ -3246,41 +3250,83 @@ cp apps/collector/src/adapters/claude-code/fixtures/real-session.jsonl \
 export CLAUDE_CONFIG_DIR=/tmp/bematist-e2e
 export DEVMETRICS_DATA_DIR=/tmp/bematist-e2e-data
 export DEVMETRICS_LOG_LEVEL=info
-
 cd apps/collector
 bun src/cli.ts dry-run
 ```
 
-Expected: JSON output with `enqueued > 0` and `wouldSubmit > 0`.
+**Windows (PowerShell):**
+
+```powershell
+$e2e = Join-Path $env:TEMP 'bematist-e2e'
+New-Item -ItemType Directory -Force -Path "$e2e/projects/proj-a/sessions" | Out-Null
+Copy-Item `
+  apps/collector/src/adapters/claude-code/fixtures/real-session.jsonl `
+  "$e2e/projects/proj-a/sessions/s1.jsonl"
+$env:CLAUDE_CONFIG_DIR = $e2e
+$env:DEVMETRICS_DATA_DIR = Join-Path $env:TEMP 'bematist-e2e-data'
+$env:DEVMETRICS_LOG_LEVEL = 'info'
+cd apps/collector
+bun src/cli.ts dry-run
+```
+
+**Windows (Git Bash — same as POSIX but use `$TEMP` / `$USERPROFILE`):**
+
+```bash
+mkdir -p "$TEMP/bematist-e2e/projects/proj-a/sessions"
+cp apps/collector/src/adapters/claude-code/fixtures/real-session.jsonl \
+   "$TEMP/bematist-e2e/projects/proj-a/sessions/s1.jsonl"
+export CLAUDE_CONFIG_DIR="$TEMP/bematist-e2e"
+export DEVMETRICS_DATA_DIR="$TEMP/bematist-e2e-data"
+export DEVMETRICS_LOG_LEVEL=info
+cd apps/collector
+bun src/cli.ts dry-run
+```
+
+Expected (all shells): JSON output with `enqueued > 0` and `wouldSubmit > 0`.
 
 - [ ] **Step 4: Run a real flush**
+
+**POSIX / Git Bash:**
 
 ```bash
 export DEVMETRICS_INGEST_HOST=http://localhost:8000
 export DEVMETRICS_TOKEN=dm_solo_dev
+bun apps/collector/scripts/flush-once.ts
+```
 
-# Re-enqueue then flush once via a tiny one-shot script:
-bun -e '
+**PowerShell:**
+
+```powershell
+$env:DEVMETRICS_INGEST_HOST = 'http://localhost:8000'
+$env:DEVMETRICS_TOKEN = 'dm_solo_dev'
+bun apps/collector/scripts/flush-once.ts
+```
+
+The `flush-once.ts` helper lives in the repo (added as part of this step — see below). Using a portable `.ts` file avoids shell-quoting hell and works identically on all platforms.
+
+Create `apps/collector/scripts/flush-once.ts`:
+
+```ts
 import { Database } from "bun:sqlite";
-import { Journal } from "./src/egress/journal";
-import { migrate } from "./src/egress/migrations";
-import { flushOnce } from "./src/egress/worker";
 import { egressSqlite } from "@bematist/config";
+import { Journal } from "../src/egress/journal";
+import { migrate } from "../src/egress/migrations";
+import { flushOnce } from "../src/egress/worker";
+
 const db = new Database(egressSqlite());
 migrate(db);
 const j = new Journal(db);
 const r = await flushOnce(j, {
-  endpoint: process.env.DEVMETRICS_INGEST_HOST,
-  token: process.env.DEVMETRICS_TOKEN,
+  endpoint: process.env.DEVMETRICS_INGEST_HOST ?? "http://localhost:8000",
+  token: process.env.DEVMETRICS_TOKEN ?? "dm_solo_dev",
   fetch,
   dryRun: false,
 });
-console.log(r);
+console.log(JSON.stringify(r, null, 2));
 db.close();
-'
 ```
 
-Expected: `{ submitted: N, failed: 0, fatal: false, retryAfterSeconds: null }` with `N === enqueued`.
+Expected: `{ "submitted": N, "failed": 0, "fatal": false, "retryAfterSeconds": null }` with `N === enqueued`.
 
 Ingest logs (in the first shell) show the events-accepted INFO line.
 
@@ -3290,17 +3336,28 @@ Stop the collector (it's already exited from dry-run). Re-run the dry-run + flus
 
 - [ ] **Step 6: Tear down**
 
+**POSIX / Git Bash:**
+
 ```bash
 docker compose -f docker-compose.dev.yml down
 unset CLAUDE_CONFIG_DIR DEVMETRICS_DATA_DIR DEVMETRICS_INGEST_HOST DEVMETRICS_TOKEN DEVMETRICS_LOG_LEVEL
-rm -rf /tmp/bematist-e2e /tmp/bematist-e2e-data
+rm -rf "${TEMP:-/tmp}/bematist-e2e" "${TEMP:-/tmp}/bematist-e2e-data"
 ```
 
-- [ ] **Step 7: Screenshot or log the ingest 202 output and save under `docs/superpowers/plans/m1-evidence.txt`**
+**PowerShell:**
+
+```powershell
+docker compose -f docker-compose.dev.yml down
+Remove-Item Env:CLAUDE_CONFIG_DIR,Env:DEVMETRICS_DATA_DIR,Env:DEVMETRICS_INGEST_HOST,Env:DEVMETRICS_TOKEN,Env:DEVMETRICS_LOG_LEVEL -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force (Join-Path $env:TEMP 'bematist-e2e'), (Join-Path $env:TEMP 'bematist-e2e-data') -ErrorAction SilentlyContinue
+```
+
+- [ ] **Step 7: Record the evidence to `docs/superpowers/plans/m1-evidence.txt`**
+
+Portable via Bun (works on all platforms — no shell-specific date or echo):
 
 ```bash
-echo "M1 smoke PASS — $(date -u)" > docs/superpowers/plans/m1-evidence.txt
-echo "ingest 202 received for N events; restart reproduced 0 dupes" >> docs/superpowers/plans/m1-evidence.txt
+bun -e "import { writeFileSync } from 'node:fs'; writeFileSync('docs/superpowers/plans/m1-evidence.txt', 'M1 smoke PASS — ' + new Date().toISOString() + '\\ningest 202 received for N events; restart reproduced 0 dupes\\n')"
 git add docs/superpowers/plans/m1-evidence.txt
 git commit -m "docs(m1): smoke evidence"
 ```
