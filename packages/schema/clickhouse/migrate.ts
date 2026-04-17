@@ -1,15 +1,12 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { createClient } from "@clickhouse/client";
+import { ch, chRoot, CH_DATABASE } from "./client";
 
-const url = process.env.CLICKHOUSE_URL ?? "http://localhost:8123";
-const database = process.env.CLICKHOUSE_DATABASE ?? "bematist";
-
-const rootClient = createClient({ url });
-await rootClient.command({ query: `CREATE DATABASE IF NOT EXISTS ${database}` });
+const rootClient = chRoot();
+await rootClient.command({ query: `CREATE DATABASE IF NOT EXISTS ${CH_DATABASE}` });
 await rootClient.close();
 
-const client = createClient({ url, database });
+const client = ch();
 
 const migrationsDir = join(import.meta.dir, "migrations");
 const files = readdirSync(migrationsDir)
@@ -37,4 +34,4 @@ for (const file of files) {
 }
 
 await client.close();
-console.log(`[ch-migrate] done — ${files.length} file(s) applied to ${database}`);
+console.log(`[ch-migrate] done — ${files.length} file(s) applied to ${CH_DATABASE}`);
