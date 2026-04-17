@@ -15,9 +15,14 @@ export function makeClient(): ClickHouseClient {
   return ch();
 }
 
-/** Truncate `events` and the cluster_assignment_mv plain table (no-op if table missing). */
+/** Truncate `events`, all MV tables, and the cluster_assignment_mv plain table
+ *  (no-op if table missing). MV tables must be truncated explicitly — CH does NOT
+ *  cascade TRUNCATE from source table to materialized views. */
 export async function resetState(client: ClickHouseClient): Promise<void> {
   await client.command({ query: "TRUNCATE TABLE IF EXISTS events" });
+  for (const mv of MV_NAMES) {
+    await client.command({ query: `TRUNCATE TABLE IF EXISTS ${mv}` });
+  }
   for (const table of PLAIN_TABLES_FOR_TEST) {
     await client.command({ query: `TRUNCATE TABLE IF EXISTS ${table}` });
   }
