@@ -274,9 +274,41 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  sbom:
+    name: CycloneDX SBOM
+    needs: [meta, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: ${{ env.BINARY_NAME }}-*
+          merge-multiple: true
+
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: dist/
+          format: cyclonedx-json
+          output-file: bematist-${{ needs.meta.outputs.tag }}.cdx.json
+          artifact-name: bematist-${{ needs.meta.outputs.tag }}.cdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ needs.meta.outputs.tag }}
+          path: bematist-${{ needs.meta.outputs.tag }}.cdx.json
+          if-no-files-found: error
+          retention-days: 30
+
   release:
     name: publish GH release
-    needs: [meta, build, collect-hashes, provenance, package]
+    needs: [meta, build, collect-hashes, provenance, package, sbom]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -302,6 +334,7 @@ jobs:
             -o -name "bematist.nuspec" \
             -o -name "manifest.sha256" \
             -o -name "*.intoto.jsonl" \
+            -o -name "*.cdx.json" \
           \) -exec cp {} release/ \;
           ls -la release/
 
@@ -368,6 +401,7 @@ jobs:
             release/bematist.nuspec
             release/manifest.sha256
             release/*.intoto.jsonl
+            release/*.cdx.json
 
   publish-homebrew:
     name: publish Homebrew formula
