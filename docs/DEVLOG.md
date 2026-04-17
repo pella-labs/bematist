@@ -16,6 +16,13 @@ Chronological log of tickets worked on. Append-only; one entry per completed tic
 - **Branch / PR:** `D1-01-contract-05-drift-jorge` — docs-only; no contract change.
 - **Follow-ups:** Mention in final Sprint 1 PR description that issue #3's "Known contract drift" bullets are resolved-on-inspection.
 
+## 2026-04-17 — D1-04: GDPR partition-drop worker landed
+
+- **What shipped:** `apps/worker/src/jobs/partition_drop.ts` — handler that loads pending `erasure_requests`, enumerates `system.parts` partitions for the target org, issues `ALTER TABLE events DROP PARTITION ID` per partition, writes `audit_log` row, flips request to `completed`. `pg-boss@^9` installed + wired in `apps/worker/src/index.ts` (hourly cron). PG `erasure_requests` + `audit_log` tables added to `packages/schema/postgres/schema.ts`; drizzle migration `0001_dusty_karen_page.sql` generated + applied. 3 handler tests (happy path, idempotency on completed requests, empty-partition graceful path).
+- **Branch / PR:** `D1-04-partition-drop-worker-jorge` → PR pending.
+- **Scope caveat documented in handler header:** partition granularity `(month, cityHash64(org_id) % 16)` means dropping a shard takes ~1/16 of tenants' data for that month with it. Acceptable for Sprint 1 test data (handful of orgs); needs architectural revisit (more shards, or partition-by-org, or surgical DELETE) before production scale. Flagged for post-Sprint-1.
+- **Gotcha re-confirmed:** `bun --env-file=.env --filter=...` does NOT propagate DATABASE_URL to filtered subprocesses. Prefixing `DATABASE_URL=... bun run ...` still required for PG migrate runs. Memory entry `project_dev_env_setup.md` already documents this.
+
 ## 2026-04-17 — D1-03: projections + EXPLAIN gates landed
 
 - **What shipped:** 2 additive projection migrations (`0008_projection_repo_lookup`, `0009_projection_cluster_lookup`). `events` table setting `deduplicate_merge_projection_mode = 'rebuild'` added (required for projections on RMT tables). `packages/schema/clickhouse/explain.ts` — reusable EXPLAIN helpers (`explainWithProjection`, `explainNatural`, `projectionUsed`). 7 tests.
