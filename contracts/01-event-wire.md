@@ -167,3 +167,4 @@ Same `Event` schema. Validated with the same zod parser the OTLP receiver uses p
 
 - 2026-04-16 — initial draft
 - 2026-04-16 — Sprint-1 Phase 2: §Invariant #4 forbidden-field list aligned with contracts/08 — added `prompt` as the 12th entry. Source of truth for the list is now packages/schema/src/invariants.ts FORBIDDEN_FIELDS. See D-S1-25, D-S1-30.
+- 2026-04-16 — Sprint-1 Phase 5: OTLP HTTP receiver on :4318 lands natively inside ingest (NOT docker-compose sidecar by default — D-S1-14). Decoder is a minimal hand-rolled proto3 + proto3-JSON parser scoped to ExportTraceServiceRequest shapes; @bufbuild/protobuf + vendored opentelemetry-proto is the Sprint-2 swap path when Bun ≥ 1.3.4 CI lands (D-S1-12, coord Jorge/Sebastian).

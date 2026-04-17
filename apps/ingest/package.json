@@ -12,6 +12,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@bematist/otel": "workspace:*",
     "@bematist/redact": "workspace:*",
     "@bematist/schema": "workspace:*",
     "pino": "^9.5.0",

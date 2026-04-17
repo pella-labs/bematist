@@ -1,7 +1,9 @@
+import { verifyBearer } from "./auth";
 import { createLazyClickHouseWriter, defaultClickHouseConfig } from "./clickhouse";
-import { setDeps } from "./deps";
+import { getDeps, setDeps } from "./deps";
 import { assertFlagCoherence, FlagIncoherentError, parseFlags } from "./flags";
 import { logger } from "./logger";
+import { startOtlpServer } from "./otlp/server";
 import { applyCoreRlimit } from "./rlimit";
 import { startServer } from "./server";
 import { createWalConsumer } from "./wal/consumer";
@@ -30,7 +32,39 @@ if (process.env.NODE_ENV !== "test" && flags.CLICKHOUSE_WRITER === "client") {
   setDeps({ clickhouseWriter: createLazyClickHouseWriter(defaultClickHouseConfig) });
 }
 
-startServer();
+const ingestServer = startServer();
+
+// Phase 5: start OTLP receiver on :4318 when flag is on. Skipped in tests so
+// bun test doesn't bind a port. SIGTERM hook below stops both servers.
+let otlpHandle: ReturnType<typeof startOtlpServer> | null = null;
+if (flags.OTLP_RECEIVER_ENABLED && process.env.NODE_ENV !== "test") {
+  const deps = getDeps();
+  otlpHandle = startOtlpServer({
+    port: 4318,
+    deps: {
+      flags,
+      wal: deps.wal,
+      dedupStore: deps.dedupStore,
+      orgPolicyStore: deps.orgPolicyStore,
+      rateLimiter: deps.rateLimiter,
+    },
+    verify: (header) => verifyBearer(header, deps.store, deps.cache),
+  });
+}
+
+if (process.env.NODE_ENV !== "test") {
+  process.on("SIGTERM", () => {
+    logger.info({}, "SIGTERM received, draining");
+    try {
+      ingestServer.stop(true);
+    } catch {
+      // ignore
+    }
+    if (otlpHandle) {
+      void otlpHandle.stop();
+    }
+  });
+}
 
 // Phase 4: start WAL consumer if enabled. Skipped in tests so bun test doesn't
 // spawn a background loop that leaks across suite boundaries.
