@@ -197,9 +197,12 @@ export async function handleOtlp(
   if (!args.auth) {
     return new Response(null, { status: 401 });
   }
+  // Hoist narrowed non-null into a local so closures (e.g. .map callbacks
+  // below) don't widen back to `AuthContext | null`.
+  const auth: AuthContext = args.auth;
 
   if (!args.skipRateLimit) {
-    const rl = await rateLimiter.consume(args.auth.tenantId, args.deviceId ?? "default", 1);
+    const rl = await rateLimiter.consume(auth.tenantId, args.deviceId ?? "default", 1);
     if (!rl.allowed) {
       const retryAfter = Math.max(1, Math.ceil(rl.retryAfterMs / 1000)).toString();
       return new Response(
@@ -248,10 +251,10 @@ export async function handleOtlp(
     return jsonResp({ error: "bad payload", code: "BAD_BODY", request_id: requestId }, 400);
   }
 
-  const drafts = mapByKind(kind, decoded, args.auth);
+  const drafts = mapByKind(kind, decoded, auth);
 
   // Per-tenant policy fetched once per request.
-  const policy = await orgPolicyStore.get(args.auth.tenantId);
+  const policy = await orgPolicyStore.get(auth.tenantId);
   if (policy === null) {
     return jsonResp(
       { error: "org policy not configured", code: "ORG_POLICY_MISSING", request_id: requestId },
@@ -264,7 +267,7 @@ export async function handleOtlp(
   let rejected = 0;
   const acceptedDrafts: ReturnType<typeof EventSchema.parse>[] = [];
   for (const draft of drafts) {
-    const tierRes = await enforceTier(draft, args.auth, policy);
+    const tierRes = await enforceTier(draft, auth, policy);
     if (tierRes.reject) {
       rejected++;
       continue;
@@ -282,7 +285,7 @@ export async function handleOtlp(
   for (const ev of acceptedDrafts) {
     try {
       const { firstSight } = await checkDedup(dedupStore, {
-        tenantId: args.auth.tenantId,
+        tenantId: auth.tenantId,
         sessionId: ev.session_id,
         eventSeq: ev.event_seq,
       });
@@ -290,7 +293,7 @@ export async function handleOtlp(
     } catch (err) {
       logger.error(
         {
-          tenant_id: args.auth.tenantId,
+          tenant_id: auth.tenantId,
           request_id: requestId,
           err: err instanceof Error ? err.message : String(err),
         },
@@ -307,13 +310,13 @@ export async function handleOtlp(
   if (walEnabled && firstSightEvents.length > 0) {
     try {
       const canonical = firstSightEvents.map((ev) =>
-        canonicalize(ev, { tenantId: args.auth?.tenantId, engineerId: args.auth?.engineerId }),
+        canonicalize(ev, { tenantId: auth.tenantId, engineerId: auth.engineerId }),
       );
       await wal.append(canonical);
     } catch (err) {
       logger.error(
         {
-          tenant_id: args.auth.tenantId,
+          tenant_id: auth.tenantId,
           request_id: requestId,
           err: err instanceof Error ? err.message : String(err),
         },
@@ -331,7 +334,7 @@ export async function handleOtlp(
       kind,
       accepted: firstSightEvents.length,
       rejected,
-      tenant_id: args.auth.tenantId,
+      tenant_id: auth.tenantId,
       request_id: requestId,
     },
     "otlp accepted",
