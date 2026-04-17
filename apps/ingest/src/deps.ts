@@ -8,6 +8,7 @@ import { noopRedactStage, type RedactStage } from "@bematist/redact";
 import { permissiveRateLimiter, type RateLimiter } from "./auth/rateLimit";
 import type { IngestKeyStore } from "./auth/verifyIngestKey";
 import { LRUCache } from "./auth/verifyIngestKey";
+import { type DedupStore, InMemoryDedupStore } from "./dedup/checkDedup";
 import { InMemoryOrgPolicyStore, type OrgPolicyStore } from "./tier/enforceTier";
 
 export interface Deps {
@@ -17,6 +18,7 @@ export interface Deps {
   clock: () => number;
   orgPolicyStore: OrgPolicyStore;
   redactStage: RedactStage;
+  dedupStore: DedupStore;
 }
 
 function makeDefaultDeps(): Deps {
@@ -34,6 +36,9 @@ function makeDefaultDeps(): Deps {
     // Tests seed via setDeps({ orgPolicyStore: store }).
     orgPolicyStore: new InMemoryOrgPolicyStore(),
     redactStage: noopRedactStage,
+    // InMemoryDedupStore satisfies /readyz preflight (returns "noeviction")
+    // and is swapped for a real Redis-backed impl at boot on managed stacks.
+    dedupStore: new InMemoryDedupStore(),
   };
 }
 

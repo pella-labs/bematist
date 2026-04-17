@@ -1,5 +1,6 @@
 import { EventSchema, FORBIDDEN_FIELDS } from "@bematist/schema";
 import { type AuthContext, verifyBearer } from "./auth";
+import { checkDedup } from "./dedup/checkDedup";
 import { getDeps } from "./deps";
 import { logger } from "./logger";
 import { applyTierAAllowlist, enforceTier } from "./tier/enforceTier";
@@ -102,19 +103,42 @@ async function pingClickHouse(urlStr: string | undefined): Promise<boolean> {
   }
 }
 
+export interface RedisMaxMemoryPolicyCheck {
+  ok: boolean;
+  /** Human-readable reason on failure. Values: "redis-eviction-policy" | "redis-unreachable". */
+  reason?: "redis-eviction-policy" | "redis-unreachable";
+  /** Observed `maxmemory-policy` value when reachable. */
+  policy?: string;
+}
+
+async function checkRedisMaxMemoryPolicy(): Promise<RedisMaxMemoryPolicyCheck> {
+  const { dedupStore } = getDeps();
+  try {
+    const policy = await dedupStore.configMaxMemoryPolicy();
+    if (policy !== "noeviction") {
+      return { ok: false, reason: "redis-eviction-policy", policy };
+    }
+    return { ok: true, policy };
+  } catch {
+    return { ok: false, reason: "redis-unreachable" };
+  }
+}
+
 async function readinessChecks(): Promise<{
   postgres: boolean;
   clickhouse: boolean;
   redis: boolean;
   fields_loaded: boolean;
+  redis_maxmemory_policy: RedisMaxMemoryPolicyCheck;
 }> {
-  const [postgres, clickhouse, redis] = await Promise.all([
+  const [postgres, clickhouse, redis, redis_maxmemory_policy] = await Promise.all([
     pingTcp(process.env.DATABASE_URL, 5432),
     pingClickHouse(process.env.CLICKHOUSE_URL),
     pingTcp(process.env.REDIS_URL, 6379),
+    checkRedisMaxMemoryPolicy(),
   ]);
   const fields_loaded = FORBIDDEN_FIELDS.length === EXPECTED_FORBIDDEN_FIELDS_LEN;
-  return { postgres, clickhouse, redis, fields_loaded };
+  return { postgres, clickhouse, redis, fields_loaded, redis_maxmemory_policy };
 }
 
 async function handleEvents(req: Request, auth: AuthContext, requestId: string): Promise<Response> {
@@ -194,10 +218,14 @@ async function handleEvents(req: Request, auth: AuthContext, requestId: string):
   }
 
   const rejected: Array<{ index: number; reason: string }> = [];
+  // Parsed events by index; indices absent from this map are zod-rejected.
+  const parsedByIndex = new Map<number, ReturnType<typeof EventSchema.parse>>();
   for (let i = 0; i < events.length; i++) {
     const result = EventSchema.safeParse(events[i]);
     if (!result.success) {
       rejected.push({ index: i, reason: result.error.issues.map((x) => x.message).join("; ") });
+    } else {
+      parsedByIndex.set(i, result.data);
     }
   }
 
@@ -205,22 +233,13 @@ async function handleEvents(req: Request, auth: AuthContext, requestId: string):
     // All invalid — simplest signal is 400 per contract (BLOCKER semantics).
     return json({ error: "all events invalid", rejected, request_id: requestId }, { status: 400 });
   }
-  if (rejected.length > 0) {
-    // Partial — 207 Multi-Status per contract 02 §Response codes.
-    const accepted = events.length - rejected.length;
-    logger.info(
-      { accepted, rejected: rejected.length, tenant_id: auth.tenantId, request_id: requestId },
-      "events partial accept",
-    );
-    return json({ accepted, rejected, request_id: requestId }, { status: 207 });
-  }
 
-  // All zod-valid. Apply Tier-A allowlist POST-zod if feature flag is on.
-  // Sprint-1 default: flag off → no-op path.
+  // All zod-valid (or partial with some valid). Apply Tier-A allowlist
+  // POST-zod if feature flag is on. Sprint-1 default: flag off → no-op path.
   const enforceTierA = process.env.ENFORCE_TIER_A_ALLOWLIST === "1";
   if (enforceTierA) {
     let totalDropped = 0;
-    for (let i = 0; i < events.length; i++) {
+    for (const [i] of parsedByIndex) {
       const ev = events[i] as {
         tier: "A" | "B" | "C";
         raw_attrs?: Record<string, unknown>;
@@ -242,12 +261,75 @@ async function handleEvents(req: Request, auth: AuthContext, requestId: string):
     }
   }
 
-  const accepted = events.length;
+  // Phase-3: Redis SETNX dedup. Runs ONLY on events that passed enforceTier
+  // AND zod. Duplicates count toward `deduped`, not `rejected` — repeated
+  // client_event_id is idempotent-accept per contract 02 §Response codes
+  // ("repeated client_event_id returns 202 with deduped count incremented;
+  // never an error"). Redis unavailable → 503 for the whole batch.
+  const { dedupStore } = getDeps();
+  let deduped = 0;
+  let firstSightCount = 0;
+  for (const [, parsed] of parsedByIndex) {
+    try {
+      const { firstSight } = await checkDedup(dedupStore, {
+        tenantId: auth.tenantId,
+        sessionId: parsed.session_id,
+        eventSeq: parsed.event_seq,
+      });
+      if (firstSight) {
+        firstSightCount++;
+      } else {
+        deduped++;
+      }
+    } catch (err) {
+      logger.error(
+        {
+          tenant_id: auth.tenantId,
+          request_id: requestId,
+          err: err instanceof Error ? err.message : String(err),
+        },
+        "dedup store unavailable",
+      );
+      return json(
+        {
+          error: "dedup store unavailable",
+          code: "REDIS_UNAVAILABLE",
+          request_id: requestId,
+        },
+        { status: 503 },
+      );
+    }
+  }
+
+  if (rejected.length > 0) {
+    // Partial — 207 Multi-Status per contract 02 §Response codes. Surface
+    // `deduped` so clients can reconcile (zero if no dups among the valid).
+    logger.info(
+      {
+        accepted: firstSightCount,
+        deduped,
+        rejected: rejected.length,
+        tenant_id: auth.tenantId,
+        request_id: requestId,
+      },
+      "events partial accept",
+    );
+    return json(
+      { accepted: firstSightCount, deduped, rejected, request_id: requestId },
+      { status: 207 },
+    );
+  }
+
   logger.info(
-    { accepted, deduped: 0, tenant_id: auth.tenantId, request_id: requestId },
+    {
+      accepted: firstSightCount,
+      deduped,
+      tenant_id: auth.tenantId,
+      request_id: requestId,
+    },
     "events accepted",
   );
-  return json({ accepted, deduped: 0, request_id: requestId }, { status: 202 });
+  return json({ accepted: firstSightCount, deduped, request_id: requestId }, { status: 202 });
 }
 
 export async function handle(req: Request): Promise<Response> {
@@ -260,15 +342,34 @@ export async function handle(req: Request): Promise<Response> {
 
   if (req.method === "GET" && url.pathname === "/readyz") {
     const deps = await readinessChecks();
-    const ok = deps.postgres && deps.clickhouse && deps.redis && deps.fields_loaded;
+    const ok =
+      deps.postgres &&
+      deps.clickhouse &&
+      deps.redis &&
+      deps.fields_loaded &&
+      deps.redis_maxmemory_policy.ok;
+    // Phase-3: surface composite checks so ops can see per-check state.
+    const checks = {
+      postgres: deps.postgres,
+      clickhouse: deps.clickhouse,
+      redis: deps.redis,
+      fields_loaded: deps.fields_loaded,
+      redis_maxmemory_policy: deps.redis_maxmemory_policy,
+    };
     if (!ok) {
-      const failing = Object.entries(deps)
+      const failing = Object.entries({
+        postgres: deps.postgres,
+        clickhouse: deps.clickhouse,
+        redis: deps.redis,
+        fields_loaded: deps.fields_loaded,
+        redis_maxmemory_policy: deps.redis_maxmemory_policy.ok,
+      })
         .filter(([, v]) => !v)
         .map(([k]) => k);
       logger.warn({ deps, failing }, "readyz dep check failed");
-      return json({ status: "not-ready", deps }, { status: 503 });
+      return json({ status: "not-ready", deps, checks }, { status: 503 });
     }
-    return json({ status: "ready", deps });
+    return json({ status: "ready", deps, checks });
   }
 
   if (url.pathname === "/v1/events") {

@@ -4,6 +4,7 @@ import type { Event } from "@bematist/schema";
 import { createLuaRateLimiter, type LuaRedis, permissiveRateLimiter } from "./auth/rateLimit";
 import type { IngestKeyRow, IngestKeyStore } from "./auth/verifyIngestKey";
 import { LRUCache } from "./auth/verifyIngestKey";
+import { type DedupStore, dedupKey, InMemoryDedupStore } from "./dedup/checkDedup";
 import { resetDeps, setDeps } from "./deps";
 import { handle } from "./server";
 import { InMemoryOrgPolicyStore } from "./tier/enforceTier";
@@ -56,10 +57,13 @@ beforeAll(() => {
     orgPolicyStore: makePolicyStore({
       test: { tier_c_managed_cloud_optin: false, tier_default: "B" },
     }),
+    dedupStore: new InMemoryDedupStore(),
   });
 });
 
 function makeEvent(overrides: Partial<Event> = {}): Event {
+  // Randomize session_id so tests don't collide on the shared dedupStore
+  // (Phase-3). Tests that need a stable session_id pass it in overrides.
   return {
     client_event_id: crypto.randomUUID(),
     schema_version: 1,
@@ -71,7 +75,7 @@ function makeEvent(overrides: Partial<Event> = {}): Event {
     fidelity: "full",
     cost_estimated: false,
     tier: "B",
-    session_id: "sess_1",
+    session_id: `sess_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`,
     event_seq: 0,
     dev_metrics: { event_kind: "llm_request" },
     ...overrides,
@@ -400,6 +404,156 @@ describe("ingest server", () => {
     expect(body.code).toBe("FORBIDDEN_FIELD");
     expect(body.field).toBe("prompt_text");
   });
+
+  // --- Phase 3 additions (Redis SETNX dedup) -------------------------------
+
+  test("Phase 3 (a) first-sight: single event → 202 {accepted:1, deduped:0}", async () => {
+    beforeAllReseed();
+    const res = await postEvents({ events: [makeEvent({ session_id: "p3_a" })] });
+    expect(res.status).toBe(202);
+    const body = (await res.json()) as { accepted: number; deduped: number };
+    expect(body.accepted).toBe(1);
+    expect(body.deduped).toBe(0);
+  });
+
+  test("Phase 3 (b) duplicate replay: same event posted twice → 2nd {accepted:0, deduped:1}", async () => {
+    beforeAllReseed();
+    const ev = makeEvent({ session_id: "p3_b", event_seq: 7 });
+    const r1 = await postEvents({ events: [ev] });
+    expect(r1.status).toBe(202);
+    const b1 = (await r1.json()) as { accepted: number; deduped: number };
+    expect(b1.accepted).toBe(1);
+    expect(b1.deduped).toBe(0);
+    // Replay — same (tenant, session, seq) → dup. client_event_id can match;
+    // dedup key is derived from session_id + event_seq, not client_event_id.
+    const r2 = await postEvents({ events: [ev] });
+    expect(r2.status).toBe(202);
+    const b2 = (await r2.json()) as { accepted: number; deduped: number };
+    expect(b2.accepted).toBe(0);
+    expect(b2.deduped).toBe(1);
+  });
+
+  test("Phase 3 (c) partial-batch: 3 new + 2 dup → 202 {accepted:3, deduped:2}", async () => {
+    beforeAllReseed();
+    // First post 2 events to seed dedup.
+    const seed1 = makeEvent({ session_id: "p3_c", event_seq: 1 });
+    const seed2 = makeEvent({ session_id: "p3_c", event_seq: 2 });
+    const seedRes = await postEvents({ events: [seed1, seed2] });
+    expect(seedRes.status).toBe(202);
+    // Now post a batch of 5: the 2 seeds (dup) + 3 new.
+    const batch = [
+      seed1,
+      seed2,
+      makeEvent({ session_id: "p3_c", event_seq: 3 }),
+      makeEvent({ session_id: "p3_c", event_seq: 4 }),
+      makeEvent({ session_id: "p3_c", event_seq: 5 }),
+    ];
+    const res = await postEvents({ events: batch });
+    expect(res.status).toBe(202);
+    const body = (await res.json()) as { accepted: number; deduped: number };
+    expect(body.accepted).toBe(3);
+    expect(body.deduped).toBe(2);
+  });
+
+  test("Phase 3 (d) /readyz fails with reason='redis-eviction-policy' when maxmemory-policy=allkeys-lru", async () => {
+    setDeps({ dedupStore: new InMemoryDedupStore({ policy: "allkeys-lru" }) });
+    const res = await handle(new Request("http://localhost/readyz"));
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as {
+      checks: { redis_maxmemory_policy: { ok: boolean; reason?: string } };
+    };
+    expect(body.checks.redis_maxmemory_policy.ok).toBe(false);
+    expect(body.checks.redis_maxmemory_policy.reason).toBe("redis-eviction-policy");
+    beforeAllReseed();
+  });
+
+  test("Phase 3 (e) /readyz fails with reason='redis-unreachable' when configMaxMemoryPolicy throws", async () => {
+    const throwingStore: DedupStore = {
+      async setnx() {
+        return true;
+      },
+      async configMaxMemoryPolicy() {
+        throw new Error("ECONNREFUSED");
+      },
+    };
+    setDeps({ dedupStore: throwingStore });
+    const res = await handle(new Request("http://localhost/readyz"));
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as {
+      checks: { redis_maxmemory_policy: { ok: boolean; reason?: string } };
+    };
+    expect(body.checks.redis_maxmemory_policy.ok).toBe(false);
+    expect(body.checks.redis_maxmemory_policy.reason).toBe("redis-unreachable");
+    beforeAllReseed();
+  });
+
+  test("Phase 3 (f) dedup NOT called for Tier-A-rejected events (PRD test 7)", async () => {
+    const spy = makeSpyDedupStore();
+    setDeps({ dedupStore: spy });
+    const bad = { ...makeEvent({ session_id: "p3_f" }), prompt_text: "leak" };
+    const res = await postEvents({ events: [bad] });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { code: string; field: string };
+    expect(body.code).toBe("FORBIDDEN_FIELD");
+    expect(spy.setnxCallCount).toBe(0);
+    beforeAllReseed();
+  });
+
+  test("Phase 3 (g) dedup NOT called for zod-rejected events (may be called for valid siblings)", async () => {
+    const spy = makeSpyDedupStore();
+    setDeps({ dedupStore: spy });
+    const good = makeEvent({ session_id: "p3_g", event_seq: 1 });
+    const { client_event_id: _omit, ...bad } = makeEvent({
+      session_id: "p3_g",
+      event_seq: 2,
+    });
+    const res = await postEvents({ events: [good, bad] });
+    expect(res.status).toBe(207);
+    // Exactly 1 setnx call — for the valid sibling. Zero for the zod-rejected one.
+    expect(spy.setnxCallCount).toBe(1);
+    // Spot-check the key matches the valid event.
+    expect(spy.setnxKeys[0]).toBe(dedupKey({ tenantId: "test", sessionId: "p3_g", eventSeq: 1 }));
+    beforeAllReseed();
+  });
+
+  test("Phase 3 (h) Redis unavailable during POST → 503 {code: 'REDIS_UNAVAILABLE'}", async () => {
+    const throwingStore: DedupStore = {
+      async setnx() {
+        throw new Error("ECONNREFUSED");
+      },
+      async configMaxMemoryPolicy() {
+        return "noeviction";
+      },
+    };
+    setDeps({ dedupStore: throwingStore });
+    const res = await postEvents({ events: [makeEvent({ session_id: "p3_h" })] });
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe("REDIS_UNAVAILABLE");
+    beforeAllReseed();
+  });
+
+  test("Phase 3 (i) hash-tag key format asserted: dedupKey === 'dedup:{org_abc}:sess_1:5'", () => {
+    expect(dedupKey({ tenantId: "org_abc", sessionId: "sess_1", eventSeq: 5 })).toBe(
+      "dedup:{org_abc}:sess_1:5",
+    );
+  });
+
+  test("Phase 3 ordering invariant: Tier-B with prompt_text increments no setnx; valid event increments by 1", async () => {
+    const spy = makeSpyDedupStore();
+    setDeps({ dedupStore: spy });
+    // 1. Reject path: prompt_text → 400 FORBIDDEN_FIELD, spy untouched.
+    const bad = { ...makeEvent({ session_id: "p3_ord_bad" }), prompt_text: "leak" };
+    const r1 = await postEvents({ events: [bad] });
+    expect(r1.status).toBe(400);
+    expect(spy.setnxCallCount).toBe(0);
+    // 2. Accept path: valid event → setnx called once.
+    const good = makeEvent({ session_id: "p3_ord_good", event_seq: 0 });
+    const r2 = await postEvents({ events: [good] });
+    expect(r2.status).toBe(202);
+    expect(spy.setnxCallCount).toBe(1);
+    beforeAllReseed();
+  });
 });
 
 // -------- helpers ----------------------------------------------------------
@@ -420,7 +574,33 @@ function beforeAllReseed(): void {
     orgPolicyStore: makePolicyStore({
       test: { tier_c_managed_cloud_optin: false, tier_default: "B" },
     }),
+    dedupStore: new InMemoryDedupStore(),
   });
+}
+
+interface SpyDedupStore extends DedupStore {
+  setnxCallCount: number;
+  setnxKeys: string[];
+}
+
+function makeSpyDedupStore(opts: { policy?: string } = {}): SpyDedupStore {
+  const inner =
+    opts.policy === undefined
+      ? new InMemoryDedupStore()
+      : new InMemoryDedupStore({ policy: opts.policy });
+  const spy: SpyDedupStore = {
+    setnxCallCount: 0,
+    setnxKeys: [],
+    async setnx(key, ttlMs) {
+      spy.setnxCallCount++;
+      spy.setnxKeys.push(key);
+      return inner.setnx(key, ttlMs);
+    },
+    async configMaxMemoryPolicy() {
+      return inner.configMaxMemoryPolicy();
+    },
+  };
+  return spy;
 }
 
 interface FakeBucket {
