@@ -12,8 +12,10 @@ Chronological log of tickets worked on. Append-only; one entry per completed tic
 
 ## 2026-04-17 — D1-01: verified no-op
 
-- **What shipped:** Audit trail only. Both "known contract drift" items in GH issue #3 were verified already-fixed at M0 on 2026-04-16 (commit `b086bfc`) before Sprint 1 started.
-- **Branch / PR:** `D1-01-contract-05-drift-jorge` — docs-only; no contract change.
+- **What shipped:** Audit trail update only. Both "known contract drift" items in GH issue #3 were verified already-fixed at M0 on 2026-04-16 (commit `b086bfc`) before Sprint 1 started.
+- **Branch / PR:** `D1-01-contract-05-drift-jorge` — docs-only commit; no contract change.
+- **Contracts touched:** None (read-only verification). Evidence recorded in `docs/tickets/D1-01-contract-05-drift.md` §Resolution.
+- **Tests added:** None needed.
 - **Follow-ups:** Mention in final Sprint 1 PR description that issue #3's "Known contract drift" bullets are resolved-on-inspection.
 
 ## 2026-04-17 — D1-03: projections + EXPLAIN gates landed
