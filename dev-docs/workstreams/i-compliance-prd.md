@@ -1,7 +1,7 @@
 # DevMetrics — Workstream I (Compliance) PRD
 
 **Owner:** Sandesh
-**Workstream:** I — Compliance & Legal (`legal/templates/` + cross-workstream coordination)
+**Workstream:** I — Compliance & Legal (`legal/review/` + cross-workstream coordination)
 **Status:** draft
 **Last touched:** 2026-04-16
 **Scope covers:** Sprint 1 → M3 PoC ship — works-council templates, DPIA outline, SCCs module 2 + DPF self-cert plan, Bill of Rights rider, `audit_events` schema coordination, CycloneDX SBOM coordination.
@@ -17,9 +17,9 @@ DevMetrics cannot sell into EU mid-market without works-council-compatible artif
 
 **In scope for Sprint 1 → M3:**
 
-- `legal/templates/` directory creation + per-file scope per §5.
+- `legal/review/` directory creation + per-file scope per §5.
 - `packages/config/src/bill-of-rights.ts` — single source of truth for the 6-item Bill of Rights text + version field.
-- `legal/templates/bill-of-rights-rider.md` — formal contractual rider mapping each Bill of Rights item to statutory citation + product control.
+- `legal/review/bill-of-rights-rider.md` — formal contractual rider mapping each Bill of Rights item to statutory citation + product control.
 - Cross-workstream coordination: `audit_events` schema with Jorge, SBOM CI gate with Sebastian, forbidden-field fuzzer roster with Walid.
 - Open-question tracking for PRD §6.5 wording risks (W-1, W-2, W-3) — flagged here as amendment proposals to the master PRD, not edited here.
 
@@ -59,17 +59,17 @@ Retained verbatim from PRD §12 for this PRD's authors' and reviewers' convenien
 
 ## 5. Artifacts catalog
 
-Each file created in `legal/templates/` during Sprint 1 → M3. Longer content in the implementation plan; scope below.
+Each file created in `legal/review/` during Sprint 1 → M3. Longer content in the implementation plan; scope below.
 
 | File | Purpose | Load-bearing for | Draft source | Sprint |
 |---|---|---|---|---|
-| `legal/templates/README.md` | Index + usage guide: which template goes where in the sales cycle | Internal reference | Author | S1 |
-| `legal/templates/works-agreement-DE.md` | Betriebsvereinbarung template per BetrVG §87(1) Nr. 6. Embeds verbatim clause *"nicht für Leistungs- und Verhaltenskontrollen"* (not for performance/behavior monitoring). Sections: scope/application, permitted use cases, employee rights, prohibition of performance control, data protection, qualification, conflict resolution | DE mid-market sales | ver.di guidance + betriebsrat-kanzlei + skill-sprinters sample | S1 draft · S2 complete |
-| `legal/templates/cse-consultation-FR.md` | CSE consultation deck per Art. L1222-4 + L2312-38. **OQ-1:** no FR template text located in presearch → follow-up presearch needed on CGT publications | FR mid-market sales | None found; follow-up presearch required | S2 (pending OQ-1) |
-| `legal/templates/union-agreement-IT.md` | Union-agreement template per Statuto dei Lavoratori Art. 4. **OQ-2:** no IT template text located → follow-up on CGIL publications | IT mid-market sales | None found; follow-up presearch required | S2 (pending OQ-2) |
-| `legal/templates/DPIA.md` | GDPR Art. 35 Data Protection Impact Assessment — outline template with headers + fill-in sections. Customers use as starting point for their own DPIA | Any EU customer | ICO + CNIL published DPIA templates | S1 outline · S2 complete |
-| `legal/templates/SCCs-module-2.md` | Commission SCCs 2021/914 Module 2 pre-fill for EU→US data transfer + Transfer Impact Assessment (TIA) + DPF self-cert plan (Phase-1 posture, Phase-2 EU-region Frankfurt migration plan) | Day 1 cross-border, Phase 2 EU region | EU Commission published text + DPF checklist | S2 draft · S3 complete |
-| `legal/templates/bill-of-rights-rider.md` | Formal rider for the 6-item Bill of Rights. One paragraph per item: restated in contract language, statutory citation, product control, verification path | Works-council agreements | PRD §6.5 + presearch patterns (Mozilla tone + Cursor specificity) | S1 draft · S2 legal-review-ready · S3 finalize |
+| `legal/review/README.md` | Index + usage guide: which template goes where in the sales cycle | Internal reference | Author | S1 |
+| `legal/review/works-agreement-DE.md` | Betriebsvereinbarung template per BetrVG §87(1) Nr. 6. Embeds verbatim clause *"nicht für Leistungs- und Verhaltenskontrollen"* (not for performance/behavior monitoring). Sections: scope/application, permitted use cases, employee rights, prohibition of performance control, data protection, qualification, conflict resolution | DE mid-market sales | ver.di guidance + betriebsrat-kanzlei + skill-sprinters sample | S1 draft · S2 complete |
+| `legal/review/cse-consultation-FR.md` | CSE consultation deck per Art. L1222-4 + L2312-38. **OQ-1:** no FR template text located in presearch → follow-up presearch needed on CGT publications | FR mid-market sales | None found; follow-up presearch required | S2 (pending OQ-1) |
+| `legal/review/union-agreement-IT.md` | Union-agreement template per Statuto dei Lavoratori Art. 4. **OQ-2:** no IT template text located → follow-up on CGIL publications | IT mid-market sales | None found; follow-up presearch required | S2 (pending OQ-2) |
+| `legal/review/DPIA.md` | GDPR Art. 35 Data Protection Impact Assessment — outline template with headers + fill-in sections. Customers use as starting point for their own DPIA | Any EU customer | ICO + CNIL published DPIA templates | S1 outline · S2 complete |
+| `legal/review/SCCs-module-2.md` | Commission SCCs 2021/914 Module 2 pre-fill for EU→US data transfer + Transfer Impact Assessment (TIA) + DPF self-cert plan (Phase-1 posture, Phase-2 EU-region Frankfurt migration plan) | Day 1 cross-border, Phase 2 EU region | EU Commission published text + DPF checklist | S2 draft · S3 complete |
+| `legal/review/bill-of-rights-rider.md` | Formal rider for the 6-item Bill of Rights. One paragraph per item: restated in contract language, statutory citation, product control, verification path | Works-council agreements | PRD §6.5 + presearch patterns (Mozilla tone + Cursor specificity) | S1 draft · S2 legal-review-ready · S3 finalize |
 
 ## 6. Bill of Rights — two-artifact strategy
 
@@ -90,13 +90,13 @@ Research (presearch 2026-04-16) confirmed that no direct competitor publishes a 
     "You are notified every time a manager views your individual drill page.",
   ] as const;
   ```
-- **Rationale for this location:** `packages/config` is the shared config package already in the repo skeleton; both `apps/web` (Sebastian's `/privacy` render) and `legal/templates/bill-of-rights-rider.md` (our rider) reference this same text.
+- **Rationale for this location:** `packages/config` is the shared config package already in the repo skeleton; both `apps/web` (Sebastian's `/privacy` render) and `legal/review/bill-of-rights-rider.md` (our rider) reference this same text.
 - **Our obligation:** land the file in Sprint 1 Week 1. Mark version field `1.0.0`; bump on any PRD §6.5 amendment.
 - **Sebastian's obligation (IW-4):** import from `packages/config/src/bill-of-rights.ts` in `/privacy` render. Do not duplicate the string literals.
 
 ### §6.2 Artifact 2 — the formal rider (we own fully)
 
-`legal/templates/bill-of-rights-rider.md`. One paragraph per item, four parts per paragraph:
+`legal/review/bill-of-rights-rider.md`. One paragraph per item, four parts per paragraph:
 
 1. **Restated in contract language.** Maps the warm promise to GDPR / BetrVG / L2312-38 / Art. 4 vocabulary. No "Your" first-person; formal third-person.
 2. **Statutory citation.** Specific article number + jurisdiction.
@@ -155,7 +155,7 @@ W-1 / W-2 / W-3 are recorded in §11 Open Questions for a follow-up PRD-amendmen
 
 | Day / Sprint | Deliverable |
 |---|---|
-| Sprint 1 Day 1 | Create `legal/templates/` directory + `README.md` index. Create `packages/config/src/bill-of-rights.ts` with §6.5 verbatim + version `1.0.0`. Ping Sebastian (IW-4). |
+| Sprint 1 Day 1 | Create `legal/review/` directory + `README.md` index. Create `packages/config/src/bill-of-rights.ts` with §6.5 verbatim + version `1.0.0`. Ping Sebastian (IW-4). |
 | Sprint 1 Week 1 | Draft `works-agreement-DE.md` with verbatim Leistungs-und-Verhaltenskontrollen clause. Draft `bill-of-rights-rider.md` — all 6 paragraphs to first-pass. Draft `DPIA.md` outline. |
 | Sprint 1 Week 2 | Propose `audit_events` schema to Jorge (§9.1). Confirm `audit_log` append-only invariant with Jorge (IW-2). Confirm forbidden-field roster with Walid (IW-5). |
 | Sprint 2 | Complete `works-agreement-DE.md`. Kick off DE-counsel review (E-1, external). Draft `SCCs-module-2.md` + DPF checklist. Legal-review-pass on `bill-of-rights-rider.md`. Queue follow-up presearch for OQ-1 (FR) + OQ-2 (IT). |
@@ -252,7 +252,7 @@ First DE customer go-live is blocked on one real works-council review. Not autom
 
 ### §10.3 DPIA review (customer-owned)
 
-Customer's DPO signs their own DPIA; DevMetrics provides `legal/templates/DPIA.md` as a starting template. Risk if our template has gaps → customer DPO red-lines back, slows sale. **Mitigation:** DPIA template reviewed against ICO + CNIL published examples during Sprint 2.
+Customer's DPO signs their own DPIA; DevMetrics provides `legal/review/DPIA.md` as a starting template. Risk if our template has gaps → customer DPO red-lines back, slows sale. **Mitigation:** DPIA template reviewed against ICO + CNIL published examples during Sprint 2.
 
 ### §10.4 SBOM CI gate (automatable)
 
@@ -338,7 +338,7 @@ Copy-paste-ready for the PR landing this PRD.
 
 ### M1 (Sprint-1 end, ~Day 12)
 
-- `legal/templates/` directory created with `README.md` index landed.
+- `legal/review/` directory created with `README.md` index landed.
 - `packages/config/src/bill-of-rights.ts` with §6.5 verbatim text + `BILL_OF_RIGHTS_VERSION = "1.0.0"` shipped.
 - Sebastian pinged and confirmed import target (IW-4).
 - Drafts landed (not yet complete; polish in Sprint 2):

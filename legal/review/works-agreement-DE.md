@@ -3,7 +3,7 @@
  ENGLISH PREAMBLE — navigation aid for non-German readers (Sandesh et al.)
 ================================================================================
 
-**File:** `legal/templates/works-agreement-DE.md` — Betriebsvereinbarung (German
+**File:** `legal/review/works-agreement-DE.md` — Betriebsvereinbarung (German
 works agreement) template. Authoritative body in German below; this preamble is
 advisory and non-binding. Owner: Workstream I (Compliance). Tracks
 `dev-docs/workstreams/i-compliance-prd.md` §5 catalog row.
@@ -35,10 +35,10 @@ German operations with a works council. Collateral: BDSG §26; DSGVO Art. 5 / 6
 - `{{ESCALATION_CONTACT}}` — vendor escalation contact.
 
 **Cross-references.** Paragraph-by-paragraph mapping from §6 rights to
-statutory citations and product controls: `legal/templates/bill-of-rights-rider.md`
+statutory citations and product controls: `legal/review/bill-of-rights-rider.md`
 (compliance PRD §6.2 — the rider is a contractual attachment). DPIA:
-`legal/templates/DPIA.md`. SCCs Module 2 (if cross-border transfer):
-`legal/templates/SCCs-module-2.md`.
+`legal/review/DPIA.md`. SCCs Module 2 (if cross-border transfer):
+`legal/review/SCCs-module-2.md`.
 
 **Lane boundary.** Owned solely by Workstream I. Product-side controls
 (`devmetrics audit --tail`, `audit_events`, `devmetrics erase`, Tier B default,
@@ -460,7 +460,7 @@ DSGVO (statistische Zwecke).
 Inbetriebnahme des Systems eine Datenschutz-Folgenabschätzung nach Art. 35
 DSGVO durch. Der Betriebsrat sowie die oder der betriebliche
 Datenschutzbeauftragte ({{DPO_EMAIL}}) werden angemessen beteiligt. Eine
-Vorlage für die DSFA stellt der Hersteller unter `legal/templates/DPIA.md`
+Vorlage für die DSFA stellt der Hersteller unter `legal/review/DPIA.md`
 bereit; die Verantwortung für Inhalt und Durchführung verbleibt beim
 Arbeitgeber.
 
@@ -470,7 +470,7 @@ Nutzung der verwalteten Cloud-Variante), erfolgt dies ausschließlich auf
 Grundlage der Standardvertragsklauseln der Kommission 2021/914 Modul 2 sowie
 — soweit anwendbar — der Selbstzertifizierung nach dem EU-US Data Privacy
 Framework. Eine Transferfolgenabschätzung (TIA) liegt vor. Eine Vorlage
-enthält `legal/templates/SCCs-module-2.md`.
+enthält `legal/review/SCCs-module-2.md`.
 
 (9) **Auftragsverarbeitung.** Die Verarbeitung im Auftrag erfolgt
 ausschließlich auf Grundlage eines schriftlichen Auftragsverarbeitungsvertrags
@@ -664,11 +664,11 @@ ________________________________________________
 
 **Anlagen:**
 
-- Anlage 1: `legal/templates/bill-of-rights-rider.md` — Paragraphen-weise
+- Anlage 1: `legal/review/bill-of-rights-rider.md` — Paragraphen-weise
   Zuordnung der Rechte nach §6 zu gesetzlichen Grundlagen und technischen
   Kontrollen.
-- Anlage 2: `legal/templates/DPIA.md` — Vorlage Datenschutz-Folgenabschätzung.
-- Anlage 3: `legal/templates/SCCs-module-2.md` — Standardvertragsklauseln
+- Anlage 2: `legal/review/DPIA.md` — Vorlage Datenschutz-Folgenabschätzung.
+- Anlage 3: `legal/review/SCCs-module-2.md` — Standardvertragsklauseln
   Modul 2 und Transferfolgenabschätzung (bei Drittlandübermittlung).
 - Anlage 4: Mitarbeiterinformation nach Art. 13 DSGVO (durch den Arbeitgeber
   zu erstellen; wird mit dieser Vereinbarung ausgehändigt).
@@ -714,7 +714,7 @@ ________________________________________________
 artifact catalog row (§5), the two-artifact Bill of Rights strategy (§6), and
 the ship order (§7). The companion rider — which maps each §6 right to its
 statutory citation and product control — lives at
-`legal/templates/bill-of-rights-rider.md` (forthcoming in same sprint).
+`legal/review/bill-of-rights-rider.md` (forthcoming in same sprint).
 
 ================================================================================
 -->

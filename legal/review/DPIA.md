@@ -228,7 +228,7 @@ Risks are rated on (likelihood × severity) on a 1–4 scale each. Impact classe
 ### R6 — EU → US transfer challenge
 
 *Threat.* Supervisory authority determines transfer mechanism insufficient post-*Schrems II*.
-*Mitigations.* **Day 1:** SCCs 2021/914 Module 2 + TIA + DPF self-cert (US recipient). **Phase 2:** Frankfurt EU region; zero-US-replication option. **Self-host:** no cross-border transfer — data stays on Controller infrastructure. See `legal/templates/SCCs-module-2.md`.
+*Mitigations.* **Day 1:** SCCs 2021/914 Module 2 + TIA + DPF self-cert (US recipient). **Phase 2:** Frankfurt EU region; zero-US-replication option. **Self-host:** no cross-border transfer — data stays on Controller infrastructure. See `legal/review/SCCs-module-2.md`.
 
 ### R7 — Erasure SLA miss
 
@@ -269,7 +269,7 @@ Risks are rated on (likelihood × severity) on a 1–4 scale each. Impact classe
 | T9 | Forbidden-field fuzzer (INT10) merge blocker | Server rejects 100% of payloads containing forbidden fields | §API Rules | R1, R2 |
 | T10 | Cert-pinned egress allowlist | `DEVMETRICS_INGEST_ONLY_TO` | §Security Rules | R10 |
 | T11 | Sigstore / cosign / SLSA L3 | Signed release; SHA-256 in release notes; per-dev binary SHA check | §Security Rules | R10 |
-| T12 | SCCs Module 2 + TIA + DPF (Phase 1) / EU region (Phase 2) | `legal/templates/SCCs-module-2.md`; Frankfurt endpoint | §Compliance Rules | R6 |
+| T12 | SCCs Module 2 + TIA + DPF (Phase 1) / EU region (Phase 2) | `legal/review/SCCs-module-2.md`; Frankfurt endpoint | §Compliance Rules | R6 |
 | T13 | k-anonymity floor (k ≥ 5 team tile; k ≥ 3 cluster; k ≥ 25 DP releases) | Storage-layer guard: below-threshold tile returns "insufficient cohort" | §Privacy Model Rules | R3, R8 |
 | T14 | Minimum sample gates for score display | Storage-layer guard: ≥ 10 sessions ∧ ≥ 5 active days ∧ ≥ 3 outcome events ∧ cohort ≥ 8 | §Privacy Model Rules | R3 |
 | T15 | Crash dumps disabled | `RLIMIT_CORE=0`; `devmetrics doctor` verifies | §Security Rules | R2 |
@@ -278,7 +278,7 @@ Risks are rated on (likelihood × severity) on a 1–4 scale each. Impact classe
 
 | # | Measure | Owner | Artifact |
 |---|---|---|---|
-| O1 | Bill of Rights published at `/privacy`; version-pinned | Controller | `legal/templates/bill-of-rights-rider.md`; `packages/config/src/bill-of-rights.ts` v1.0.0 |
+| O1 | Bill of Rights published at `/privacy`; version-pinned | Controller | `legal/review/bill-of-rights-rider.md`; `packages/config/src/bill-of-rights.ts` v1.0.0 |
 | O2 | Works-council agreement executed before go-live (DE/FR/IT) | Controller | `works-agreement-DE.md`, `cse-consultation-FR.md`, `union-agreement-IT.md` |
 | O3 | DPO appointed (Art. 37–39) and this DPIA signed off | Controller DPO | {{DPO_NAME}} |
 | O4 | Employee notification before deployment (Art. 13) | Controller HR + DPO | Internal comms |
@@ -359,9 +359,9 @@ Where the Controller has workforce in DE / FR / IT, an additional statutory inst
 
 | Jurisdiction | Statute | Instrument | Template |
 |---|---|---|---|
-| **Germany** | BetrVG §87(1) Nr. 6 — mandatory works-council co-determination on any technical system suitable to monitor employees (intent irrelevant per EDPB 2/2017) | Betriebsvereinbarung (works agreement) | `legal/templates/works-agreement-DE.md` — embeds verbatim "nicht für Leistungs- und Verhaltenskontrollen" clause |
-| **France** | Code du travail Art. L1222-4 (worker notification) + Art. L2312-38 (CSE consultation) | CSE consultation + individual notification | `legal/templates/cse-consultation-FR.md` *(pending OQ-1 follow-up presearch per Workstream I PRD §11.1)* |
-| **Italy** | Statuto dei Lavoratori Art. 4 — union agreement required for remote-monitoring-capable systems | Union agreement (accordo sindacale) or Labour Inspectorate authorization | `legal/templates/union-agreement-IT.md` *(pending OQ-2 follow-up presearch per Workstream I PRD §11.1)* |
+| **Germany** | BetrVG §87(1) Nr. 6 — mandatory works-council co-determination on any technical system suitable to monitor employees (intent irrelevant per EDPB 2/2017) | Betriebsvereinbarung (works agreement) | `legal/review/works-agreement-DE.md` — embeds verbatim "nicht für Leistungs- und Verhaltenskontrollen" clause |
+| **France** | Code du travail Art. L1222-4 (worker notification) + Art. L2312-38 (CSE consultation) | CSE consultation + individual notification | `legal/review/cse-consultation-FR.md` *(pending OQ-1 follow-up presearch per Workstream I PRD §11.1)* |
+| **Italy** | Statuto dei Lavoratori Art. 4 — union agreement required for remote-monitoring-capable systems | Union agreement (accordo sindacale) or Labour Inspectorate authorization | `legal/review/union-agreement-IT.md` *(pending OQ-2 follow-up presearch per Workstream I PRD §11.1)* |
 
 Where the workforce spans multiple EU jurisdictions, the Controller executes the appropriate instrument for each. Where non-EU workforce is present (UK, CH, NO), the Controller applies analogous local law (UK-GDPR + ICO *Monitoring Workers*; Swiss FADP; Norwegian Working Environment Act).
 
@@ -390,10 +390,10 @@ Short form — the 7 items the signing DPO should verify before countersigning t
 - `dev-docs/PRD.md` §6 (Privacy & Access Model), §12 (Compliance) — source for tier defaults, role × tier matrix, Bill of Rights, retention, cross-border posture.
 - `CLAUDE.md` §Privacy Model Rules, §Security Rules, §Database Rules, §API Rules, §Compliance Rules — source for technical measures per §5.1.
 - `dev-docs/workstreams/i-compliance-prd.md` §5 (Artifacts catalog), §10.3 (DPIA review gate), §11 (Open questions).
-- `legal/templates/bill-of-rights-rider.md` — rider referenced by §5.2 O1 and §6.3 item 5.
-- `legal/templates/works-agreement-DE.md` — Appendix B.
-- `legal/templates/cse-consultation-FR.md` — Appendix B (pending OQ-1).
-- `legal/templates/union-agreement-IT.md` — Appendix B (pending OQ-2).
-- `legal/templates/SCCs-module-2.md` — §5.1 T12, Appendix A, §6.3 item 6.
+- `legal/review/bill-of-rights-rider.md` — rider referenced by §5.2 O1 and §6.3 item 5.
+- `legal/review/works-agreement-DE.md` — Appendix B.
+- `legal/review/cse-consultation-FR.md` — Appendix B (pending OQ-1).
+- `legal/review/union-agreement-IT.md` — Appendix B (pending OQ-2).
+- `legal/review/SCCs-module-2.md` — §5.1 T12, Appendix A, §6.3 item 6.
 
 **Not legal advice.** This document is a processor-supplied starting point. The customer's Data Protection Officer is responsible for validating, amending, and signing off on the final DPIA in light of the Controller's specific processing context.

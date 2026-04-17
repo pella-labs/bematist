@@ -3,17 +3,17 @@
  *
  * Text is PRD §6.5 verbatim (locked). Do not paraphrase. Do not reorder.
  * Any amendment to the six items requires bumping `BILL_OF_RIGHTS_VERSION`
- * in lockstep with a matching update to `legal/templates/bill-of-rights-rider.md`
+ * in lockstep with a matching update to `legal/review/bill-of-rights-rider.md`
  * and an amendment PR on `dev-docs/PRD.md` §6.5 itself.
  *
  * Downstream consumers that must import from this module:
  *   - `apps/web/app/privacy/page.tsx` (Sebastian / Workstream E) — renders the
  *     friendly list at `/privacy`.
- *   - `legal/templates/bill-of-rights-rider.md` — the formal contract rider
+ *   - `legal/review/bill-of-rights-rider.md` — the formal contract rider
  *     references these items by index and version.
  *
  * See `dev-docs/workstreams/i-compliance-prd.md` §6.1 for the two-artifact strategy
- * (friendly list here + formal rider in `legal/templates/`).
+ * (friendly list here + formal rider in `legal/review/`).
  */
 
 export const BILL_OF_RIGHTS_VERSION = "1.0.0" as const;

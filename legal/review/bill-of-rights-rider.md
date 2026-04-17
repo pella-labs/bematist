@@ -437,11 +437,11 @@ following items shall be confirmed:
 
 ## Cross-references
 
-- `legal/templates/works-agreement-DE.md` — Betriebsvereinbarung per BetrVG §87(1) Nr. 6; anchors Right 2 and Right 6.
-- `legal/templates/cse-consultation-FR.md` — CSE consultation per Code du travail Art. L1222-4 and L2312-38; anchors Right 1 and Right 6.
-- `legal/templates/union-agreement-IT.md` — union agreement per Statuto dei Lavoratori Art. 4; anchors Right 2.
-- `legal/templates/DPIA.md` — GDPR Art. 35 DPIA outline for the customer's DPO; cross-references every Right.
-- `legal/templates/SCCs-module-2.md` — Commission SCCs 2021/914 Module 2 plus TIA plus DPF self-cert plan.
+- `legal/review/works-agreement-DE.md` — Betriebsvereinbarung per BetrVG §87(1) Nr. 6; anchors Right 2 and Right 6.
+- `legal/review/cse-consultation-FR.md` — CSE consultation per Code du travail Art. L1222-4 and L2312-38; anchors Right 1 and Right 6.
+- `legal/review/union-agreement-IT.md` — union agreement per Statuto dei Lavoratori Art. 4; anchors Right 2.
+- `legal/review/DPIA.md` — GDPR Art. 35 DPIA outline for the customer's DPO; cross-references every Right.
+- `legal/review/SCCs-module-2.md` — Commission SCCs 2021/914 Module 2 plus TIA plus DPF self-cert plan.
 - `packages/config/src/bill-of-rights.ts` — canonical friendly PRD §6.5 text shared with the `/privacy` render.
 - `dev-docs/PRD.md` §6.5 — friendly Bill of Rights; §8.7 — Clio-adapted on-device prompt pipeline enforcing Right 1.
 - `dev-docs/workstreams/i-compliance-prd.md` — compliance-workstream PRD spanning this rider and related templates.
