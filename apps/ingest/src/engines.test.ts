@@ -6,6 +6,20 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 describe("engines.bun pin", () => {
+  test("Bun.version runtime is >= 1.3.4", () => {
+    // Belt-and-suspenders: in addition to checking the pin in package.json,
+    // assert the actual runtime. Sprint-1 follow-up A requires Bun 1.3.12 for
+    // Bun.redis; anything below 1.3.4 blocks the real dedup adapter.
+    const m = Bun.version.match(/^(\d+)\.(\d+)\.(\d+)/);
+    expect(m).not.toBeNull();
+    const major = Number(m?.[1]);
+    const minor = Number(m?.[2]);
+    const patch = Number(m?.[3]);
+    const ok =
+      major > 1 || (major === 1 && minor > 3) || (major === 1 && minor === 3 && patch >= 4);
+    expect(ok).toBe(true);
+  });
+
   test("root package.json has engines.bun >= 1.3.4", () => {
     // apps/ingest/src -> repo root
     const root = resolve(import.meta.dir, "../../..");
