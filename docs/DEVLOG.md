@@ -16,6 +16,14 @@ Chronological log of tickets worked on. Append-only; one entry per completed tic
 - **Branch / PR:** `D1-01-contract-05-drift-jorge` — docs-only; no contract change.
 - **Follow-ups:** Mention in final Sprint 1 PR description that issue #3's "Known contract drift" bullets are resolved-on-inspection.
 
+## 2026-04-17 — D1-06: RLS + INT9 cross-tenant probe landed (merge blocker)
+
+- **What shipped:** RLS enabled + FORCED on 15 org-scoped PG tables via `packages/schema/postgres/custom/0002_rls_org_isolation.sql`. New `app_bematist` role (NOBYPASSRLS, NOSUPERUSER) for application connections. `app_current_org()` helper + `org_isolation` policy per table using `current_setting('app.current_org_id', true)::uuid`. `withOrg()` TypeScript helper in `packages/schema/postgres/rls_set_org.ts`. `org_id` column added to `audit_log` and `audit_events` (via drizzle migration `0003_remarkable_omega_flight.sql`) so they can participate in RLS.
+- **INT9 test:** 5 tests, 80 expect() calls, probes all 15 tables × 5 scenarios (role assertion, default-deny without setting, org-A-set, org-B-set, transaction scope releases on commit). **Merge blocker per contract 09 invariant 4; zero leakage observed.**
+- **Branch / PR:** `D1-06-rls-int9-probe-jorge` → PR pending.
+- **Skipped from RLS:** `orgs` (the tenant table itself), `embedding_cache` (shared by design per contract 05).
+- **Gotcha:** adding `NOT NULL` column to existing tables with rows fails without a backfill; had to TRUNCATE audit_log + audit_events before applying the column add. For prod migration we'd write a DEFAULT + backfill + drop-default pattern. Flagged.
+
 ## 2026-04-17 — D1-05: 13 Postgres control-plane tables landed
 
 - **What shipped:** Added 13 tables to `packages/schema/postgres/schema.ts`: `teams`, `repos`, `policies`, `git_events`, `ingest_keys`, `prompt_clusters`, `playbooks`, `audit_events`, `alerts`, `insights`, `outcomes`, `embedding_cache`. Plus `developers.team_id` FK to `teams` (closes the dependency D1-02 flagged). `orgs.tier_c_managed_cloud_optin` added. Drizzle migration `0002_nasty_molten_man.sql` generated + applied.

@@ -99,6 +99,7 @@ test("playbooks + prompt_clusters + audit_events + alerts + insights + outcomes 
     promoted_by: user.id,
   });
   await db.insert(audit_events).values({
+    org_id: org.id,
     actor_user_id: user.id,
     target_engineer_id_hash: "eh_1",
     surface: "engineer_page",
@@ -156,6 +157,7 @@ test("audit_log: INSERT works, UPDATE throws, DELETE throws (contract 09 invaria
   const [row] = await db
     .insert(audit_log)
     .values({
+      org_id: org.id,
       actor_user_id: user.id,
       action: "test_action",
       target_type: "session",

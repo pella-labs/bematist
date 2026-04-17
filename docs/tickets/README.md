@@ -19,7 +19,7 @@
 | `D1-03` | Projections on `events` + EXPLAIN gates | ✅ committed | `D1-03-projections-jorge` |
 | `D1-04` | GDPR partition-drop worker (7-d SLA) | ✅ committed | `D1-04-partition-drop-worker-jorge` |
 | `D1-05` | Remaining Postgres control-plane tables (Drizzle) | ✅ committed | `D1-05-pg-control-plane-jorge` |
-| `D1-06` | RLS on every org-scoped table + INT9 cross-tenant probe | pending | — |
+| `D1-06` | RLS on every org-scoped table + INT9 cross-tenant probe | ✅ committed (MERGE BLOCKER gate passes) | `D1-06-rls-int9-probe-jorge` |
 | `D1-07` | Plan-B Go sidecar skeleton (F15 / INT0 fallback) | pending | — |
 
 Sprint 2 (Workstream H-AI) will add `D2-*` tickets once Sprint 1 closes.
