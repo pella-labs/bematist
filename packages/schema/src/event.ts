@@ -1,3 +1,13 @@
+// Bematist wire-format event schema (contract 01).
+//
+// NOTE on `redaction_count`:
+//   `redaction_count` is a RAW counter emitted by the server-side redaction
+//   pipeline (contract 08) for audit / telemetry. It is NOT a D13-versioned
+//   user-facing metric. D13 metric-versioning (`_v1`/`_v2`/`_v3` suffixes)
+//   applies to derived / displayed metrics (AI Leverage Score, useful output,
+//   etc.) — not to internal counters that are never surfaced to the IC or the
+//   manager dashboard. See CLAUDE.md §Scoring Rules.
+
 import { z } from "zod";
 
 export const EventSchema = z.object({
@@ -66,7 +76,7 @@ export const EventSchema = z.object({
     })
     .optional(),
 
-  // DevMetrics extensions (dev_metrics.*) — coding-agent specifics
+  // Bematist extensions (dev_metrics.*) — coding-agent specifics, analog to gen_ai.*
   dev_metrics: z.object({
     event_kind: z.enum([
       "session_start",
