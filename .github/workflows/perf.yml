@@ -101,11 +101,10 @@ jobs:
           - 8123:8123
           - 9000:9000
         options: >-
-          --ulimit nofile=262144:262144
-          --health-cmd "wget --quiet --tries=1 --spider http://localhost:8123/ping || exit 1"
+          --health-cmd "clickhouse-client --query 'SELECT 1'"
           --health-interval 5s
           --health-timeout 3s
-          --health-retries 12
+          --health-retries 20
 
       redis:
         image: redis:7-alpine
