@@ -131,7 +131,7 @@ jobs:
       # Deterministic key secret so the seed mints a known bearer the k6
       # ingest scenario can read via tests/perf/.ingest-bearer.
       PERF_KEY_SECRET: "perf-ci-secret-deterministic-32-bytes-x"
-      PERF_INGEST_BEARER_PATH: tests/perf/.ingest-bearer
+      PERF_INGEST_BEARER_PATH: ${{ github.workspace }}/tests/perf/.ingest-bearer
 
     steps:
       - uses: actions/checkout@v4
