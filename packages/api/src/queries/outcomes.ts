@@ -217,9 +217,18 @@ async function perPROutcomesFixture(
 /**
  * Real-branch read.
  *
- * EXPLAIN: `pr_outcome_rollup` MV indexed on (org_id, merged_at, repo). The
- * `ai_assisted` flag is set upstream by Jorge's worker combining
- * code_edit_tool.accept + AI-Assisted trailer + git-log fallback.
+ * EXPLAIN: `pr_outcome_rollup` is an AggregatingMergeTree ORDER BY
+ * (org_id, repo, pr_number, day). Rows split across UTC day boundaries when a
+ * PR spans midnight; `*Merge` folds the per-day states back at read time.
+ * The `ai_assisted` flag lifts via maxMerge — the PR trips the flag if any
+ * agent accept event landed. `reverted` sums the `revert_within_24h`
+ * signal across events (non-zero ⇒ reverted). `merged_at` surfaces
+ * `maxMerge(last_ts_state)` — proxy for the Postgres `git_events.merged_at`
+ * until the control-plane join lands.
+ *
+ * TIER-A ALLOWLIST: aggregates only; no prompt_text / tool_input /
+ * tool_output / messages / toolArgs / toolOutputs / fileContents / diffs /
+ * filePaths / ticketIds / emails / realNames.
  */
 async function perPROutcomesReal(
   ctx: Ctx,
@@ -227,10 +236,7 @@ async function perPROutcomesReal(
 ): Promise<PerPROutcomesOutput> {
   const days = WINDOW_DAYS[input.window];
 
-  const clauses = [
-    "org_id = {tenant_id:String}",
-    "merged_at >= now() - INTERVAL {days:UInt16} DAY",
-  ];
+  const clauses = ["org_id = {tenant_id:String}", "day >= today() - {days:UInt16}"];
   const params: Record<string, unknown> = {
     tenant_id: ctx.tenant_id,
     days,
@@ -253,14 +259,14 @@ async function perPROutcomesReal(
     `SELECT
        repo,
        pr_number,
-       merged_at,
-       sum(cost_usd) AS cost_usd,
-       sum(accepted_edit_count) AS accepted_edit_count,
-       max(reverted) AS reverted,
-       max(ai_assisted) AS ai_assisted
+       maxMerge(last_ts_state) AS merged_at,
+       sumMerge(cost_usd_state) AS cost_usd,
+       countIfMerge(accepted_edit_count_state) AS accepted_edit_count,
+       sumMerge(revert_count_state) AS reverted,
+       maxMerge(ai_assisted_flag_state) AS ai_assisted
      FROM pr_outcome_rollup
      WHERE ${clauses.join(" AND ")}
-     GROUP BY repo, pr_number, merged_at
+     GROUP BY repo, pr_number
      ORDER BY merged_at DESC
      LIMIT {limit:UInt32}`,
     params,
@@ -343,7 +349,17 @@ async function perCommitOutcomesFixture(
 /**
  * Real-branch read.
  *
- * EXPLAIN: `commit_outcome_rollup` indexed on (org_id, ts, repo).
+ * EXPLAIN: `commit_outcome_rollup` is an AggregatingMergeTree ORDER BY
+ * (org_id, repo, commit_sha, day). Partitioned by month so GDPR DROP
+ * PARTITION cascades cleanly. `pr_number` is derived via anyMerge — a commit
+ * generally attaches to a single PR; the `any` aggregator collapses the rare
+ * merge/cherry-pick case where the same sha is attributed across days.
+ * `author_engineer_id_hash` is already pre-hashed in the MV (cityHash64 →
+ * 8-char hex) so the read path never sees raw engineer_id against a commit.
+ *
+ * TIER-A ALLOWLIST: aggregates only; no prompt_text / tool_input /
+ * tool_output / messages / toolArgs / toolOutputs / fileContents / diffs /
+ * filePaths / ticketIds / emails / realNames.
  */
 async function perCommitOutcomesReal(
   ctx: Ctx,
@@ -351,7 +367,7 @@ async function perCommitOutcomesReal(
 ): Promise<PerCommitOutcomesOutput> {
   const days = WINDOW_DAYS[input.window];
 
-  const clauses = ["org_id = {tenant_id:String}", "ts >= now() - INTERVAL {days:UInt16} DAY"];
+  const clauses = ["org_id = {tenant_id:String}", "day >= today() - {days:UInt16}"];
   const params: Record<string, unknown> = {
     tenant_id: ctx.tenant_id,
     days,
@@ -375,15 +391,15 @@ async function perCommitOutcomesReal(
     `SELECT
        repo,
        commit_sha,
-       pr_number,
+       anyMerge(pr_number_any_state) AS pr_number,
        author_engineer_id_hash,
-       ts,
-       sum(cost_usd_attributed) AS cost_usd_attributed,
-       max(ai_assisted) AS ai_assisted,
-       max(reverted) AS reverted
+       maxMerge(last_ts_state) AS ts,
+       sumMerge(cost_usd_attributed_state) AS cost_usd_attributed,
+       maxMerge(ai_assisted_flag_state) AS ai_assisted,
+       sumMerge(revert_count_state) AS reverted
      FROM commit_outcome_rollup
      WHERE ${clauses.join(" AND ")}
-     GROUP BY repo, commit_sha, pr_number, author_engineer_id_hash, ts
+     GROUP BY repo, commit_sha, author_engineer_id_hash
      ORDER BY ts DESC
      LIMIT {limit:UInt32}`,
     params,
