@@ -187,8 +187,8 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
       const rect = flipper.getBoundingClientRect()
       const px = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100))
       const py = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100))
-      // target .pharos-holo directly; setting on .card-flipper loses to .pharos-holo's declared rule
-      const holo = flipper.querySelector<HTMLElement>('.pharos-holo')
+      // target .card-holo directly; setting on .card-flipper loses to .card-holo's declared rule
+      const holo = flipper.querySelector<HTMLElement>('.card-holo')
       const el = holo ?? flipper
       el.style.setProperty('--pointer-x', px + '%')
       el.style.setProperty('--pointer-y', py + '%')
@@ -977,7 +977,7 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
         <div className="card-flipper" ref={flipperRef} style={{ opacity: 0 }}>
           {/* Single card — slides in/out */}
           <div
-            className={`card-stack-item top pharos-holo ${nudging ? 'nudge' : ''}`}
+            className={`card-stack-item top card-holo ${nudging ? 'nudge' : ''}`}
             data-rarity="radiant rare"
             style={{
               position: 'absolute', inset: 0,
@@ -993,8 +993,8 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
           >
             <CardBg />
             {renderPage(currentPage)}
-            <div className="pharos-holo-shine" aria-hidden="true" />
-            <div className="pharos-holo-glare" aria-hidden="true" />
+            <div className="card-holo-shine" aria-hidden="true" />
+            <div className="card-holo-glare" aria-hidden="true" />
             {currentPage === 0 && (
               <div className={`card-splash ${phase >= 3 ? 'hide' : ''}`}>
                 <div className="splash-grid" />

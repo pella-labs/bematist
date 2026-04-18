@@ -1,6 +1,6 @@
 /*
- * Card theme override. Converts the pharos purple/pink/blue holo aesthetic
- * to the bematist green/amber/ink system that matches WrappedCard.
+ * Card theme override. Recolors the card to the bematist green/amber/ink
+ * system that matches WrappedCard.
  *
  * Loaded AFTER card.css so these rules win on specificity-equal cascade.
  */
@@ -183,7 +183,7 @@
 }
 .sum-callout-val { color: #b07b3e !important; font-family: "Space Mono", monospace !important; }
 .sum-callout-project { color: rgba(237, 232, 222, 0.5) !important; }
-.sum-pharos { color: rgba(237, 232, 222, 0.2) !important; letter-spacing: 6px !important; }
+.sum-brand { color: rgba(237, 232, 222, 0.2) !important; letter-spacing: 6px !important; }
 .sum-tagline { color: rgba(237, 232, 222, 0.35) !important; }
 
 /* ─── Page titles (Identity / Activity / Tools / …) ──────────── */

@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/firebase/admin";
@@ -15,6 +15,10 @@ const nouns = [
   "echo", "blade",
 ];
 
+export function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
 export async function POST(req: Request) {
   const auth = await requireAuth(req);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -25,10 +29,11 @@ export async function POST(req: Request) {
   const num = Math.floor(Math.random() * 900) + 100;
   const hex = randomBytes(8).toString("hex");
   const token = `bematist_${adj}-${noun}-${num}-${hex}`;
+  const tokenHash = hashToken(token);
 
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
-  await db.collection("api_tokens").doc(token).set({
-    token,
+  await db.collection("api_tokens").doc(tokenHash).set({
+    tokenHash,
     uid,
     expiresAt,
     used: false,

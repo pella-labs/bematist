@@ -183,7 +183,7 @@
 .p2-banner-bg{position:absolute;inset:0;background:linear-gradient(145deg,#7c3aed 0%,#6d28d9 30%,#4338ca 60%,#2563eb 100%);z-index:0}
 .p2-banner-bg::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 75% 20%,rgba(236,72,153,.3),transparent 50%),radial-gradient(circle at 25% 80%,rgba(56,189,248,.2),transparent 50%),radial-gradient(circle at 50% 50%,rgba(250,204,21,.08),transparent 40%)}
 .p2-banner-content{position:relative;z-index:2;padding:20px 28px;display:flex;flex-direction:column;height:100%;justify-content:center}
-.p2-pharos{font-size:9px;font-weight:700;letter-spacing:5px;color:rgba(255,255,255,.35);position:absolute;top:20px;left:28px}
+.p2-brand{font-size:9px;font-weight:700;letter-spacing:5px;color:rgba(255,255,255,.35);position:absolute;top:20px;left:28px}
 .p2-wave{position:absolute;bottom:-1px;left:0;width:100%;height:30px;z-index:3}
 .p2-wave path{fill:#0d1117}
 .p2-persona{text-align:center;margin-bottom:10px}
@@ -311,12 +311,12 @@
 .sum-callout-val{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:#f59e0b;line-height:1}
 .sum-callout-project{font-size:11px;color:#64748b;margin-top:4px}
 .sum-footer{text-align:center;margin-top:auto;padding-top:8px}
-.sum-pharos{font-size:14px;font-weight:700;letter-spacing:6px;color:rgba(255,255,255,.15);margin-bottom:2px}
+.sum-brand{font-size:14px;font-weight:700;letter-spacing:6px;color:rgba(255,255,255,.15);margin-bottom:2px}
 .sum-tagline{font-size:10px;color:#475569;letter-spacing:3px;text-transform:uppercase}
 .cream .sum-title{color:#1a1a2e}
 .cream .sum-card{background:rgba(0,0,0,.02);border-color:rgba(0,0,0,.06)}
 .cream .sum-callout{background:rgba(0,0,0,.02);border-color:rgba(0,0,0,.06)}
-.cream .sum-pharos{color:rgba(26,26,46,.1)}
+.cream .sum-brand{color:rgba(26,26,46,.1)}
 .cream .sum-tagline{color:rgba(26,26,46,.2)}
 
 /* Legacy tool bars (used on integrations page) */

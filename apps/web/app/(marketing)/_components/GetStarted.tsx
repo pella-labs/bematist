@@ -3,7 +3,8 @@
 import gsap from "gsap";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type Step = "signin" | "star" | "generate" | "command";
+type Flow = "oauth" | "manual";
+type Step = "entry" | "signin" | "star" | "generate" | "command";
 
 const GITHUB_REPO_URL = "https://github.com/pella-labs/bematist";
 
@@ -13,16 +14,21 @@ function parseRepo(url: string) {
 }
 
 /**
- * GetStarted flow: sign in with GitHub, star the repo, generate a one-shot
- * card token, copy the npm command. Gracefully degrades to a demo mode when
- * Firebase isn't wired up yet — each step still advances so the flow is
- * fully clickable on a fresh clone.
+ * GetStarted flow. Two entry points the user picks on the landing panel:
+ *   1. "Sign in with GitHub"      — OAuth-backed one-click star via PUT /user/starred
+ *   2. "Star this repo on GitHub" — opens github.com, user stars manually,
+ *                                   we verify via the public starred endpoint
+ * Both converge at: generate one-shot card token -> copy npx command.
+ *
+ * Gracefully degrades to demo mode when Firebase isn't configured.
  */
 export function GetStarted() {
-  const [step, setStep] = useState<Step>("signin");
+  const [step, setStep] = useState<Step>("entry");
+  const [flow, setFlow] = useState<Flow>("oauth");
   const [cardToken, setCardToken] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
   const [firebaseReady, setFirebaseReady] = useState(false);
   const [authModule, setAuthModule] =
     useState<null | typeof import("firebase/auth")>(null);
@@ -32,7 +38,6 @@ export function GetStarted() {
     useState<null | import("firebase/auth").GithubAuthProvider>(null);
   const starRef = useRef<HTMLDivElement>(null);
 
-  // Dynamically load Firebase (optional; degrades to demo mode if not configured)
   useEffect(() => {
     if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) return;
     let cancelled = false;
@@ -52,6 +57,20 @@ export function GetStarted() {
     };
   }, []);
 
+  // ─── Entry ────────────────────────────────────────────────────────
+  const handlePickOAuth = () => {
+    setFlow("oauth");
+    setStep("signin");
+  };
+
+  const handlePickManual = () => {
+    setFlow("manual");
+    // Open the repo in a new tab so the user can star it right now.
+    window.open(GITHUB_REPO_URL, "_blank", "noopener,noreferrer");
+    setStep("signin");
+  };
+
+  // ─── Sign in ─────────────────────────────────────────────────────
   const handleSignIn = async () => {
     if (!firebaseReady || !authModule || !auth || !provider) {
       setStep("star");
@@ -69,6 +88,7 @@ export function GetStarted() {
     }
   };
 
+  // ─── Star burst confetti ─────────────────────────────────────────
   const playStarBurst = useCallback(() => {
     const container = starRef.current;
     if (!container) return;
@@ -109,7 +129,8 @@ export function GetStarted() {
     });
   }, []);
 
-  const handleStar = async () => {
+  // ─── Star via OAuth (flow=oauth) ─────────────────────────────────
+  const handleStarOAuth = async () => {
     setWorking(true);
     try {
       const token = sessionStorage.getItem("github_token");
@@ -133,6 +154,49 @@ export function GetStarted() {
     }
   };
 
+  // ─── Verify manually starred (flow=manual) ───────────────────────
+  const handleVerifyStar = async () => {
+    setVerifyError(null);
+    setWorking(true);
+    try {
+      if (!firebaseReady || !auth?.currentUser) {
+        playStarBurst();
+        setTimeout(() => setStep("generate"), 900);
+        return;
+      }
+      const ghData = auth.currentUser.providerData.find(
+        (p) => p.providerId === "github.com",
+      );
+      const username =
+        // Firebase exposes GitHub login on providerData under `displayName`
+        // when the provider returns it; fall back to the top-level displayName.
+        ghData?.displayName || auth.currentUser.displayName;
+      if (!username) {
+        setVerifyError("Could not read your GitHub username. Please sign in again.");
+        return;
+      }
+      const res = await fetch(
+        `/api/github/check-star?username=${encodeURIComponent(username)}`,
+      );
+      const data = (await res.json()) as { starred?: boolean; error?: string };
+      if (data.starred) {
+        playStarBurst();
+        setTimeout(() => setStep("generate"), 900);
+      } else if (data.error) {
+        setVerifyError(data.error);
+      } else {
+        setVerifyError(
+          "We didn't see your star yet. Make sure you're signed into the same GitHub account, then try again.",
+        );
+      }
+    } catch {
+      setVerifyError("Network error. Try again.");
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  // ─── Generate + copy ─────────────────────────────────────────────
   const handleGenerate = async () => {
     setWorking(true);
     try {
@@ -141,9 +205,7 @@ export function GetStarted() {
         const { token } = await generateCardToken();
         setCardToken(token);
       } else {
-        setCardToken(
-          `bematist_demo-${Math.random().toString(36).slice(2, 10)}`,
-        );
+        setCardToken(`bematist_demo-${Math.random().toString(36).slice(2, 10)}`);
       }
       setStep("command");
     } finally {
@@ -151,9 +213,7 @@ export function GetStarted() {
     }
   };
 
-  const cliCommand = cardToken
-    ? `npx bematist card --token ${cardToken}`
-    : "";
+  const cliCommand = cardToken ? `npx bematist card --token ${cardToken}` : "";
 
   const handleCopy = () => {
     if (!cliCommand) return;
@@ -162,6 +222,7 @@ export function GetStarted() {
     setTimeout(() => setCopied(false), 1800);
   };
 
+  // ─── Render ──────────────────────────────────────────────────────
   return (
     <div className="mk-getstarted">
       {!firebaseReady && (
@@ -174,12 +235,46 @@ export function GetStarted() {
         </div>
       )}
 
+      {step === "entry" && (
+        <div className="mk-getstarted-entry">
+          <button
+            type="button"
+            onClick={handlePickOAuth}
+            className="mk-getstarted-entry-card"
+          >
+            <GithubMark />
+            <div>
+              <div className="mk-getstarted-entry-title">Sign in with GitHub</div>
+              <div className="mk-getstarted-entry-sub">
+                Fastest. We handle the star for you.
+              </div>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={handlePickManual}
+            className="mk-getstarted-entry-card"
+          >
+            <StarIcon />
+            <div>
+              <div className="mk-getstarted-entry-title">Star this repo on GitHub</div>
+              <div className="mk-getstarted-entry-sub">
+                Prefer to do it manually. We'll verify after.
+              </div>
+            </div>
+          </button>
+        </div>
+      )}
+
       {step === "signin" && (
         <div className="mk-getstarted-panel">
-          <h3>Sign in with GitHub</h3>
+          <h3>
+            {flow === "manual" ? "Claim your card" : "Sign in with GitHub"}
+          </h3>
           <p>
-            We use GitHub for identity only. No repo access. No cloning. The
-            token we generate next is scoped to your machine.
+            {flow === "manual"
+              ? "We opened the repo in a new tab. Star it there, then sign in here so we can verify and issue your card token."
+              : "We use GitHub for identity and to star the repo for you. The card token we generate next is scoped to your machine."}
           </p>
           <button
             type="button"
@@ -192,14 +287,14 @@ export function GetStarted() {
         </div>
       )}
 
-      {step === "star" && (
+      {step === "star" && flow === "oauth" && (
         <div className="mk-getstarted-panel">
           <h3>Star the repo</h3>
-          <p>Something magical is coming. Hit the star to unlock your card token.</p>
+          <p>One click. We'll send the star, then hand you the token.</p>
           <div ref={starRef} className="mk-getstarted-star-wrap">
             <button
               type="button"
-              onClick={handleStar}
+              onClick={handleStarOAuth}
               disabled={working}
               className="mk-btn mk-btn-primary mk-getstarted-btn"
             >
@@ -207,6 +302,38 @@ export function GetStarted() {
               {working ? "Starring..." : "Star on GitHub"}
             </button>
           </div>
+        </div>
+      )}
+
+      {step === "star" && flow === "manual" && (
+        <div className="mk-getstarted-panel">
+          <h3>Verify your star</h3>
+          <p>
+            Once you've starred{" "}
+            <a
+              href={GITHUB_REPO_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="mk-getstarted-link"
+            >
+              pella-labs/bematist
+            </a>
+            , click below. We check the public starred endpoint on your account.
+          </p>
+          <div ref={starRef} className="mk-getstarted-star-wrap">
+            <button
+              type="button"
+              onClick={handleVerifyStar}
+              disabled={working}
+              className="mk-btn mk-btn-primary mk-getstarted-btn"
+            >
+              <StarIcon />
+              {working ? "Checking..." : "I've starred it"}
+            </button>
+          </div>
+          {verifyError && (
+            <p className="mk-getstarted-error">{verifyError}</p>
+          )}
         </div>
       )}
 
@@ -258,7 +385,7 @@ export function GetStarted() {
 
 function GithubMark() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
     </svg>
   );
@@ -266,7 +393,7 @@ function GithubMark() {
 
 function StarIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.562.562 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
     </svg>
   );

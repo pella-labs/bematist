@@ -8,7 +8,7 @@ import { CardPage } from "./CardPage";
  * Client-only mount wrapper for CardPage. CardPage reads navigator.share,
  * devicePixelRatio, and other browser-only globals during render, which
  * hydrates differently than SSR output. We suppress the server render and
- * match the pharos (Vite) original's client-only behavior.
+ * match the original Vite implementation's client-only behavior.
  */
 export function CardMount({ demoData }: { demoData?: CardData } = {}) {
   const [mounted, setMounted] = useState(false);

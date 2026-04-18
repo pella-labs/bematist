@@ -29,6 +29,9 @@ function init() {
   _auth = getAuth(_app);
   _provider = new GithubAuthProvider();
   _provider.addScope("read:user");
+  // `public_repo` enables the "Star it for me" OAuth flow (PUT /user/starred).
+  // Users can also star manually on github.com and verify via the public
+  // `/api/github/check-star` endpoint — see GetStarted for both paths.
   _provider.addScope("public_repo");
 }
 

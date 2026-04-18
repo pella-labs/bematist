@@ -829,6 +829,66 @@
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
 }
 
+.bematist-marketing .mk-getstarted-entry {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.bematist-marketing .mk-getstarted-entry-card {
+  text-align: left;
+  padding: 20px;
+  border: 1px solid var(--mk-border);
+  border-radius: 10px;
+  background: var(--mk-bg-elevated);
+  color: var(--mk-ink);
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, transform 0.18s;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: inherit;
+}
+
+.bematist-marketing .mk-getstarted-entry-card:hover {
+  border-color: rgba(110, 138, 111, 0.45);
+  background: var(--mk-bg);
+  transform: translateY(-1px);
+}
+
+.bematist-marketing .mk-getstarted-entry-title {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 16px;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+
+.bematist-marketing .mk-getstarted-entry-sub {
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 12px;
+  color: var(--mk-ink-muted);
+  line-height: 1.45;
+}
+
+.bematist-marketing .mk-getstarted-link {
+  color: var(--mk-accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.bematist-marketing .mk-getstarted-link:hover { color: var(--mk-ink); }
+
+.bematist-marketing .mk-getstarted-error {
+  font-size: 12px;
+  color: #e07b7b;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  margin-top: 4px;
+}
+
+@media (max-width: 600px) {
+  .bematist-marketing .mk-getstarted-entry { grid-template-columns: 1fr; }
+}
+
 /* ─── Demo page ────────────────────────────────────────────────── */
 .bematist-marketing .mk-demo {
   padding: 80px var(--mk-grid-size);
@@ -852,7 +912,7 @@
   overflow: hidden;
 }
 
-/* Embed the pharos card inside the demo column (originally position:fixed) */
+/* Embed the shareable card inside the demo column (originally position:fixed) */
 .bematist-marketing .mk-demo-card-host .card-scene {
   position: absolute;
   top: 50%;
@@ -892,11 +952,11 @@
 }
 
 /* Tone down the holo shimmer to fit the Bematist aesthetic */
-.bematist-marketing .mk-demo-card-host .pharos-holo {
+.bematist-marketing .mk-demo-card-host .card-holo {
   --card-opacity: 0.35;
 }
-.bematist-marketing .mk-demo-card-host .pharos-holo-shine { opacity: 0.35; }
-.bematist-marketing .mk-demo-card-host .pharos-holo-glare { opacity: 0.35; }
+.bematist-marketing .mk-demo-card-host .card-holo-shine { opacity: 0.35; }
+.bematist-marketing .mk-demo-card-host .card-holo-glare { opacity: 0.35; }
 
 .bematist-marketing .mk-demo h1 {
   font-size: clamp(28px, 3.4vw, 40px);

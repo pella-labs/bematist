@@ -1,7 +1,7 @@
-/* Radiant holo — simey/pokemon-cards-css verbatim (MIT), scoped to .pharos-holo.
+/* Radiant holo — simey/pokemon-cards-css verbatim (MIT), scoped to .card-holo.
    Hover-only. Neutral foil texture so no Pokemon image bleeds through. */
 
-.pharos-holo {
+.card-holo {
   --pointer-x: 50%;
   --pointer-y: 50%;
   --background-x: 50%;
@@ -32,8 +32,8 @@
   transition: box-shadow 0.4s ease;
 }
 
-.pharos-holo-shine,
-.pharos-holo-glare {
+.card-holo-shine,
+.card-holo-glare {
   position: absolute;
   inset: 0;
   border-radius: var(--card-radius);
@@ -42,10 +42,10 @@
   transition: opacity 0.3s ease;
 }
 
-.card-flipper:is(:hover, .is-hovering) .pharos-holo { --card-opacity: 1; }
+.card-flipper:is(:hover, .is-hovering) .card-holo { --card-opacity: 1; }
 
 /* SHINE — verbatim radiant-holo.css */
-.pharos-holo-shine {
+.card-holo-shine {
   z-index: 7;
   overflow: hidden;
   opacity: var(--card-opacity);
@@ -113,8 +113,8 @@
   mix-blend-mode: color-dodge;
 }
 
-.pharos-holo-shine::before,
-.pharos-holo-shine::after {
+.card-holo-shine::before,
+.card-holo-shine::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -122,7 +122,7 @@
 }
 
 /* rainbow sheen, clipped to the art window */
-.pharos-holo-shine::after {
+.card-holo-shine::after {
   clip-path: var(--clip);
   -webkit-clip-path: var(--clip);
   background-image:
@@ -146,7 +146,7 @@
 }
 
 /* glitter */
-.pharos-holo-shine::before {
+.card-holo-shine::before {
   z-index: 2;
   background-image:
     var(--glitter),
@@ -164,7 +164,7 @@
 }
 
 /* glare — simey's hard-light radial */
-.pharos-holo-glare {
+.card-holo-glare {
   z-index: 8;
   clip-path: var(--clip-borders);
   -webkit-clip-path: var(--clip-borders);
@@ -182,8 +182,8 @@
    Firefox renders color-dodge / hard-light blends much brighter than WebKit/Blink.
    Damp the shine + glare intensity so the card doesn't turn into a white flashlight. */
 @supports (-moz-appearance: none) {
-  .pharos-holo-shine { filter: brightness(.35) contrast(1.5) saturate(1.3); opacity: calc(var(--card-opacity) * 0.55); }
-  .pharos-holo-shine::after { filter: brightness(.4) contrast(2) saturate(1.4); }
-  .pharos-holo-shine::before { filter: brightness(.5) contrast(1.4) saturate(.4); }
-  .pharos-holo-glare { opacity: calc(var(--card-opacity) * 0.6); filter: brightness(.85) contrast(1.2); }
+  .card-holo-shine { filter: brightness(.35) contrast(1.5) saturate(1.3); opacity: calc(var(--card-opacity) * 0.55); }
+  .card-holo-shine::after { filter: brightness(.4) contrast(2) saturate(1.4); }
+  .card-holo-shine::before { filter: brightness(.5) contrast(1.4) saturate(.4); }
+  .card-holo-glare { opacity: calc(var(--card-opacity) * 0.6); filter: brightness(.85) contrast(1.2); }
 }

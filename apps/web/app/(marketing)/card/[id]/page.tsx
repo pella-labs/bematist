@@ -3,7 +3,7 @@ import { CardMount } from "../../_card/CardMount";
 
 export const metadata: Metadata = {
   title: "Bematist Card",
-  description: "A private, shareable snapshot of a developer's coding-agent activity.",
+  description: "A shareable snapshot of a developer's coding-agent activity.",
 };
 
 export default function CardByIdPage() {
