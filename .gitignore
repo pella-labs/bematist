@@ -87,3 +87,4 @@ STUDY_GUIDE.md
 .claude/worktrees/
 
 docs/superpowers/
+serviceAccountKey.json

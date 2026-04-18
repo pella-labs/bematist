@@ -82,6 +82,11 @@ const statsSchema = z
           .optional(),
       })
       .strict(),
+    // cursor / goose are optional and accepted with an open shape — we only
+    // render claude/codex on the card today, but grammata's readAll() emits
+    // these top-level keys, so we must not 400 on them.
+    cursor: z.record(z.string(), z.unknown()).optional(),
+    goose: z.record(z.string(), z.unknown()).optional(),
     // highlights is optional and accepts an open shape for forward-compat
     highlights: z.record(z.string(), z.unknown()).optional(),
   })

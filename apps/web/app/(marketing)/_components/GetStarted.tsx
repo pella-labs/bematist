@@ -228,7 +228,7 @@ export function GetStarted() {
     }
   };
 
-  const cliCommand = cardToken ? `npx bematist card --token ${cardToken}` : "";
+  const cliCommand = cardToken ? `npx grammata pharos --token ${cardToken}` : "";
 
   const handleCopy = () => {
     if (!cliCommand) return;

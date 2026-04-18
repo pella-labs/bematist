@@ -412,7 +412,10 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
         setShowHint(true);
       }
     }
-    animate();
+    // Schedule via RAF rather than running synchronously so that if React
+    // StrictMode mounts + unmounts + re-mounts in dev, cleanup can cancel
+    // the pending frame before it ever paints — only one animation plays.
+    animId = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animId);
   }, [data]);
 
@@ -590,24 +593,28 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
     }
   };
 
-  if (error)
+  if (error) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: "#8FA6BB" }}
+        style={{
+          minHeight: "60vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "rgba(237,232,222,0.6)",
+          fontFamily: "var(--font-mk-mono, monospace)",
+          fontSize: 13,
+          letterSpacing: "0.04em",
+        }}
       >
-        <p className="text-black/40 text-lg">{error}</p>
+        {error}
       </div>
     );
-  if (!data)
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: "#8FA6BB" }}
-      >
-        <div className="w-8 h-8 border-4 border-[#5A7B9B] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+  }
+  // Pre-data: render nothing. Keeps the container transparent so the
+  // marketing shell shows through, and avoids a visible loading spinner
+  // flashing before the flip animation takes over.
+  if (!data) return null;
 
   const s = data.stats;
   const hl = s.highlights;
@@ -1539,11 +1546,15 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
         background: "transparent",
         overflow: "hidden",
         width: "100%",
-        height: "100%",
+        // Explicit height so the absolute-positioned controls (toggle at
+        // top, dots + share-bar at bottom, side-nav at middle) sit inside
+        // THIS pane — not on top of the sticky nav or footer.
+        minHeight: "max(820px, calc(100vh - 120px))",
         WebkitFontSmoothing: "antialiased",
         position: "relative",
       }}
     >
+
       {/* Top bar: source toggle + theme toggle */}
       <div className={`global-toggle ${showShare ? "show" : ""}`}>
         {s.codex.sessions > 0 && (

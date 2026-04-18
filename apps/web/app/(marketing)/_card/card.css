@@ -1,12 +1,12 @@
 /* Card Scene */
 .card-scene {
-  position: fixed;
+  position: absolute;
   z-index: 10;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -52%);
-  width: min(380px, calc(100vw - 40px));
-  height: min(540px, calc(100vh - 180px));
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100vw - 48px));
+  height: min(600px, calc(100vh - 280px));
   perspective: 1200px;
   -webkit-perspective: 1200px;
   pointer-events: none;
@@ -845,9 +845,9 @@
 
 /* Global source toggle */
 .global-toggle {
-  position: fixed;
+  position: absolute;
   z-index: 20;
-  top: 28px;
+  top: 24px;
   left: 50%;
   transform: translateX(-50%);
   opacity: 0;
@@ -1731,9 +1731,9 @@
 
 /* Card navigation arrows */
 .card-nav-side {
-  position: fixed;
+  position: absolute;
   z-index: 20;
-  top: 48%;
+  top: 50%;
   transform: translateY(-50%);
   width: 36px;
   height: 36px;
@@ -1816,10 +1816,10 @@
 
 /* Page dots — below card */
 .card-page-dots {
-  position: fixed;
+  position: absolute;
   z-index: 20;
   left: 50%;
-  bottom: 88px;
+  bottom: 72px;
   transform: translateX(-50%);
   display: flex;
   gap: 8px;
@@ -1845,8 +1845,8 @@
 
 /* Share bar */
 .share-bar {
-  position: fixed;
-  bottom: 32px;
+  position: absolute;
+  bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
