@@ -31,17 +31,17 @@ export interface SeedPlan {
  * Build the 3-org / 100-dev control-plane plan. Deterministic.
  *
  * Sizes match the perf brief (CLAUDE.md §Testing Rules + m2-gate A15):
- *  - acme-small:  7 devs
- *  - bolt-mid:   33 devs
- *  - crux-large: 60 devs
+ *  - acmesmall:  7 devs
+ *  - boltmid:   33 devs
+ *  - cruxlarge: 60 devs
  * Total: 100 devs × 90 days × 100 events/day = 900 000 events. Long-tail
  * filler pushes the insert count past 1 000 000 per the INT11 gate.
  */
 export function buildPlan(rng: Rng, startDay = new Date("2026-01-15T00:00:00Z")): SeedPlan {
   const orgs: SeedOrg[] = [
-    { id: rng.uuid(), slug: "acme-small", name: "Acme Small (7)", devCount: 7 },
-    { id: rng.uuid(), slug: "bolt-mid", name: "Bolt Mid (33)", devCount: 33 },
-    { id: rng.uuid(), slug: "crux-large", name: "Crux Large (60)", devCount: 60 },
+    { id: rng.uuid(), slug: "acmesmall", name: "Acme Small (7)", devCount: 7 },
+    { id: rng.uuid(), slug: "boltmid", name: "Bolt Mid (33)", devCount: 33 },
+    { id: rng.uuid(), slug: "cruxlarge", name: "Crux Large (60)", devCount: 60 },
   ];
   const devs: SeedDev[] = [];
   for (const org of orgs) {

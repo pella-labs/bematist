@@ -6,7 +6,7 @@ CLAUDE.md §Key Constraints (p95 dashboard < 2s, p99 ingest < 100ms).
 
 ## Shape
 
-- 3 orgs (`acme-small`, `bolt-mid`, `crux-large`) seeded via the control
+- 3 orgs (`acmesmall`, `boltmid`, `cruxlarge`) seeded via the control
   plane (`orgs`, `users`, `developers`).
 - 100 developers (7 + 33 + 60) spread across the three orgs, one SSO subject
   each, deterministic `stable_hash`.
