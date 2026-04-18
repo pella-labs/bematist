@@ -39,22 +39,26 @@ async function binarySha256(path: string): Promise<string | null> {
 }
 
 async function reachable(endpoint: string): Promise<Check> {
+  // Bematist ingest exposes `/healthz` (not `/health`) per contract 02 and
+  // apps/ingest/src/server.ts. Probing the wrong path returned 404 and
+  // rendered a misleading "warn" on every doctor run — M4 Windows
+  // onboarding flagged the spurious warning.
   try {
-    const res = await fetch(`${endpoint}/health`, {
+    const res = await fetch(`${endpoint}/healthz`, {
       method: "GET",
       signal: AbortSignal.timeout(5_000),
     });
     return {
       name: "ingest reachable",
-      ok: res.ok || res.status === 404, // 404 tolerable — some backends don't expose /health
-      detail: `${endpoint}/health → HTTP ${res.status}`,
+      ok: res.ok,
+      detail: `${endpoint}/healthz → HTTP ${res.status}`,
       severity: res.ok ? "info" : "warn",
     };
   } catch (e) {
     return {
       name: "ingest reachable",
       ok: false,
-      detail: `${endpoint}/health → ${String(e)}`,
+      detail: `${endpoint}/healthz → ${String(e)}`,
       severity: "warn",
     };
   }
