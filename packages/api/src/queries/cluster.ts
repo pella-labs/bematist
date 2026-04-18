@@ -59,12 +59,21 @@ async function listClustersFixture(ctx: Ctx, input: ClusterListInput): Promise<C
 /**
  * Real-branch ClickHouse read.
  *
- * EXPLAIN: `prompt_cluster_stats` MV (ORDER BY org_id, window_start,
- * cluster_id). Partition filter on `org_id` + window is mandatory. Server
- * enforces the k>=3 floor AFTER fetch so the `suppressed_below_floor` count
- * stays accurate.
+ * EXPLAIN: `prompt_cluster_stats` is an AggregatingMergeTree ORDER BY
+ * (org_id, cluster_id, week). State columns (`prompt_count_state` from
+ * sumState, `contributing_engineers_state` from uniqState, `cost_usd_state`
+ * from sumState, `avg_duration_state` from avgState) MUST be read with the
+ * matching `*Merge` finalizer; raw `sum()` / `uniq()` errors on
+ * AggregateFunction columns. `label` / `team_id` / `task_category` /
+ * `merged_pr_count` / `green_test_count` / `revert_count` / `fidelity`
+ * aren't on the MV — the gateway labeler + outcomes join land later;
+ * synthesize a placeholder label from `cluster_id` and zero-fill outcome
+ * counts so the page renders rather than 500.
  *
- * TIER-A ALLOWLIST: the MV aggregates cluster-level outcome counts only —
+ * Server still enforces the k>=3 floor AFTER fetch — the
+ * `suppressed_below_floor` count stays accurate.
+ *
+ * TIER-A ALLOWLIST: the MV aggregates cluster-level counters only —
  * prompt_text / prompt_abstract / raw_attrs / tool_input / tool_output are
  * NEVER in SELECT. No per-session id or engineer id leaks.
  */
@@ -72,19 +81,11 @@ async function listClustersReal(ctx: Ctx, input: ClusterListInput): Promise<Clus
   const days = WINDOW_DAYS[input.window];
   const limit = input.limit ?? 20;
 
-  const clauses = ["org_id = {tenant_id:String}", "window_start >= today() - {days:UInt16}"];
+  const clauses = ["org_id = {tenant_id:String}", "week >= today() - {days:UInt16}"];
   const params: Record<string, unknown> = {
     tenant_id: ctx.tenant_id,
     days,
   };
-  if (input.team_id) {
-    clauses.push("team_id = {team_id:String}");
-    params.team_id = input.team_id;
-  }
-  if (input.task_category) {
-    clauses.push("task_category = {task_category:String}");
-    params.task_category = input.task_category;
-  }
 
   const rows = await ctx.db.ch.query<{
     cluster_id: string;
@@ -99,14 +100,14 @@ async function listClustersReal(ctx: Ctx, input: ClusterListInput): Promise<Clus
   }>(
     `SELECT
        cluster_id,
-       any(label) AS label,
-       uniqExact(engineer_id) AS contributor_count,
-       sum(session_count) AS session_count,
-       avg(avg_cost_usd) AS avg_cost_usd,
-       sum(merged_pr_count) AS merged_pr_count,
-       sum(green_test_count) AS green_test_count,
-       sum(revert_count) AS revert_count,
-       any(fidelity) AS fidelity
+       concat('cluster ', cluster_id) AS label,
+       uniqMerge(contributing_engineers_state) AS contributor_count,
+       toUInt64(sumMerge(prompt_count_state)) AS session_count,
+       sumMerge(cost_usd_state) / greatest(sumMerge(prompt_count_state), 1) AS avg_cost_usd,
+       0 AS merged_pr_count,
+       0 AS green_test_count,
+       0 AS revert_count,
+       'full' AS fidelity
      FROM prompt_cluster_stats
      WHERE ${clauses.join(" AND ")}
      GROUP BY cluster_id

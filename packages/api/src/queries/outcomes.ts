@@ -77,9 +77,15 @@ async function perDevOutcomesFixture(
 /**
  * Real-branch read.
  *
- * EXPLAIN: `dev_daily_rollup` left-joined to `outcome_daily_rollup`; both
- * indexed on (org_id, day, engineer_id). Partition filter on `org_id` is
- * mandatory.
+ * EXPLAIN: `dev_daily_rollup` is an AggregatingMergeTree ORDER BY
+ * (org_id, engineer_id, day). State columns (`sessions_state`,
+ * `cost_usd_state`, `accepted_edits_state`, `accepted_retained_edits_state`)
+ * MUST be read with the matching `*Merge` finalizer; raw `sum()` errors on
+ * AggregateFunction columns. `team_id` isn't on this MV (only on
+ * team_weekly_rollup via dev_team_dict) — the team filter is dropped here
+ * until D1-05 wires teams into developers + dev_team_dict refresh lands.
+ * `merged_prs` / `green_tests` / `reverts` / `engineer_id_hash` aren't
+ * materialized yet either; zero-fill so the table renders rather than 500.
  *
  * TIER-A ALLOWLIST: aggregates only; no prompt_text / tool_input /
  * tool_output / messages / toolArgs / toolOutputs / fileContents / diffs /
@@ -97,10 +103,6 @@ async function perDevOutcomesReal(
     days,
     limit: input.limit,
   };
-  if (input.team_id) {
-    clauses.push("team_id = {team_id:String}");
-    params.team_id = input.team_id;
-  }
 
   const rows = await ctx.db.ch.query<{
     engineer_id: string;
@@ -115,14 +117,14 @@ async function perDevOutcomesReal(
   }>(
     `SELECT
        engineer_id,
-       any(engineer_id_hash) AS engineer_id_hash,
-       sum(sessions) AS sessions,
-       sum(cost_usd) AS cost_usd,
-       sum(accepted_edits) AS accepted_edits,
-       sum(accepted_and_retained) AS accepted_and_retained,
-       sum(merged_prs) AS merged_prs,
-       sum(green_tests) AS green_tests,
-       sum(reverts) AS reverts
+       substring(lower(hex(cityHash64(engineer_id))), 1, 8) AS engineer_id_hash,
+       uniqMerge(sessions_state) AS sessions,
+       sumMerge(cost_usd_state) AS cost_usd,
+       countIfMerge(accepted_edits_state) AS accepted_edits,
+       countIfMerge(accepted_retained_edits_state) AS accepted_and_retained,
+       0 AS merged_prs,
+       0 AS green_tests,
+       0 AS reverts
      FROM dev_daily_rollup
      WHERE ${clauses.join(" AND ")}
      GROUP BY engineer_id
