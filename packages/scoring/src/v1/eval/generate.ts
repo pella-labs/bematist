@@ -52,12 +52,15 @@ function logNormal(rng: () => number, mu: number, sigma: number): number {
 }
 
 interface ArchetypeSpec {
-  tag: ArchetypeTag;
+  tag: GeneratedArchetype;
   /** Relative share of the output — used to split `count`. */
   share: number;
   sample: (rng: () => number) => ScoringInput["signals"];
 }
 
+// Note: `ARCHETYPE_SAMPLERS` only contains the 5 generatable archetypes;
+// `regression-case` is hand-curated-only (see `archetypes.ts`). `ArchetypeTag`
+// includes it for schema completeness but the generator never emits it.
 const ARCHETYPE_SAMPLERS: ArchetypeSpec[] = [
   {
     tag: "low-performer",
@@ -197,16 +200,52 @@ const ARCHETYPE_SAMPLERS: ArchetypeSpec[] = [
   },
 ];
 
+/** Archetype tags the generator can sample from (subset of `ArchetypeTag` — */
+/* `regression-case` is hand-curated-only). */
+export type GeneratedArchetype = Exclude<ArchetypeTag, "regression-case">;
+
 /**
- * Generate `count` snapshot cases with seeded RNG. Archetype distribution
- * matches `ARCHETYPE_SAMPLERS[*].share`.
+ * Per-archetype share overrides. Keys are archetype tags the generator can
+ * sample; values are the relative share (any non-negative number — the
+ * generator renormalizes). Unspecified tags keep their default
+ * `ARCHETYPE_SAMPLERS[*].share`.
  */
-export function generateCases(seed: number, count: number): FixtureCase[] {
+export type ArchetypeShares = Partial<Record<GeneratedArchetype, number>>;
+
+export interface GenerateOptions {
+  /** Case id prefix — defaults to `"gen"`. Held-out uses `"val"`. */
+  idPrefix?: string;
+  /** Note annotation appended to each case — defaults to seed-only string. */
+  note?: string;
+  /**
+   * Override the archetype mix (train default vs held-out). Any subset is
+   * accepted; unspecified tags keep defaults. Values are renormalized so the
+   * mix sums to 1.
+   */
+  shares?: ArchetypeShares;
+}
+
+/**
+ * Generate `count` snapshot cases with seeded RNG. Default archetype
+ * distribution matches `ARCHETYPE_SAMPLERS[*].share`. Pass `options.shares`
+ * to sample from a different mix (e.g. for held-out splits — per CLAUDE.md
+ * §Scoring Rules, the validation split must be sampled differently than
+ * the train split).
+ */
+export function generateCases(
+  seed: number,
+  count: number,
+  options: GenerateOptions = {},
+): FixtureCase[] {
   const rng = makeRng(seed);
   const cases: FixtureCase[] = [];
+  const idPrefix = options.idPrefix ?? "gen";
+  const note = options.note ?? `Auto-generated snapshot (seed=${seed}).`;
 
-  // Compute per-archetype quota.
-  const quotas = ARCHETYPE_SAMPLERS.map((a) => Math.round(a.share * count));
+  const effectiveShares = resolveShares(options.shares);
+
+  // Compute per-archetype quota from the effective shares.
+  const quotas = ARCHETYPE_SAMPLERS.map((a) => Math.round(effectiveShares[a.tag] * count));
   // Fix rounding drift by assigning the remainder to `average` (index 1).
   const quotaSum = quotas.reduce((a, b) => a + b, 0);
   const averageIdx = 1;
@@ -221,7 +260,7 @@ export function generateCases(seed: number, count: number): FixtureCase[] {
       const input: ScoringInput = {
         metric_version: "ai_leverage_v1",
         scope: "engineer",
-        scope_id: `eng_gen_${spec.tag}_${i.toString().padStart(3, "0")}`,
+        scope_id: `eng_${idPrefix}_${spec.tag}_${i.toString().padStart(3, "0")}`,
         cohort_id: "cohort_mixed_org",
         window: { from: "2026-03-01T00:00:00Z", to: "2026-03-31T23:59:59Z" },
         signals,
@@ -229,7 +268,7 @@ export function generateCases(seed: number, count: number): FixtureCase[] {
       };
       const out = score(input);
       cases.push({
-        case_id: `gen_${spec.tag}_${i.toString().padStart(3, "0")}`,
+        case_id: `${idPrefix}_${spec.tag}_${i.toString().padStart(3, "0")}`,
         archetype_tag: spec.tag,
         input,
         expected_final_als: round1(out.ai_leverage_score),
@@ -241,12 +280,37 @@ export function generateCases(seed: number, count: number): FixtureCase[] {
           adoption_depth: round1(out.subscores.adoption_depth),
           team_impact: round1(out.subscores.team_impact),
         },
-        note: `Auto-generated snapshot (seed=${seed}).`,
+        note,
       });
     }
   }
 
   return cases;
+}
+
+/**
+ * Merge default shares with any override, then renormalize to sum to 1. Any
+ * tag missing from the override keeps its `ARCHETYPE_SAMPLERS` default.
+ */
+function resolveShares(overrides?: ArchetypeShares): Record<GeneratedArchetype, number> {
+  const base = Object.fromEntries(
+    ARCHETYPE_SAMPLERS.map((a) => [a.tag, a.share] as const),
+  ) as Record<GeneratedArchetype, number>;
+  if (overrides !== undefined) {
+    for (const [tag, value] of Object.entries(overrides)) {
+      if (typeof value === "number" && value >= 0 && tag in base) {
+        base[tag as GeneratedArchetype] = value;
+      }
+    }
+  }
+  const total = Object.values(base).reduce((s, v) => s + v, 0);
+  if (total <= 0) {
+    throw new Error("Archetype shares must sum to a positive value");
+  }
+  for (const key of Object.keys(base) as GeneratedArchetype[]) {
+    base[key] = base[key] / total;
+  }
+  return base;
 }
 
 function round1(n: number): number {
