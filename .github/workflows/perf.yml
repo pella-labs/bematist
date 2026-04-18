@@ -56,7 +56,7 @@ on:
       seed_target:
         description: "PERF_SEED_TOTAL_TARGET — dial down for triage runs"
         required: false
-        default: "1000000"
+        default: "600000"
         type: string
 
 permissions:
