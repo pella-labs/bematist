@@ -6,7 +6,13 @@
 import { toPng } from "html-to-image";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getCard } from "@/lib/firebase/api";
+// Client-side card fetch via the public /api/card/:id endpoint. Response
+// shape is locked in `apps/web/app/api/card/[id]/route.ts`.
+async function getCard(cardId: string) {
+  const res = await fetch(`/api/card/${cardId}`);
+  if (!res.ok) throw new Error("Card not found");
+  return res.json();
+}
 
 import {
   type AchievementIcon,

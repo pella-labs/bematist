@@ -155,6 +155,11 @@ function makeAuth() {
       github: {
         clientId: GITHUB_CLIENT_ID,
         clientSecret: GITHUB_CLIENT_SECRET,
+        // `public_repo` lets /api/card/star-repo send the star on behalf of
+        // the signed-in user. `read:user` is the GitHub default and gives us
+        // login + avatar URL, though we still hit api.github.com/user/{id}
+        // to resolve the numeric provider account_id → login.
+        scope: ["read:user", "public_repo"],
       },
     },
     emailAndPassword: {
