@@ -38,9 +38,9 @@ export function DashboardShot() {
             lineHeight: 1.55,
           }}
         >
-          Every personal card pours into one place. Spend by project, wins by workflow, anomalies
-          before they cost a sprint, and the patterns your strongest engineers use that the rest of
-          the team could be copying.
+          One view across every agent, every repo, every engineer. Spend by project, wins by
+          workflow, sessions that drift into loops, and the patterns your strongest engineers use
+          that the rest of the team could be copying.
         </p>
       </div>
 

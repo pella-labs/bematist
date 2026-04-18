@@ -6,9 +6,9 @@ import { BrandMonolith } from "../_components/BrandMonolith";
 import { DashboardShot } from "../_components/DashboardShot";
 import { HeroGrid } from "../_components/HeroGrid";
 
-const HOME_TITLE = "Bematist · The dashboard for AI-assisted engineering";
+const HOME_TITLE = "Bematist · The instrument for AI-assisted engineering";
 const HOME_DESCRIPTION =
-  "Bematist is the dashboard for teams building with coding agents. Your personal card is the 30-second hook. The dashboard is where you see where every dollar lands, which workflows compound, and which wins are worth copying.";
+  "Bematist is the analytics platform for AI-assisted software development. See where every dollar lands, which workflows ship code, and the patterns worth copying across your team.";
 
 export const metadata: Metadata = {
   title: HOME_TITLE,
@@ -24,6 +24,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: HOME_TITLE,
     description: HOME_DESCRIPTION,
+    site: "@bematist_dev",
   },
 };
 
@@ -31,7 +32,7 @@ const ADAPTERS = [
   {
     name: "Claude Code",
     iface: "CLI",
-    notes: "Full native OTEL. Tokens, envelopes, tool calls, timings.",
+    notes: "Tokens, sessions, tool calls, accepted edits.",
   },
   {
     name: "Cursor",
@@ -48,18 +49,18 @@ const ADAPTERS = [
 const FEATURES = [
   {
     eyebrow: "01",
-    title: "Dashboard you'll actually open",
-    body: "Spend by project, by developer, by week. Which agents produced the wins. Which prompts keep paying off. A surface your team will return to on Monday morning.",
+    title: "See where the money goes",
+    body: "One lightweight agent per machine detects the AI coding tools your engineers already use. Tokens, cost, sessions, actions — unified across every agent, in one company-owned backend.",
   },
   {
     eyebrow: "02",
-    title: "Spend, tied to shipped code",
-    body: "Every accepted edit joins a git commit. Every commit joins a merged PR. You see cost per shipped change, not cost per token.",
+    title: "Tie spend to shipped code",
+    body: "Every accepted edit joins a commit. Every commit joins a merged PR. You see cost per shipped change, not cost per token — and which tools are creating real leverage.",
   },
   {
     eyebrow: "03",
-    title: "Shareable cards on the way in",
-    body: "A personal card lands as soon as the collector runs — fun to share, fast to try. The real depth is the dashboard, where the card data keeps working for you and your team.",
+    title: "Learn the patterns worth copying",
+    body: "Spot inefficient loops, expensive model routing, and workflows that burn tokens without results. Surface the prompts and patterns your strongest engineers use that the rest of the team could adopt.",
   },
 ] as const;
 
@@ -72,15 +73,16 @@ export default function MarketingHome() {
         <div className="mk-hero-grid">
           <div className="mk-hero-content">
             <div className="mk-sys" style={{ marginBottom: 20 }}>
-              open-source. forever.
+              open-source. self-hostable.
             </div>
             <h1>
-              See what AI is <em>actually shipping</em>.
+              Where is all your AI money <em>actually going</em>?
             </h1>
             <p>
-              Bematist is the dashboard for teams building with coding agents. See where every
-              dollar lands, which workflows compound, and the wins your team should be copying.
-              Start with a personal card in 30 seconds — the dashboard is where you stay.
+              AI coding agents are exploding across engineering teams — Claude Code, Cursor, Codex.
+              Spend is up, usage is everywhere, but the answer to "what are we getting back" is
+              still a black box. Bematist makes that system legible. Start with a personal card in
+              30 seconds; the dashboard is where your team lives.
             </p>
             <div className="mk-hero-actions">
               <Link href="/card" className="mk-btn mk-btn-primary">
@@ -110,7 +112,7 @@ export default function MarketingHome() {
       {/* Features */}
       <section aria-label="What the dashboard does">
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">01 / What the dashboard does</span>
+          <span className="mk-mono mk-xs">01 / What Bematist gives you</span>
         </div>
         <div className="mk-features">
           {FEATURES.map((f) => (
@@ -124,7 +126,7 @@ export default function MarketingHome() {
       </section>
 
       {/* Adapters */}
-      <section id="adapters">
+      <section>
         <div className="mk-section-header">
           <span className="mk-mono mk-xs">02 / Supported agents</span>
         </div>
@@ -143,7 +145,7 @@ export default function MarketingHome() {
                 <td style={{ color: "var(--mk-ink)" }}>{row.name}</td>
                 <td className="mk-muted">{row.iface}</td>
                 <td>
-                  <span className="mk-badge full">Full</span>
+                  <span className="mk-badge full">Shipped</span>
                 </td>
                 <td className="mk-muted">{row.notes}</td>
               </tr>
@@ -153,31 +155,31 @@ export default function MarketingHome() {
       </section>
 
       {/* Primary metric */}
-      <section className="mk-metric" aria-label="Primary metric">
+      <section className="mk-metric" aria-label="Outcome metric">
         <div className="mk-metric-visual">
-          <span className="mk-sys">PRIMARY METRIC</span>
+          <span className="mk-sys">OUTCOME METRIC</span>
           <div className="mk-metric-value">14.2x</div>
           <div className="mk-metric-label">
-            <strong>accepted_code_edits_per_dollar</strong>
+            <strong>accepted edits per dollar</strong>
             <br />
-            Joined across session, commit, and merged PR. Reverted hunks subtracted. Pricing version
-            pinned per capture.
+            The conversation shifts from "people are using AI" to "here is where AI is helping us
+            ship." Spend per merged PR, wins by workflow, wasted tokens by session.
           </div>
         </div>
         <div className="mk-metric-details">
-          <span className="mk-sys">ATTRIBUTION</span>
+          <span className="mk-sys">HOW IT JOINS</span>
           <ul className="mk-kv">
             <li>
               <span>Session event</span>
-              <span>code_edit_tool.decision=accept</span>
+              <span>accepted-edit decision</span>
             </li>
             <li>
               <span>Commit marker</span>
-              <span>opt-in AI-Assisted trailer</span>
+              <span>opt-in AI-assisted trailer</span>
             </li>
             <li>
               <span>Merge validation</span>
-              <span>GitHub webhook (HMAC)</span>
+              <span>GitHub webhook</span>
             </li>
             <li>
               <span>Revert window</span>
@@ -185,47 +187,47 @@ export default function MarketingHome() {
             </li>
             <li>
               <span>Dedup unit</span>
-              <span>(session_id, hunk_sha256)</span>
+              <span>session + hunk hash</span>
             </li>
           </ul>
         </div>
       </section>
 
-      {/* Privacy (condensed to three product-benefit cards) */}
-      <section id="privacy">
+      {/* AI Leverage Score */}
+      <section aria-label="AI Leverage Score">
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">03 / Capture modes</span>
+          <span className="mk-mono mk-xs">03 / AI Leverage Score</span>
         </div>
-        <div className="mk-tiers">
-          <div className="mk-tier">
-            <span className="mk-tier-label">MINIMAL</span>
-            <h3>Counters</h3>
+        <div className="mk-features">
+          <div className="mk-feature">
+            <span className="mk-feature-index">EFFECTIVENESS</span>
+            <h3>Outcomes, not activity</h3>
             <p>
-              Tokens, sessions, durations, routing. No payloads. For teams under the strictest
-              policies.
+              Sessions that end in shipped code counted one way. Sessions that burn tokens without a
+              result counted another. The score rewards results, not keystrokes.
             </p>
           </div>
-          <div className="mk-tier active">
-            <span className="mk-tier-label">DEFAULT</span>
-            <h3>Envelopes</h3>
+          <div className="mk-feature">
+            <span className="mk-feature-index">EFFICIENCY</span>
+            <h3>Token economy</h3>
             <p>
-              Counters plus secret-scrubbed prompt shape and file context. Enough to cluster work,
-              never enough to read it.
+              How much an engineer ships per dollar of model spend, normalized against peers doing
+              similar work. Not a leaderboard — a signal for where workflows compound.
             </p>
           </div>
-          <div className="mk-tier">
-            <span className="mk-tier-label">DIAGNOSTIC</span>
-            <h3>Full prompts</h3>
+          <div className="mk-feature">
+            <span className="mk-feature-index">ADOPTION</span>
+            <h3>Depth of use</h3>
             <p>
-              Opt-in per project by the engineer, or tenant-wide with signed config and cooldown.
-              Off by default.
+              Which agents, which workflows, which repos. Shows leaders where AI is actually part of
+              how the team works, and where it's still a tab that gets closed.
             </p>
           </div>
         </div>
       </section>
 
       {/* Install */}
-      <section id="install" className="mk-terminal-wrap">
+      <section className="mk-terminal-wrap">
         <span className="mk-sys" style={{ display: "block", marginBottom: 20 }}>
           04 / Install
         </span>
@@ -256,6 +258,34 @@ export default function MarketingHome() {
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">open http://localhost:9873</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Closing quote */}
+      <section className="mk-closing" aria-label="Closing">
+        <div className="mk-closing-inner">
+          <p className="mk-closing-quote">
+            The most expensive system your engineering org has ever bought may be the one you
+            understand the least.
+          </p>
+          <p className="mk-closing-body">
+            Bematist is the instrument for measuring it. One open-source platform that makes AI
+            spend legible, accountable, and tied to real engineering outcomes. The data was always
+            yours. We just made it legible.
+          </p>
+          <div className="mk-closing-actions">
+            <Link href="/card" className="mk-btn mk-btn-primary">
+              Grab your card
+            </Link>
+            <a
+              href="https://x.com/bematist_dev"
+              className="mk-btn mk-btn-ghost"
+              rel="noreferrer"
+              target="_blank"
+            >
+              Follow on X
+            </a>
           </div>
         </div>
       </section>
