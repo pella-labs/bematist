@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CardMount } from "../_card/CardMount";
 import { DEMO_CARD } from "../_card/demo-data";
 import { BrandMonolith } from "../_components/BrandMonolith";
 import { DashboardShot } from "../_components/DashboardShot";
 import { HeroGrid } from "../_components/HeroGrid";
-import { WrappedCard } from "../_components/WrappedCard";
 
 const HOME_TITLE = "Bematist · The dashboard for AI-assisted engineering";
 const HOME_DESCRIPTION =
@@ -83,7 +83,7 @@ export default function MarketingHome() {
               Start with a personal card in 30 seconds — the dashboard is where you stay.
             </p>
             <div className="mk-hero-actions">
-              <Link href="/demo" className="mk-btn mk-btn-primary">
+              <Link href="/card" className="mk-btn mk-btn-primary">
                 Grab your card
               </Link>
               <a
@@ -95,7 +95,9 @@ export default function MarketingHome() {
               </a>
             </div>
           </div>
-          <WrappedCard data={DEMO_CARD} />
+          <div className="mk-hero-card-slot">
+            <CardMount demoData={DEMO_CARD} compact />
+          </div>
         </div>
       </section>
 

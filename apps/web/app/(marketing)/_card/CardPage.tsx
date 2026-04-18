@@ -270,7 +270,10 @@ function getDailyColor(
   return "#3a5a45";
 }
 
-export function CardPage({ demoData }: { demoData?: CardData } = {}) {
+export function CardPage({
+  demoData,
+  compact = false,
+}: { demoData?: CardData; compact?: boolean } = {}) {
   const params = useParams<{ id?: string }>();
   const id = params?.id;
   const [data, setData] = useState<CardData | null>(demoData ?? null);
@@ -507,7 +510,13 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
   }, [handleNextPage, handlePrevPage]);
 
   const shareOnTwitter = () => {
-    const text = encodeURIComponent(`Check out my AI coding stats on Bematist! \u{1F680}\n\n`);
+    // Hook → product namecheck → CTA. @bematist_dev threads the tweet
+    // under the profile; the URL carries the sharer's card so viewers
+    // see the stats in the card preview, then click through to mint
+    // their own.
+    const text = encodeURIComponent(
+      `Where did my tokens go? @bematist_dev knows. Grab your card \u2192`,
+    );
     const url = encodeURIComponent(window.location.href);
     window.open(
       `https://x.com/intent/tweet?text=${text}&url=${url}`,
@@ -1546,13 +1555,14 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
         background: "transparent",
         overflow: "hidden",
         width: "100%",
-        // Explicit height so the absolute-positioned controls (toggle at
-        // top, dots + share-bar at bottom, side-nav at middle) sit inside
-        // THIS pane — not on top of the sticky nav or footer.
-        minHeight: "max(820px, calc(100vh - 120px))",
+        // Compact mode is used when embedded inside another layout (e.g.
+        // the hero column). Full mode is used for the standalone /card
+        // and /card/[id] pages where the card is the whole main pane.
+        minHeight: compact ? 720 : "max(900px, calc(100vh - 100px))",
         WebkitFontSmoothing: "antialiased",
         position: "relative",
       }}
+      data-compact={compact ? "true" : undefined}
     >
 
       {/* Top bar: source toggle + theme toggle */}
@@ -1664,38 +1674,43 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
         ))}
       </div>
 
-      <div className={`share-bar ${showShare ? "show" : ""}`}>
-        <button className="sb" title="Download PNG" onClick={handleDownload}>
-          <DownloadIcon />
-        </button>
-        <button className="sb" title="Copy image to clipboard" onClick={copyImage}>
-          <CopyIcon />
-        </button>
-        <button className="sb" title="Share on X" onClick={shareOnTwitter}>
-          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-          </svg>
-        </button>
-        {typeof navigator !== "undefined" && "share" in navigator && (
-          <button
-            className="sb"
-            title="Share"
-            onClick={async () => {
-              try {
-                await navigator.share({
-                  title: `${userName}'s Bematist Card`,
-                  text: "Check out my AI coding stats on Bematist!",
-                  url: window.location.href,
-                });
-              } catch {
-                /* user cancelled */
-              }
-            }}
-          >
-            <ShareIcon />
+      {/* Share bar hides in compact mode — no download/copy/share surface
+          makes sense on the landing hero, where there's no real card to
+          share yet. The full /card and /card/[id] pages keep it. */}
+      {!compact && (
+        <div className={`share-bar ${showShare ? "show" : ""}`}>
+          <button className="sb" title="Download PNG" onClick={handleDownload}>
+            <DownloadIcon />
           </button>
-        )}
-      </div>
+          <button className="sb" title="Copy image to clipboard" onClick={copyImage}>
+            <CopyIcon />
+          </button>
+          <button className="sb" title="Share on X" onClick={shareOnTwitter}>
+            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+          </button>
+          {typeof navigator !== "undefined" && "share" in navigator && (
+            <button
+              className="sb"
+              title="Share"
+              onClick={async () => {
+                try {
+                  await navigator.share({
+                    title: `${userName}'s Bematist Card`,
+                    text: "Where did my tokens go? @bematist_dev knows. Grab your card →",
+                    url: window.location.href,
+                  });
+                } catch {
+                  /* user cancelled */
+                }
+              }}
+            >
+              <ShareIcon />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Toast */}
       {toast && <div className="card-toast">{toast}</div>}

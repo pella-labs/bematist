@@ -3,33 +3,33 @@ import { CardMount } from "../_card/CardMount";
 import { DEMO_CARD } from "../_card/demo-data";
 import { GetStarted } from "../_components/GetStarted";
 
-const DEMO_TITLE = "Try Bematist · Grab your card";
-const DEMO_DESCRIPTION =
+const CARD_TITLE = "Try Bematist · Grab your card";
+const CARD_DESCRIPTION =
   "Grab your personal Bematist card in 30 seconds from local Claude Code, Cursor, and Codex sessions — then unlock the full dashboard your team will actually use.";
 
 export const metadata: Metadata = {
-  title: DEMO_TITLE,
-  description: DEMO_DESCRIPTION,
-  alternates: { canonical: "/demo" },
+  title: CARD_TITLE,
+  description: CARD_DESCRIPTION,
+  alternates: { canonical: "/card" },
   openGraph: {
     type: "website",
-    url: "/demo",
-    title: DEMO_TITLE,
-    description: DEMO_DESCRIPTION,
+    url: "/card",
+    title: CARD_TITLE,
+    description: CARD_DESCRIPTION,
   },
   twitter: {
     card: "summary_large_image",
-    title: DEMO_TITLE,
-    description: DEMO_DESCRIPTION,
+    title: CARD_TITLE,
+    description: CARD_DESCRIPTION,
   },
 };
 
-export default function DemoPage() {
+export default function CardLandingPage() {
   return (
     <section className="mk-demo">
       <div>
         <div className="mk-sys" style={{ marginBottom: 16 }}>
-          {"SYS.DEMO // personal card"}
+          {"SYS.CARD // personal card"}
         </div>
         <h1>Your card is the hook.</h1>
         <p>

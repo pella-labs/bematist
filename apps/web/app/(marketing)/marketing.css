@@ -237,6 +237,16 @@
   );
 }
 
+/* ─── Hero card slot — holds the interactive demo card ────────── */
+.bematist-marketing .mk-hero-card-slot {
+  position: relative;
+  width: 100%;
+  /* matches CardPage compact mode minHeight so the hero grid row
+     reserves the right amount of vertical space without fighting
+     the absolute-positioned controls inside the card pane. */
+  min-height: 720px;
+}
+
 /* ─── Adapters table ───────────────────────────────────────────── */
 .bematist-marketing .mk-table {
   width: 100%;
