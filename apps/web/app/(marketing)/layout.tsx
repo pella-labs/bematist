@@ -14,6 +14,9 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
             bematist
           </Link>
           <div className="mk-nav-links">
+            <Link href="/install" className="mk-nav-link">
+              Install
+            </Link>
             <a
               href={TWITTER_URL}
               className="mk-btn mk-btn-ghost mk-btn-icon"
@@ -42,6 +45,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
             </span>
           </div>
           <div>
+            <Link href="/install">Install</Link>
             <a href={TWITTER_URL} rel="noreferrer" target="_blank">
               Follow on X
             </a>

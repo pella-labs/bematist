@@ -220,7 +220,7 @@ export function GetStarted() {
         const { token } = await generateCardToken();
         setCardToken(token);
       } else {
-        setCardToken(`bematist_demo-${Math.random().toString(36).slice(2, 10)}`);
+        setCardToken(`bm_demo-${Math.random().toString(36).slice(2, 10)}`);
       }
       setStep("command");
     } finally {

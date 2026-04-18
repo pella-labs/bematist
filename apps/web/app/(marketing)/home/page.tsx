@@ -258,40 +258,31 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      {/* Install */}
-      <section className="mk-terminal-wrap">
-        <span className="mk-sys" style={{ display: "block", marginBottom: 20 }}>
+      {/* Install CTA — full runbook lives on /install */}
+      <section className="mk-terminal-wrap" aria-labelledby="install-cta">
+        <span className="mk-sys" style={{ display: "block", marginBottom: 12 }} id="install-cta">
           04 / Install
         </span>
-        <div className="mk-terminal">
-          <div className="mk-term-comment"># 1. Pull your tenant backend</div>
-          <div>
-            <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">
-              curl -fsSL https://get.bematist.dev/compose.yml {">"} docker-compose.yml
-            </span>
-          </div>
+        <div className="mk-terminal" style={{ marginBottom: 20 }}>
+          <div className="mk-term-comment"># Five minutes to first event — signed binary, no proxy, no API keys.</div>
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">docker compose up -d</span>
+            <span className="mk-term-comment">&nbsp;&nbsp;# backend</span>
           </div>
-          <br />
-          <div className="mk-term-comment"># 2. Install the local collector</div>
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">brew install pella-labs/bematist/bematist</span>
+            <span className="mk-term-comment">&nbsp;&nbsp;# collector</span>
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">bematist install --auto-detect</span>
-          </div>
-          <br />
-          <div className="mk-term-comment"># 3. Open the dashboard</div>
-          <div>
-            <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">open http://localhost:9873</span>
+            <span className="mk-term-cmd">bematist dry-run && bematist serve</span>
           </div>
         </div>
+        <Link href="/install" className="mk-btn mk-btn-ghost">
+          Full install runbook →
+        </Link>
       </section>
 
       {/* Closing quote */}

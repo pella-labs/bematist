@@ -62,7 +62,7 @@ export async function POST(req: Request) {
   const noun = nouns[Math.floor(Math.random() * nouns.length)];
   const num = Math.floor(Math.random() * 900) + 100;
   const hex = randomBytes(8).toString("hex");
-  const token = `bematist_${adj}-${noun}-${num}-${hex}`;
+  const token = `bm_${adj}-${noun}-${num}-${hex}`;
   const tokenHash = hashToken(token);
 
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
