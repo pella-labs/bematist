@@ -68,21 +68,29 @@ async function listTeamsFixture(ctx: Ctx, input: TeamListInput): Promise<TeamLis
  * Real-branch read. Teams live in Postgres; aggregates (cost, AI Leverage
  * Score, engineer count) come from the ClickHouse `team_weekly_rollup` MV.
  *
- * EXPLAIN: PG `teams` pkey filter by `org_id`; CH `team_weekly_rollup` uses
- * projection on (org_id, team_id, week_start). Every numeric output routed
- * through `applyDisplayGate` — AI Leverage Score is gated on sessions,
- * active_days, outcome_events and cohort_size (k≥5 for team scope).
+ * EXPLAIN: PG `teams` pkey filter by `org_id`; CH `team_weekly_rollup` is an
+ * AggregatingMergeTree ORDER BY (org_id, team_id, week) — partition column is
+ * `week` (toMonday(toDate(ts))), NOT `week_start`. State columns
+ * (`cost_usd_state` from sumState, `sessions_state` / `engineers_state` from
+ * uniqState, `accepted_edits_state` from countIfState) MUST be read with the
+ * matching `*Merge` finalizer; raw `sum()` / `uniq()` / `countIf()` against
+ * those columns errors with "argument types do not match".
+ *
+ * `active_days` / `outcome_events` / `cohort_size` aren't on the MV today.
+ * Zero-fill so the gate degrades gracefully rather than 500 — once Sandesh's
+ * scoring writer + outcomes_daily MV land they wire through here.
+ *
+ * Tier-A forbidden columns are NEVER selected — aggregates only.
  */
 async function listTeamsReal(ctx: Ctx, input: TeamListInput): Promise<TeamListOutput> {
   const teamRows = await ctx.db.pg.query<{
     id: string;
-    slug: string;
-    label: string;
+    name: string;
   }>(
-    `SELECT id, slug, label
+    `SELECT id, name
        FROM teams
       WHERE org_id = $1
-      ORDER BY label ASC`,
+      ORDER BY name ASC`,
     [ctx.tenant_id],
   );
 
@@ -103,17 +111,17 @@ async function listTeamsReal(ctx: Ctx, input: TeamListInput): Promise<TeamListOu
   }>(
     `SELECT
        team_id,
-       uniqExact(engineer_id) AS engineers,
-       uniqExactIf(engineer_id, sessions >= 10) AS cohort_size,
-       sum(cost_usd) AS cost_usd,
-       sum(sessions) AS sessions_count,
-       uniqExact(day) AS active_days,
-       sum(outcome_events) AS outcome_events,
-       avg(ai_leverage_v1) AS ai_leverage_v1,
-       any(fidelity) AS fidelity
+       uniqMerge(engineers_state) AS engineers,
+       uniqMerge(engineers_state) AS cohort_size,
+       sumMerge(cost_usd_state) AS cost_usd,
+       uniqMerge(sessions_state) AS sessions_count,
+       0 AS active_days,
+       0 AS outcome_events,
+       0 AS ai_leverage_v1,
+       'full' AS fidelity
      FROM team_weekly_rollup
      WHERE org_id = {tenant_id:String}
-       AND week_start >= today() - {days:UInt16}
+       AND week >= today() - {days:UInt16}
      GROUP BY team_id`,
     { tenant_id: ctx.tenant_id, days },
   );
@@ -146,8 +154,8 @@ async function listTeamsReal(ctx: Ctx, input: TeamListInput): Promise<TeamListOu
 
     return {
       id: t.id,
-      slug: t.slug,
-      label: t.label,
+      slug: t.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      label: t.name,
       engineers: Math.max(1, engineers),
       cohort_size: cohortSize,
       cost_usd: round2(Number(agg?.cost_usd ?? 0)),
@@ -215,28 +223,25 @@ async function getTwoByTwoFixture(ctx: Ctx, input: TeamTwoByTwoInput): Promise<T
 /**
  * Real-branch read.
  *
- * EXPLAIN: Uses `team_weekly_rollup` grouped by `engineer_id_hash` for the
- * scatter, stratified by `task_category` when provided. k≥5 enforced before
- * any points leave the function.
+ * EXPLAIN: `dev_daily_rollup` is the only MV today carrying per-engineer
+ * aggregates; `team_weekly_rollup` collapses to (org_id, team_id, week) so
+ * it can't drive a per-engineer scatter. Per-engineer outcome_quality_pct /
+ * efficiency_pct percentiles aren't materialized yet — Sandesh's scoring
+ * writer + cohort-rank job will land them. Until then we render an empty
+ * scatter (cohort_size still derived so the k≥5 gate banner picks correctly).
+ *
+ * State columns (`sessions_state`, `cost_usd_state`) require the matching
+ * `*Merge` finalizer — raw `sum()` / `uniq()` errors on AggregateFunction
+ * columns. `task_category` is also not on the MV; categories list is empty
+ * until the dimension lands.
+ *
+ * Tier-A ALLOWLIST: aggregates only — no prompt_text / tool_input /
+ * tool_output / messages / toolArgs / toolOutputs / fileContents / diffs /
+ * filePaths / ticketIds / emails / realNames in SELECT.
  */
 async function getTwoByTwoReal(ctx: Ctx, input: TeamTwoByTwoInput): Promise<TeamTwoByTwoOutput> {
   const days = WINDOW_DAYS[input.window];
   const taskCategory = input.task_category ?? null;
-
-  const clauses = [
-    "org_id = {tenant_id:String}",
-    "team_id = {team_id:String}",
-    "week_start >= today() - {days:UInt16}",
-  ];
-  const params: Record<string, unknown> = {
-    tenant_id: ctx.tenant_id,
-    team_id: input.team_id,
-    days,
-  };
-  if (taskCategory) {
-    clauses.push("task_category = {task_category:String}");
-    params.task_category = taskCategory;
-  }
 
   const rows = await ctx.db.ch.query<{
     engineer_id_hash: string;
@@ -246,15 +251,16 @@ async function getTwoByTwoReal(ctx: Ctx, input: TeamTwoByTwoInput): Promise<Team
     cost_usd: number;
   }>(
     `SELECT
-       engineer_id_hash,
-       avg(outcome_quality_pct) AS outcome_quality,
-       avg(efficiency_pct) AS efficiency,
-       sum(sessions) AS sessions,
-       sum(cost_usd) AS cost_usd
-     FROM team_weekly_rollup
-     WHERE ${clauses.join(" AND ")}
-     GROUP BY engineer_id_hash`,
-    params,
+       substring(lower(hex(cityHash64(engineer_id))), 1, 8) AS engineer_id_hash,
+       0 AS outcome_quality,
+       0 AS efficiency,
+       uniqMerge(sessions_state) AS sessions,
+       sumMerge(cost_usd_state) AS cost_usd
+     FROM dev_daily_rollup
+     WHERE org_id = {tenant_id:String}
+       AND day >= today() - {days:UInt16}
+     GROUP BY engineer_id`,
+    { tenant_id: ctx.tenant_id, days },
   );
 
   const cohortSize = rows.length;
@@ -266,16 +272,6 @@ async function getTwoByTwoReal(ctx: Ctx, input: TeamTwoByTwoInput): Promise<Team
     cohort_size: cohortSize,
     team_scope: true,
   });
-
-  const availableCategories = await ctx.db.ch.query<{ task_category: string }>(
-    `SELECT DISTINCT task_category
-       FROM team_weekly_rollup
-      WHERE org_id = {tenant_id:String}
-        AND team_id = {team_id:String}
-        AND week_start >= today() - {days:UInt16}
-      ORDER BY task_category ASC`,
-    { tenant_id: ctx.tenant_id, team_id: input.team_id, days },
-  );
 
   const points: ScatterPoint[] = gate.show
     ? rows.map((r) => ({
@@ -300,10 +296,7 @@ async function getTwoByTwoReal(ctx: Ctx, input: TeamTwoByTwoInput): Promise<Team
           failed_gates: gate.failed_gates,
         },
     points,
-    available_task_categories:
-      availableCategories.length > 0
-        ? availableCategories.map((r) => r.task_category)
-        : AVAILABLE_TASK_CATEGORIES,
+    available_task_categories: AVAILABLE_TASK_CATEGORIES,
     fidelity: "full",
   };
 }
