@@ -95,3 +95,46 @@ export const TwinFinderOutput = z.union([
   }),
 ]);
 export type TwinFinderOutput = z.infer<typeof TwinFinderOutput>;
+
+/**
+ * Cluster Contributors — the distinct engineers who contributed prompts to a
+ * cluster, returned as opaque hashes only. This is the click-into-a-cluster UX
+ * from CLAUDE.md §Scoring Rules: "IC names hidden by default (color dots;
+ * reveal requires IC opt-in)".
+ *
+ * Server enforces the k≥3 floor BEFORE computing per-contributor stats — any
+ * cluster under the floor returns `ok:false`. Engineer ids NEVER leave as raw
+ * ids; the `engineer_id_hash` stub matches `findTwins`'s output shape.
+ */
+export const ClusterContributorsInput = z.object({
+  cluster_id: z.string().min(1),
+  /** Max contributors to return; default 25. */
+  limit: z.number().int().positive().max(100).optional(),
+});
+export type ClusterContributorsInput = z.infer<typeof ClusterContributorsInput>;
+
+export const ClusterContributor = z.object({
+  /** Opaque engineer hash — raw engineer_id never leaks. */
+  engineer_id_hash: z.string(),
+  /** Distinct sessions this engineer contributed to this cluster in-window. */
+  session_count: z.number().int().positive(),
+});
+export type ClusterContributor = z.infer<typeof ClusterContributor>;
+
+export const ClusterContributorsOutput = z.union([
+  z.object({
+    ok: z.literal(true),
+    cluster_id: z.string(),
+    contributors: z.array(ClusterContributor),
+    /** Total distinct engineers in the cluster — always >= 3 when ok:true. */
+    contributor_count: z.number().int().min(3),
+  }),
+  z.object({
+    ok: z.literal(false),
+    cluster_id: z.string(),
+    reason: z.enum(["cohort_too_small", "not_found"]),
+    /** Present when reason = cohort_too_small. Reveals only the count, never ids. */
+    contributor_count: z.number().int().nonnegative().optional(),
+  }),
+]);
+export type ClusterContributorsOutput = z.infer<typeof ClusterContributorsOutput>;

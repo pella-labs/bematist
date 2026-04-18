@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import type { Ctx } from "../auth";
-import { CLUSTER_CONTRIBUTOR_FLOOR, findSessionTwins, listClusters } from "./cluster";
+import {
+  CLUSTER_CONTRIBUTOR_FLOOR,
+  findSessionTwins,
+  listClusterContributors,
+  listClusters,
+} from "./cluster";
 
 describe("listClusters", () => {
   test("enforces k>=3 contributor floor; below-floor entries suppressed", async () => {
@@ -204,3 +209,192 @@ function randomUnitVec(seed: number, dim: number): number[] {
   for (let i = 0; i < dim; i++) out[i] = (out[i] ?? 0) / n;
   return out;
 }
+
+describe("listClusterContributors (fixture branch)", () => {
+  test("returns contributors with k>=3 enforced, engineer_id never raw", async () => {
+    const out = await listClusterContributors(makeCtx(), { cluster_id: "c_000" });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.cluster_id).toBe("c_000");
+    expect(out.contributor_count).toBeGreaterThanOrEqual(CLUSTER_CONTRIBUTOR_FLOOR);
+    expect(out.contributors.length).toBeGreaterThan(0);
+    for (const c of out.contributors) {
+      expect(c.engineer_id_hash).toMatch(/^eh_[0-9a-f]{8}$/);
+      expect(c.engineer_id_hash).not.toContain("eng_fx_");
+      expect(c.session_count).toBeGreaterThan(0);
+    }
+    // Sorted by session_count desc.
+    for (let i = 1; i < out.contributors.length; i++) {
+      const prev = out.contributors[i - 1];
+      const cur = out.contributors[i];
+      if (prev && cur) {
+        expect(prev.session_count).toBeGreaterThanOrEqual(cur.session_count);
+      }
+    }
+  });
+
+  test("suppresses below-floor cluster; exposes count only, never ids", async () => {
+    // Fixture universe seeds c_005 with 2 contributors and c_006 with 1.
+    const out = await listClusterContributors(makeCtx(), { cluster_id: "c_005" });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.reason).toBe("cohort_too_small");
+    expect(out.contributor_count).toBeLessThan(CLUSTER_CONTRIBUTOR_FLOOR);
+    expect(out.contributor_count).toBeGreaterThan(0);
+    // The shape must NOT leak any contributor array at all.
+    expect((out as unknown as { contributors?: unknown }).contributors).toBeUndefined();
+  });
+
+  test("returns not_found for cluster not in universe", async () => {
+    const out = await listClusterContributors(makeCtx(), { cluster_id: "c_does_not_exist" });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.reason).toBe("not_found");
+  });
+
+  test("respects limit and caps at 25 engineers", async () => {
+    const out = await listClusterContributors(makeCtx(), {
+      cluster_id: "c_000",
+      limit: 2,
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.contributors.length).toBeLessThanOrEqual(2);
+  });
+
+  test("consistent engineer_id_hash across Twin Finder + contributors views", async () => {
+    // Hashes must align so the UI can render the same color dot for the same
+    // engineer regardless of which view surfaces them.
+    const ctx = makeCtx();
+    const twins = await findSessionTwins(ctx, { session_id: "ses_query_same" });
+    expect(twins.ok).toBe(true);
+    if (!twins.ok) return;
+    const contribs = await listClusterContributors(ctx, { cluster_id: "c_000" });
+    expect(contribs.ok).toBe(true);
+    if (!contribs.ok) return;
+    // Both views use the same stable eh_* hash format.
+    for (const t of twins.matches) expect(t.engineer_id_hash).toMatch(/^eh_[0-9a-f]{8}$/);
+    for (const c of contribs.contributors) expect(c.engineer_id_hash).toMatch(/^eh_[0-9a-f]{8}$/);
+  });
+});
+
+describe("listClusterContributors (real branch, mocked CH)", () => {
+  beforeEach(() => {
+    process.env.USE_FIXTURES = "0";
+  });
+  afterEach(() => {
+    delete process.env.USE_FIXTURES;
+  });
+
+  test("never selects forbidden tier-A columns", async () => {
+    const capturedSqls: string[] = [];
+    const ctx: Ctx = {
+      tenant_id: "rb-tenant",
+      actor_id: "rb-actor",
+      role: "manager",
+      db: {
+        pg: { query: async () => [] },
+        ch: {
+          query: async <T = unknown>(sql: string): Promise<T[]> => {
+            capturedSqls.push(sql);
+            if (sql.includes("uniqMerge(contributing_engineers_state)"))
+              return [{ distinct_engineers: 7 }] as T[];
+            return [
+              { engineer_id: "eng_real_001", session_count: 9 },
+              { engineer_id: "eng_real_002", session_count: 5 },
+              { engineer_id: "eng_real_003", session_count: 3 },
+            ] as T[];
+          },
+        },
+        redis: {
+          get: async () => null,
+          set: async () => undefined,
+          setNx: async () => true,
+        },
+      },
+    };
+
+    const out = await listClusterContributors(ctx, { cluster_id: "c_real_abc" });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.contributor_count).toBe(7);
+    expect(out.contributors.length).toBe(3);
+    for (const c of out.contributors) {
+      expect(c.engineer_id_hash).toMatch(/^eh_[0-9a-f]{8}$/);
+      // Raw engineer id never leaks through the API boundary.
+      expect(c.engineer_id_hash).not.toContain("eng_real_");
+    }
+
+    // Tier-A allowlist check: none of the forbidden prompt/tool/raw column
+    // names appear in any SQL that left the server.
+    const forbidden = [
+      "prompt_text",
+      "prompt_abstract",
+      "tool_input",
+      "tool_output",
+      "raw_attrs",
+      "file_contents",
+      "file_paths",
+      "ticket_ids",
+      "messages",
+    ];
+    for (const sql of capturedSqls) {
+      for (const f of forbidden) {
+        expect(sql).not.toContain(f);
+      }
+    }
+  });
+
+  test("below-floor real-branch result surfaces count only (no rows)", async () => {
+    const ctx: Ctx = {
+      tenant_id: "rb-tenant",
+      actor_id: "rb-actor",
+      role: "manager",
+      db: {
+        pg: { query: async () => [] },
+        ch: {
+          query: async <T = unknown>(sql: string): Promise<T[]> => {
+            if (sql.includes("uniqMerge(contributing_engineers_state)"))
+              return [{ distinct_engineers: 2 }] as T[]; // below floor
+            return [{ engineer_id: "eng_should_not_leak", session_count: 1 }] as T[];
+          },
+        },
+        redis: {
+          get: async () => null,
+          set: async () => undefined,
+          setNx: async () => true,
+        },
+      },
+    };
+    const out = await listClusterContributors(ctx, { cluster_id: "c_small" });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.reason).toBe("cohort_too_small");
+    expect(out.contributor_count).toBe(2);
+    // Zero leak: the denied payload must not carry the eng_should_not_leak row.
+    expect(JSON.stringify(out)).not.toContain("eng_should_not_leak");
+  });
+
+  test("not_found when no stats + no rows", async () => {
+    const ctx: Ctx = {
+      tenant_id: "rb-tenant",
+      actor_id: "rb-actor",
+      role: "manager",
+      db: {
+        pg: { query: async () => [] },
+        ch: {
+          query: async <T = unknown>(): Promise<T[]> => [] as T[],
+        },
+        redis: {
+          get: async () => null,
+          set: async () => undefined,
+          setNx: async () => true,
+        },
+      },
+    };
+    const out = await listClusterContributors(ctx, { cluster_id: "c_missing" });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.reason).toBe("not_found");
+  });
+});

@@ -1,7 +1,9 @@
-import { findSessionTwins, listClusters } from "@bematist/api";
+import { findSessionTwins, listClusterContributors, listClusters } from "@bematist/api";
 import { Badge, Card, CardHeader, CardTitle, FidelityChip } from "@bematist/ui";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { getSessionCtx } from "@/lib/session";
+import { ContributorDot } from "./_components/ContributorDot";
 
 export const metadata: Metadata = {
   title: "Clusters",
@@ -14,8 +16,14 @@ const USD = new Intl.NumberFormat("en-US", {
 });
 
 interface ClustersPageProps {
-  /** Twin Finder search params: ?session_id=…&prompt_index=…&top_k=… */
+  /**
+   * Search params:
+   *   - `?cluster_id=…` — click-into-a-cluster UX: surfaces color-dotted
+   *     contributors once the server-side k≥3 floor clears.
+   *   - `?session_id=…&prompt_index=…&top_k=…` — Twin Finder by session.
+   */
   searchParams?: Promise<{
+    cluster_id?: string;
     session_id?: string;
     prompt_index?: string;
     top_k?: string;
@@ -25,7 +33,7 @@ interface ClustersPageProps {
 export default async function ClustersPage({ searchParams }: ClustersPageProps) {
   const ctx = await getSessionCtx();
   const sp = (await searchParams) ?? {};
-  const [data, twins] = await Promise.all([
+  const [data, twins, contributors] = await Promise.all([
     listClusters(ctx, { window: "30d" }),
     sp.session_id
       ? findSessionTwins(ctx, {
@@ -33,6 +41,9 @@ export default async function ClustersPage({ searchParams }: ClustersPageProps) 
           ...(sp.prompt_index ? { prompt_index: Number(sp.prompt_index) } : {}),
           ...(sp.top_k ? { top_k: Math.min(25, Number(sp.top_k) || 10) } : {}),
         })
+      : Promise.resolve(null),
+    sp.cluster_id
+      ? listClusterContributors(ctx, { cluster_id: sp.cluster_id })
       : Promise.resolve(null),
   ]);
 
@@ -60,47 +71,110 @@ export default async function ClustersPage({ searchParams }: ClustersPageProps) 
           const merged = c.top_outcomes.find((o) => o.kind === "merged_pr")?.count ?? 0;
           const green = c.top_outcomes.find((o) => o.kind === "green_test")?.count ?? 0;
           const reverts = c.top_outcomes.find((o) => o.kind === "revert")?.count ?? 0;
+          const isSelected = sp.cluster_id === c.id;
           return (
-            <Card key={c.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between gap-3">
-                  <CardTitle className="text-base">{c.label}</CardTitle>
-                  <FidelityChip fidelity={c.fidelity} />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {c.contributor_count} contributors · {c.session_count} sessions
-                </p>
-              </CardHeader>
-              <dl className="grid grid-cols-4 gap-3 text-xs">
-                <div>
-                  <dt className="text-muted-foreground">Avg cost</dt>
-                  <dd className="mt-0.5 font-medium text-sm">{USD.format(c.avg_cost_usd)}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Merged PRs</dt>
-                  <dd className="mt-0.5 font-medium text-sm">{merged}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Green tests</dt>
-                  <dd className="mt-0.5 font-medium text-sm">{green}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Reverts</dt>
-                  <dd
-                    className={
-                      reverts > 0
-                        ? "mt-0.5 font-medium text-sm text-warning"
-                        : "mt-0.5 font-medium text-sm"
-                    }
-                  >
-                    {reverts}
-                  </dd>
-                </div>
-              </dl>
-            </Card>
+            <Link
+              key={c.id}
+              href={`/clusters?cluster_id=${encodeURIComponent(c.id)}`}
+              aria-current={isSelected ? "true" : undefined}
+              className={
+                isSelected
+                  ? "block cursor-pointer rounded-md outline outline-2 outline-primary transition"
+                  : "block cursor-pointer rounded-md transition hover:outline hover:outline-1 hover:outline-border"
+              }
+            >
+              <Card>
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-3">
+                    <CardTitle className="text-base">{c.label}</CardTitle>
+                    <FidelityChip fidelity={c.fidelity} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {c.contributor_count} contributors · {c.session_count} sessions
+                  </p>
+                </CardHeader>
+                <dl className="grid grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <dt className="text-muted-foreground">Avg cost</dt>
+                    <dd className="mt-0.5 font-medium text-sm">{USD.format(c.avg_cost_usd)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Merged PRs</dt>
+                    <dd className="mt-0.5 font-medium text-sm">{merged}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Green tests</dt>
+                    <dd className="mt-0.5 font-medium text-sm">{green}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Reverts</dt>
+                    <dd
+                      className={
+                        reverts > 0
+                          ? "mt-0.5 font-medium text-sm text-warning"
+                          : "mt-0.5 font-medium text-sm"
+                      }
+                    >
+                      {reverts}
+                    </dd>
+                  </div>
+                </dl>
+              </Card>
+            </Link>
           );
         })}
       </section>
+
+      {contributors ? (
+        <section aria-label="Cluster contributors" className="flex flex-col gap-3">
+          <header>
+            <h2 className="text-lg font-semibold tracking-tight">Cluster contributors</h2>
+            <p className="text-sm text-muted-foreground">
+              Distinct engineers who contributed prompts to the selected cluster. IC names are
+              hidden by default per CLAUDE.md §Scoring Rules — each dot is an opaque engineer hash.
+              Reveal requires IC opt-in.
+            </p>
+          </header>
+          {contributors.ok ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  {contributors.contributor_count} contributor
+                  {contributors.contributor_count === 1 ? "" : "s"} in{" "}
+                  <code className="font-mono text-sm">{contributors.cluster_id}</code>
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Showing top {contributors.contributors.length} by session count. Color is derived
+                  deterministically from the engineer hash — same engineer always paints the same
+                  dot across Twin Finder + this view.
+                </p>
+              </CardHeader>
+              <ul className="flex flex-wrap items-center gap-3">
+                {contributors.contributors.map((c) => (
+                  <li
+                    key={c.engineer_id_hash}
+                    className="flex items-center gap-2 rounded-full border border-border bg-background/50 px-2 py-1 text-xs"
+                  >
+                    <ContributorDot hash={c.engineer_id_hash} />
+                    <span className="font-mono text-muted-foreground">{c.engineer_id_hash}</span>
+                    <span className="tabular-nums">
+                      {c.session_count} session{c.session_count === 1 ? "" : "s"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ) : (
+            <Card>
+              <p className="text-sm">
+                {contributors.reason === "cohort_too_small"
+                  ? `Cluster has only ${contributors.contributor_count ?? "<3"} distinct contributors — below the k≥3 privacy floor. Individual contributors are not surfaced.`
+                  : `Cluster ${contributors.cluster_id} not found in this window.`}
+              </p>
+            </Card>
+          )}
+        </section>
+      ) : null}
 
       {data.clusters.length === 0 ? (
         <Card>
@@ -195,8 +269,20 @@ export default async function ClustersPage({ searchParams }: ClustersPageProps) 
                     {twins.matches.map((m) => (
                       <tr key={m.session_id} className="border-t border-border">
                         <td className="py-1.5 font-mono">{m.session_id}</td>
-                        <td className="py-1.5 font-mono">{m.cluster_id}</td>
-                        <td className="py-1.5 font-mono">{m.engineer_id_hash}</td>
+                        <td className="py-1.5 font-mono">
+                          <Link
+                            href={`/clusters?cluster_id=${encodeURIComponent(m.cluster_id)}`}
+                            className="cursor-pointer underline-offset-2 hover:underline"
+                          >
+                            {m.cluster_id}
+                          </Link>
+                        </td>
+                        <td className="py-1.5">
+                          <span className="inline-flex items-center gap-2 font-mono">
+                            <ContributorDot hash={m.engineer_id_hash} />
+                            {m.engineer_id_hash}
+                          </span>
+                        </td>
                         <td className="py-1.5 text-right tabular-nums">
                           {m.similarity.toFixed(3)}
                         </td>
