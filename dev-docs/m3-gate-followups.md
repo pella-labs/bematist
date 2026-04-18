@@ -69,16 +69,20 @@ Each item was either out of an M2 agent's `OWNS` scope, blocked on a parallel wo
 
 ---
 
-### 4. Real-branch SQL on `pr_outcome_rollup` / `commit_outcome_rollup`
+### 4. Real-branch SQL on `pr_outcome_rollup` / `commit_outcome_rollup` · **SHIPPED**
 
-**Problem:** A19 noted that `packages/api/src/queries/outcomes.ts:perPROutcomes` and `perCommitOutcomes` target MVs (`pr_outcome_rollup`, `commit_outcome_rollup`) that aren't materialized yet. Sandesh's outcomes pipeline (Workstream H-outcomes) ships those.
+**Landed:** branch `feat-m3-outcome-rollup-mvs` — migrations `0012_pr_outcome_rollup.sql`
+and `0013_commit_outcome_rollup.sql` materialize AggregatingMergeTree rollups keyed on
+`(org_id, repo, pr_number, day)` and `(org_id, repo, commit_sha, day)` respectively.
+`packages/api/src/queries/outcomes.ts` switches `perPROutcomes` / `perCommitOutcomes`
+real branches to `*Merge` finalizers (`sumMerge`, `countIfMerge`, `maxMerge`,
+`anyMerge`, `quantileMerge`). New `/dashboard/outcomes` page in
+`apps/web/app/(dashboard)/outcomes/page.tsx` renders per-PR + per-commit tables
+with AI-assisted / reverted badges.
 
-**Required:**
-- Materialize the MVs in `packages/schema/clickhouse/migrations/`.
-- Update the queries to use the right `*Merge` calls per the AggregateFunction state columns.
-- Wire into `/dashboard/outcomes` real-branch render.
-
-**Acceptance:** `/dashboard/outcomes` returns 200 with non-zero data when seeded against the perf corpus.
+Follow-up: the PG join to `git_events.merged_at` for the authoritative merge
+timestamp + state stays deferred — today the MV surfaces `maxMerge(last_ts_state)`
+as a proxy `merged_at` (agent telemetry can't observe merge state directly).
 
 ---
 

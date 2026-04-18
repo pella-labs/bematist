@@ -6,6 +6,8 @@ export const MV_NAMES = [
   "team_weekly_rollup",
   "repo_weekly_rollup",
   "prompt_cluster_stats",
+  "pr_outcome_rollup",
+  "commit_outcome_rollup",
 ] as const;
 
 export const PLAIN_TABLES_FOR_TEST = ["cluster_assignment_mv"] as const;

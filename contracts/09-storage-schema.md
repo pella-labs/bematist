@@ -122,6 +122,8 @@ ALTER TABLE events ADD PROJECTION cluster_lookup (
 | `prompt_cluster_stats` | per (org, cluster_id, week) — counts, contributing engineers, avg cost | Cluster pages |
 | `repo_weekly_rollup` | per (org, repo_id_hash, week) | Repo pages, outcome attribution |
 | `cluster_assignment_mv` | per (org, session_id, prompt_index) → cluster_id | Twin Finder, playbook adoption |
+| `pr_outcome_rollup` | per (org, repo, pr_number, day) — cost, accepted edits, revert count, contributors, p95 duration, ai-assisted flag | `/dashboard/outcomes` per-PR list (§8.5) |
+| `commit_outcome_rollup` | per (org, repo, commit_sha, day) — attributed cost, ai-assisted flag, revert count, associated pr_number | `/dashboard/outcomes` per-commit drill-in |
 
 **Read paths use MVs, not raw `events`, where possible.** New queries always run `EXPLAIN` and verify projection use.
 
