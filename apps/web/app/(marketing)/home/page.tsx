@@ -4,97 +4,63 @@ import { BrandMonolith } from "../_components/BrandMonolith";
 import { HeroGrid } from "../_components/HeroGrid";
 
 export const metadata: Metadata = {
-  title: "Bematist — correlate AI spend with git outcomes",
+  title: "Bematist · See what AI is shipping",
   description:
-    "Open-source, self-hostable AI-engineering analytics. Auto-instruments every developer's coding-agent usage across IDEs and correlates LLM spend with Git outcomes — tenant-owned backend, works-council compatible by default.",
+    "Open-source analytics for AI-assisted engineering. Auto-instrument your team's coding agents, tie every LLM dollar to the code that actually merged.",
 };
 
 const ADAPTERS = [
   {
     name: "Claude Code",
     iface: "CLI",
-    fidelity: "full",
-    notes: "Tokens, envelopes, timings",
+    notes: "Full native OTEL. Tokens, envelopes, tool calls, timings.",
   },
   {
     name: "Cursor",
     iface: "IDE",
-    fidelity: "full",
-    notes: "Edits, diffs, model routing",
+    notes: "Edits, diff sizes, model routing, acceptance decisions.",
   },
   {
     name: "Codex CLI",
     iface: "CLI",
-    fidelity: "full",
-    notes: "JSONL tail, cumulative token diffs",
-  },
-  {
-    name: "Continue.dev",
-    iface: "IDE extension",
-    fidelity: "full",
-    notes: "Chat, tokens, edits, tool usage",
-  },
-  {
-    name: "Cline / Roo / Kilo",
-    iface: "IDE extension",
-    fidelity: "full",
-    notes: "3-in-1 adapter (fork lineage)",
-  },
-  {
-    name: "Copilot IDE",
-    iface: "IDE",
-    fidelity: "estimated",
-    notes: "Chat session JSON, Phase 2",
-  },
-  {
-    name: "OpenCode",
-    iface: "CLI",
-    fidelity: "full",
-    notes: "Post-migration SQLite",
-  },
-  {
-    name: "Goose",
-    iface: "Agent",
-    fidelity: "estimated",
-    notes: "Post-v1.10 SQLite, Phase 2",
+    notes: "JSONL session tail with cumulative token diffs.",
   },
 ] as const;
 
-const BILL = [
-  "Prompts never leave the local environment without an explicit banner.",
-  "Managers cannot read individual prompts except under three named, audited exceptions.",
-  "Full 7-day GDPR export + erasure — atomic partition drop, not best-effort TTL.",
-  "Default capture is counters plus redacted envelopes. Full prompt text is always opt-in.",
-  "Every access event is logged to an append-only audit trail.",
-  "ICs are notified via digest when a manager drills into their page.",
-] as const;
-
-const NOT = [
-  "Per-engineer leaderboards or stack ranking.",
-  "Bottom-10% lists or automated negative-performance flags.",
-  "Performance-review or promotion-packet data surfaces.",
-  "Real-time per-engineer activity feeds for managers.",
-  "Cross-tenant benchmarking or external data sharing.",
-  "A proxy that intercepts your LLM API keys.",
+const FEATURES = [
+  {
+    eyebrow: "01",
+    title: "Passive instrumentation",
+    body: "Drop the collector on every dev machine. It watches your coding agents. No proxies, no API-key middleware, no prompts to change.",
+  },
+  {
+    eyebrow: "02",
+    title: "Spend, tied to shipped code",
+    body: "Every accepted edit joins a git commit. Every commit joins a merged PR. You see cost per shipped change, not cost per token.",
+  },
+  {
+    eyebrow: "03",
+    title: "Yours to run",
+    body: "Self-host in one docker compose. Your data, your machines, your rules. Managed cloud is an option, never the default.",
+  },
 ] as const;
 
 export default function MarketingHome() {
   return (
     <>
-      {/* ─── Hero ─────────────────────────────────────────────── */}
+      {/* Hero */}
       <section className="mk-hero">
         <HeroGrid />
         <div className="mk-hero-content">
           <div className="mk-sys" style={{ marginBottom: 20 }}>
-            SYS.INIT // v1.0.0 · Apache 2.0 + BSL 1.1
+            open-source. forever.
           </div>
           <h1>
-            Correlate AI spend with <em>git outcomes</em>.
+            See what AI is <em>actually shipping</em>.
           </h1>
           <p>
-            Auto-instrument LLM sessions across your team's IDEs — Claude Code,
-            Cursor, Codex, Continue, Cline, Copilot, and more. Tenant-owned
-            backend. Never our cloud unless you choose it.
+            Bematist instruments your team's coding agents and ties every LLM
+            dollar to the code that merged. Claude Code, Cursor, Codex.
           </p>
           <div className="mk-hero-actions">
             <a href="#install" className="mk-btn mk-btn-primary">
@@ -114,20 +80,36 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      {/* ─── Brand monolith: ring + monogram ──────────────────── */}
+      {/* Brand monolith */}
       <BrandMonolith />
 
-      {/* ─── Adapters ─────────────────────────────────────────── */}
+      {/* Features */}
+      <section aria-label="What it does">
+        <div className="mk-section-header">
+          <span className="mk-mono mk-xs">01 / What it does</span>
+        </div>
+        <div className="mk-features">
+          {FEATURES.map((f) => (
+            <div key={f.title} className="mk-feature">
+              <span className="mk-feature-index">{f.eyebrow}</span>
+              <h3>{f.title}</h3>
+              <p>{f.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Adapters */}
       <section id="adapters">
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">01 / Adapters</span>
+          <span className="mk-mono mk-xs">02 / Supported agents</span>
         </div>
         <table className="mk-table">
           <thead>
             <tr>
               <th>Target</th>
               <th>Interface</th>
-              <th>Fidelity</th>
+              <th>Status</th>
               <th>Notes</th>
             </tr>
           </thead>
@@ -137,11 +119,7 @@ export default function MarketingHome() {
                 <td style={{ color: "var(--mk-ink)" }}>{row.name}</td>
                 <td className="mk-muted">{row.iface}</td>
                 <td>
-                  <span
-                    className={`mk-badge ${row.fidelity === "full" ? "full" : "est"}`}
-                  >
-                    {row.fidelity === "full" ? "Full" : "Estimated"}
-                  </span>
+                  <span className="mk-badge full">Full</span>
                 </td>
                 <td className="mk-muted">{row.notes}</td>
               </tr>
@@ -150,106 +128,85 @@ export default function MarketingHome() {
         </table>
       </section>
 
-      {/* ─── Primary metric ───────────────────────────────────── */}
+      {/* Primary metric */}
       <section className="mk-metric" aria-label="Primary metric">
         <div className="mk-metric-visual">
           <span className="mk-sys">PRIMARY METRIC</span>
-          <div className="mk-metric-value">
-            accepted_code_edits_per_dollar
-          </div>
-          <div className="mk-mono mk-xs mk-muted">
-            Correlated via git history, webhook merges, and LLM telemetry.
-            Dedup unit: (session_id, hunk_sha256).
+          <div className="mk-metric-value">14.2x</div>
+          <div className="mk-metric-label">
+            <strong>accepted_code_edits_per_dollar</strong>
+            <br />
+            Joined across session, commit, and merged PR. Reverted hunks
+            subtracted. Pricing version pinned per capture.
           </div>
         </div>
         <div className="mk-metric-details">
-          <span className="mk-sys">ATTRIBUTION LOGIC</span>
+          <span className="mk-sys">ATTRIBUTION</span>
           <ul className="mk-kv">
             <li>
-              <span>Event</span>
+              <span>Session event</span>
               <span>code_edit_tool.decision=accept</span>
             </li>
             <li>
-              <span>Marker</span>
-              <span>opt-in AI-Assisted: git trailer</span>
+              <span>Commit marker</span>
+              <span>opt-in AI-Assisted trailer</span>
             </li>
             <li>
-              <span>Validation</span>
-              <span>GitHub merge webhook (HMAC)</span>
+              <span>Merge validation</span>
+              <span>GitHub webhook (HMAC)</span>
             </li>
             <li>
-              <span>Compute</span>
-              <span>Local aggregator · pricing_version pinned</span>
+              <span>Revert window</span>
+              <span>24h</span>
             </li>
             <li>
-              <span>Revert penalty</span>
-              <span>24h reverted hunks subtracted (v1)</span>
+              <span>Dedup unit</span>
+              <span>(session_id, hunk_sha256)</span>
             </li>
           </ul>
         </div>
       </section>
 
-      {/* ─── Privacy tiers ────────────────────────────────────── */}
+      {/* Privacy (condensed to three product-benefit cards) */}
       <section id="privacy">
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">02 / Privacy Tiers</span>
+          <span className="mk-mono mk-xs">03 / Capture modes</span>
         </div>
         <div className="mk-tiers">
           <div className="mk-tier">
-            <span className="mk-tier-label">TIER A · MINIMAL</span>
-            <h3>Counters only</h3>
+            <span className="mk-tier-label">MINIMAL</span>
+            <h3>Counters</h3>
             <p>
-              Token volumes, session durations, provider routing. No payload
-              inspection. For highly-regulated orgs.
+              Tokens, sessions, durations, routing. No payloads. For teams
+              under the strictest policies.
             </p>
           </div>
           <div className="mk-tier active">
-            <span className="mk-tier-label">TIER B · DEFAULT</span>
-            <h3>Redacted envelopes</h3>
+            <span className="mk-tier-label">DEFAULT</span>
+            <h3>Envelopes</h3>
             <p>
-              All Tier A counters plus file-context paths and
-              secret-redacted prompt structure. Works-council compatible.
-              Matches Anthropic's <span className="mk-mono">OTEL_LOG_USER_PROMPTS=0</span>.
+              Counters plus secret-scrubbed prompt shape and file context.
+              Enough to cluster work, never enough to read it.
             </p>
           </div>
           <div className="mk-tier">
-            <span className="mk-tier-label">TIER C · DIAGNOSTIC</span>
-            <h3>Full prompt text</h3>
+            <span className="mk-tier-label">DIAGNOSTIC</span>
+            <h3>Full prompts</h3>
             <p>
-              Opt-in per-project by the IC, or tenant-wide with signed Ed25519
-              config, 7-day cooldown, and persistent IC banner.
+              Opt-in per project by the engineer, or tenant-wide with signed
+              config and cooldown. Off by default.
             </p>
           </div>
         </div>
       </section>
 
-      {/* ─── Bill of rights vs not ────────────────────────────── */}
-      <section className="mk-split">
-        <div className="mk-split-col">
-          <span className="mk-sys">DOC.01 // BILL OF RIGHTS</span>
-          <ul className="mk-numbered">
-            {BILL.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-        <div className="mk-split-col right">
-          <span className="mk-sys">DOC.02 // WHAT THIS IS NOT</span>
-          <ul className="mk-numbered mk-not">
-            {NOT.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* ─── Install ──────────────────────────────────────────── */}
+      {/* Install */}
       <section id="install" className="mk-terminal-wrap">
         <span className="mk-sys" style={{ display: "block", marginBottom: 20 }}>
-          SYS.DEPLOY // SELF-HOST FIRST
+          04 / Install
         </span>
         <div className="mk-terminal">
-          <div className="mk-term-comment"># Pull tenant-owned backend</div>
+          <div className="mk-term-comment"># 1. Pull your tenant backend</div>
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">
@@ -262,21 +219,19 @@ export default function MarketingHome() {
             <span className="mk-term-cmd">docker compose up -d</span>
           </div>
           <br />
-          <div className="mk-term-comment"># Install the local collector</div>
+          <div className="mk-term-comment"># 2. Install the local collector</div>
           <div>
             <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">brew install pella-labs/bematist/bematist</span>
+            <span className="mk-term-cmd">
+              brew install pella-labs/bematist/bematist
+            </span>
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">bematist install --auto-detect</span>
           </div>
           <br />
-          <div className="mk-term-comment"># Verify egress and open dashboard</div>
-          <div>
-            <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">bematist doctor</span>
-          </div>
+          <div className="mk-term-comment"># 3. Open the dashboard</div>
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">open http://localhost:9873</span>
@@ -284,15 +239,15 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      {/* ─── License ──────────────────────────────────────────── */}
+      {/* License */}
       <section className="mk-license">
-        <span className="mk-sys">03 / LICENSE</span>
+        <span className="mk-sys">05 / License</span>
         <div className="mk-license-body">
-          <strong>Apache-2.0</strong> — agent, dashboard, adapters, schemas,
-          CLI.
+          <strong>Apache 2.0</strong> for the collector, dashboard, adapters,
+          schemas, and CLI.
           <br />
-          <strong>BSL-1.1 → Apache-2.0 after 4 years</strong> — gateway, admin,
-          SSO/SCIM, audit-log export, DP noise, compliance signing.
+          <strong>BSL 1.1</strong> for the managed-cloud gateway and admin
+          surfaces. Converts to Apache 2.0 after four years.
         </div>
       </section>
     </>

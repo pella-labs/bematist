@@ -1,10 +1,8 @@
 import { BMonogram } from "./Monogram";
 
 /**
- * BrandMonolith — signature section.
- * The glass `B` sits dead-center, with two counter-rotating rings of system text
- * orbiting around it. Pure-CSS rotation on the rings keeps the GPU free for the
- * monogram's physical material.
+ * BrandMonolith. Glass B monogram center-stage with two counter-rotating
+ * rings of product language orbiting it.
  */
 export function BrandMonolith() {
   return (
@@ -12,36 +10,20 @@ export function BrandMonolith() {
       <div className="mk-monolith-stage">
         <Ring
           className="mk-ring"
-          text="BEMATIST · TELEMETRY · CORRELATION · OUTCOMES · "
+          text="AI SPEND · GIT OUTCOMES · ACCEPTED EDITS · MERGED PRS · VELOCITY · "
           fontSize={24}
           fill="rgba(237,232,222,0.85)"
           letterSpacing={8}
         />
         <Ring
           className="mk-ring mk-ring-outer"
-          text="SYS.INIT · COUNTERS · ENVELOPES · GDPR · SELF-HOST · OBSERVABILITY · "
+          text="CLAUDE CODE · CURSOR · CODEX · CLAUDE CODE · CURSOR · CODEX · "
           fontSize={14}
           fill="rgba(176,123,62,0.7)"
           letterSpacing={5}
         />
         <div className="mk-monogram-frame">
           <BMonogram />
-        </div>
-        <div className="mk-monolith-copy">
-          <div className="mk-sys" style={{ marginBottom: 12 }}>
-            SYS.MARK // v1.0.0
-          </div>
-          <p
-            className="mk-mono"
-            style={{
-              fontSize: 14,
-              color: "rgba(237,232,222,0.7)",
-              lineHeight: 1.6,
-            }}
-          >
-            Drag to rotate. Scroll to zoom. The mark reflects its environment —
-            same as the telemetry reflects your team's reality.
-          </p>
         </div>
       </div>
     </section>

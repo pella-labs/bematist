@@ -23,10 +23,6 @@
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  background-image: linear-gradient(var(--mk-border) 1px, transparent 1px),
-    linear-gradient(90deg, var(--mk-border) 1px, transparent 1px);
-  background-size: var(--mk-grid-size) var(--mk-grid-size);
-  background-position: center top;
 }
 
 .bematist-marketing h1,
@@ -277,10 +273,23 @@
 
 .bematist-marketing .mk-metric-value {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
-  font-size: clamp(40px, 5vw, 56px);
+  font-size: clamp(56px, 7vw, 96px);
   line-height: 1;
   color: var(--mk-accent);
   letter-spacing: -0.04em;
+}
+
+.bematist-marketing .mk-metric-label {
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 13px;
+  color: var(--mk-ink-muted);
+  word-break: break-word;
+  letter-spacing: 0;
+}
+
+.bematist-marketing .mk-metric-label strong {
+  color: var(--mk-ink);
+  font-weight: 500;
 }
 
 .bematist-marketing .mk-metric-details {
@@ -510,15 +519,55 @@
 
 .bematist-marketing footer.mk-footer a:hover { color: var(--mk-ink); }
 
+/* ─── Features grid ────────────────────────────────────────────── */
+.bematist-marketing .mk-features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.bematist-marketing .mk-feature {
+  padding: calc(var(--mk-grid-size) * 1.75) var(--mk-grid-size);
+  border-right: 1px solid var(--mk-border);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 240px;
+}
+
+.bematist-marketing .mk-feature:last-child { border-right: none; }
+
+.bematist-marketing .mk-feature h3 {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.bematist-marketing .mk-feature p {
+  color: var(--mk-ink-muted);
+  font-size: 14px;
+  line-height: 1.55;
+  flex: 1;
+}
+
+.bematist-marketing .mk-feature-index {
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 11px;
+  color: var(--mk-ink-faint);
+  letter-spacing: 0.08em;
+}
+
 /* ─── Responsive ───────────────────────────────────────────────── */
 @media (max-width: 860px) {
   .bematist-marketing .mk-metric,
   .bematist-marketing .mk-tiers,
-  .bematist-marketing .mk-split {
+  .bematist-marketing .mk-split,
+  .bematist-marketing .mk-features {
     grid-template-columns: 1fr;
   }
   .bematist-marketing .mk-metric-visual,
   .bematist-marketing .mk-tier,
+  .bematist-marketing .mk-feature,
   .bematist-marketing .mk-split-col.right {
     border-right: none;
     border-bottom: 1px solid var(--mk-border);

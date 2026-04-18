@@ -4,11 +4,11 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
 /**
- * HeroGrid — full-width rotating wireframe lattice.
+ * HeroGrid. Full-width rotating wireframe lattice.
  *
  * Performance notes:
  * - Single BufferGeometry of ~5k line segments (cheap on GPU; no instanced draws needed).
- * - Pixel ratio capped at min(devicePixelRatio, 2) — above that gives no visual win on 4k screens.
+ * - Pixel ratio capped at min(devicePixelRatio, 2). Above that gives no visual win on 4k screens.
  * - RAF paused when tab is hidden (Page Visibility API) and when the canvas is off-screen
  *   (IntersectionObserver). Prevents the hero from burning GPU cycles below the fold.
  * - `prefers-reduced-motion`: renders a single frame then freezes.
