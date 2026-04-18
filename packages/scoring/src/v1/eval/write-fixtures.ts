@@ -3,14 +3,21 @@
  *
  * Run with:  bun run packages/scoring/src/v1/eval/write-fixtures.ts
  *
- * Writes three files under `__fixtures__/`:
- *   - archetypes.jsonl      — 10 hand-curated cases
- *   - snapshots.jsonl       — 40 auto-generated cases (seed=42)
- *   - validation.jsonl      — 10 held-out cases (seed=1337)
+ * Writes three files under `__fixtures__/` (per CLAUDE.md §Scoring Rules —
+ * "500-case synthetic dev-month eval … held-out 100-case validation split"):
+ *   - archetypes.jsonl      —  10 hand-curated cases
+ *   - snapshots.jsonl       — 490 auto-generated cases (seed=42, train mix)
+ *                             Together with archetypes.jsonl this forms the
+ *                             500-case train split.
+ *   - validation.jsonl      — 100 auto-generated cases, held-out split.
+ *                             Uses a different seed (1337) AND different
+ *                             archetype weights so the sampled distribution
+ *                             is meaningfully distinct from train — catches
+ *                             archetype-frequency-sensitive regressions.
  *
- * Count targets per Sprint-2 plan are 50/450/100; we ship at 10/40/10 in the
- * 2-hour MVP budget and expand in the follow-up PR. Schema is identical;
- * scaling up is purely a matter of increasing the counts.
+ * Parameter sweep per CLAUDE.md — snapshots are drawn from the full joint
+ * distribution of (archetype × token range × outcome count × maturity stage
+ * × retention pattern) via the calibrated samplers in `generate.ts`.
  */
 
 import { writeFileSync } from "node:fs";
@@ -27,8 +34,34 @@ function writeJsonl(path: string, cases: FixtureCase[]): void {
   console.log(`wrote ${cases.length} cases → ${path}`);
 }
 
+// Train split — total 500 (10 hand-curated + 490 generated).
+// Default archetype mix (15/50/20/10/5) approximates a typical mid-sized org.
 writeJsonl(join(FIXTURE_DIR, "archetypes.jsonl"), ARCHETYPE_CASES);
-writeJsonl(join(FIXTURE_DIR, "snapshots.jsonl"), generateCases(42, 40));
-writeJsonl(join(FIXTURE_DIR, "validation.jsonl"), generateCases(1337, 10));
+writeJsonl(
+  join(FIXTURE_DIR, "snapshots.jsonl"),
+  generateCases(42, 490, {
+    idPrefix: "gen",
+    note: "Auto-generated snapshot (seed=42, train mix).",
+  }),
+);
+
+// Held-out validation split — 100 cases, different seed AND different
+// archetype weights. A stratified-heavy mix (more low-performer +
+// goodhart-gaming, fewer average) stresses the lower and upper tails of the
+// scoring function and catches regressions that aggregate-green fixtures hide.
+writeJsonl(
+  join(FIXTURE_DIR, "validation.jsonl"),
+  generateCases(1337, 100, {
+    idPrefix: "val",
+    note: "Held-out validation case (seed=1337, tail-heavy mix).",
+    shares: {
+      "low-performer": 0.25,
+      average: 0.3,
+      "high-leverage": 0.2,
+      "new-hire": 0.1,
+      "goodhart-gaming": 0.15,
+    },
+  }),
+);
 
 console.log("done.");

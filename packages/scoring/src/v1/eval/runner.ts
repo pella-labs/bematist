@@ -1,12 +1,22 @@
 /**
- * Eval runner — `bun run test:scoring`.
+ * Eval runner — `bun run test:scoring`. **M2 MERGE BLOCKER** per CLAUDE.md
+ * §Scoring Rules.
  *
  * Loads each JSONL fixture, runs production `score()`, compares to the
  * snapshotted `expected_final_als`. Reports MAE, max per-case error, and
  * per-archetype MAE. Exits 0 when all gates pass, 1 otherwise.
  *
- * Budget (CLAUDE.md §Testing Rules): < 30 s. Our 60 cases finish in < 100 ms.
- * At 500 cases the scoring function (pure math, no I/O) remains well under.
+ * Splits (per CLAUDE.md §Scoring Rules):
+ *   - Train:      archetypes (10, hand-curated) + snapshots (490) = 500 cases.
+ *   - Held-out:   validation (100, different seed + tail-heavy mix).
+ *
+ * Gates (MERGE BLOCKER — fail CI on regression):
+ *   - MAE ≤ 3 on BOTH the train and held-out splits.
+ *   - No single-case error > 10 on either split.
+ *   - Per-archetype MAE ≤ 4 (guards against aggregate-green, tail-regressed).
+ *   - Runtime < 30 s (budget from CLAUDE.md §Testing Rules).
+ *
+ * Pure math, no I/O — 600 cases well under the 30 s budget.
  */
 
 import { readFileSync } from "node:fs";
@@ -158,22 +168,62 @@ function gateResult(r: FixtureResult): string[] {
 
 const t0 = Date.now();
 
-const fixtures = [
+// Per-file reports for the per-archetype dashboard view.
+const perFileFixtures = [
   { name: "archetypes", file: "archetypes.jsonl" },
   { name: "snapshots", file: "snapshots.jsonl" },
   { name: "validation (held-out)", file: "validation.jsonl" },
 ];
 
-const allFailures: string[] = [];
-for (const f of fixtures) {
+const fileCases = new Map<string, FixtureCase[]>();
+for (const f of perFileFixtures) {
   const cases = loadJsonl(join(FIXTURE_DIR, f.file));
+  fileCases.set(f.file, cases);
   if (cases.length === 0) {
     console.log(`\n=== ${f.name} === (0 cases — skipped)`);
     continue;
   }
   const result = evalFixture(f.name, cases);
   printResult(result);
+}
+
+// Combined splits for the MERGE BLOCKER gate — train (500) + held-out (100).
+const trainCases: FixtureCase[] = [
+  ...(fileCases.get("archetypes.jsonl") ?? []),
+  ...(fileCases.get("snapshots.jsonl") ?? []),
+];
+const heldOutCases: FixtureCase[] = fileCases.get("validation.jsonl") ?? [];
+
+const splits = [
+  { name: "TRAIN (archetypes + snapshots)", cases: trainCases },
+  { name: "HELD-OUT (validation)", cases: heldOutCases },
+];
+
+const allFailures: string[] = [];
+for (const s of splits) {
+  if (s.cases.length === 0) {
+    allFailures.push(`${s.name}: split is empty — fixtures missing`);
+    continue;
+  }
+  const result = evalFixture(s.name, s.cases);
+  printResult(result);
   allFailures.push(...gateResult(result));
+}
+
+// Headline MERGE BLOCKER floor — train must be ≥ 500, held-out must be ≥ 100
+// per CLAUDE.md §Scoring Rules ("500-case synthetic dev-month eval … held-out
+// 100-case validation split"). Guards against silent fixture shrinkage.
+const TRAIN_FLOOR = 500;
+const HELD_OUT_FLOOR = 100;
+if (trainCases.length < TRAIN_FLOOR) {
+  allFailures.push(
+    `TRAIN split size ${trainCases.length} < required ${TRAIN_FLOOR} (CLAUDE.md §Scoring Rules)`,
+  );
+}
+if (heldOutCases.length < HELD_OUT_FLOOR) {
+  allFailures.push(
+    `HELD-OUT split size ${heldOutCases.length} < required ${HELD_OUT_FLOOR} (CLAUDE.md §Scoring Rules)`,
+  );
 }
 
 const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
@@ -189,5 +239,5 @@ if (allFailures.length > 0) {
   process.exit(1);
 }
 
-console.log(`\n✓ all gates pass`);
+console.log(`\n✓ all gates pass — TRAIN n=${trainCases.length}, HELD-OUT n=${heldOutCases.length}`);
 process.exit(0);
