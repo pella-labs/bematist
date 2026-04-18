@@ -195,7 +195,10 @@ const ENV_VARS = [
     purpose:
       "The single switch between solo, self-host, and managed modes. Same binary everywhere.",
   },
-  { name: "BEMATIST_TOKEN", purpose: "Bearer token for the ingest endpoint. Required for `serve`." },
+  {
+    name: "BEMATIST_TOKEN",
+    purpose: "Bearer token for the ingest endpoint. Required for `serve`.",
+  },
   {
     name: "BEMATIST_INGEST_ONLY_TO",
     purpose: "Hostname allowlist with certificate pinning. Blocks egress anywhere else.",
@@ -208,7 +211,10 @@ const ENV_VARS = [
     name: "BEMATIST_DRY_RUN",
     purpose: "Set to 1 to log what would be sent, without actually sending anything.",
   },
-  { name: "BEMATIST_LOG_LEVEL", purpose: "Log verbosity. Defaults to `warn` so the daemon is quiet." },
+  {
+    name: "BEMATIST_LOG_LEVEL",
+    purpose: "Log verbosity. Defaults to `warn` so the daemon is quiet.",
+  },
 ] as const;
 
 const COMMANDS_TODAY = [
@@ -315,9 +321,8 @@ export default function InstallPage() {
         </div>
         <p className="mk-license-body" style={{ padding: "24px" }} id="prereqs">
           Bematist never asks for your model API keys and never proxies model requests. It reads the
-          session files that your agents already write to disk. If your engineers are running any
-          of the agents below, the data is already on their machines — Bematist just makes it
-          legible.
+          session files that your agents already write to disk. If your engineers are running any of
+          the agents below, the data is already on their machines — Bematist just makes it legible.
         </p>
       </section>
 
@@ -376,7 +381,9 @@ export default function InstallPage() {
               curl -fsSL https://get.bematist.dev/env.example {">"} .env
             </span>
           </div>
-          <div className="mk-term-comment"># Fill in database passwords and your ingest hostname</div>
+          <div className="mk-term-comment">
+            # Fill in database passwords and your ingest hostname
+          </div>
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">docker compose up -d</span>
@@ -385,11 +392,15 @@ export default function InstallPage() {
           <div className="mk-term-comment"># Migrate schemas (control plane + events store)</div>
           <div>
             <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">docker compose run --rm worker bun run db:migrate:pg</span>
+            <span className="mk-term-cmd">
+              docker compose run --rm worker bun run db:migrate:pg
+            </span>
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">docker compose run --rm worker bun run db:migrate:ch</span>
+            <span className="mk-term-cmd">
+              docker compose run --rm worker bun run db:migrate:ch
+            </span>
           </div>
           <br />
           <div className="mk-term-comment"># Open the dashboard</div>
@@ -406,7 +417,9 @@ export default function InstallPage() {
           04 / Install the collector
         </span>
         <div className="mk-terminal">
-          <div className="mk-term-comment"># Preferred — signature-verified binary from GitHub releases</div>
+          <div className="mk-term-comment">
+            # Preferred — signature-verified binary from GitHub releases
+          </div>
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">
@@ -417,15 +430,20 @@ export default function InstallPage() {
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">
               cosign verify-blob bematist-darwin-arm64 --certificate-identity-regexp
-              'pella-labs/bematist' --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
+              'pella-labs/bematist' --certificate-oidc-issuer
+              'https://token.actions.githubusercontent.com'
             </span>
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">sudo install bematist-darwin-arm64 /usr/local/bin/bematist</span>
+            <span className="mk-term-cmd">
+              sudo install bematist-darwin-arm64 /usr/local/bin/bematist
+            </span>
           </div>
           <br />
-          <div className="mk-term-comment"># Or use your package manager — same binary, same signature</div>
+          <div className="mk-term-comment">
+            # Or use your package manager — same binary, same signature
+          </div>
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">brew install pella-labs/bematist/bematist</span>
@@ -447,7 +465,9 @@ export default function InstallPage() {
             <span className="mk-term-comment">&nbsp;&nbsp;# Windows via WSL2</span>
           </div>
           <br />
-          <div className="mk-term-comment"># One-liner fallback — wrapped for partial-pipe safety</div>
+          <div className="mk-term-comment">
+            # One-liner fallback — wrapped for partial-pipe safety
+          </div>
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">curl -fsSL https://get.bematist.dev/install.sh | sh</span>
@@ -482,7 +502,9 @@ export default function InstallPage() {
         </table>
         <div className="mk-terminal-wrap">
           <div className="mk-terminal">
-            <div className="mk-term-comment"># Typical self-host setup — three lines, one hostname</div>
+            <div className="mk-term-comment">
+              # Typical self-host setup — three lines, one hostname
+            </div>
             <div>
               <span className="mk-term-prompt">$</span>
               <span className="mk-term-cmd">
@@ -509,19 +531,25 @@ export default function InstallPage() {
           06 / Dry-run first, verify, then serve
         </span>
         <div className="mk-terminal">
-          <div className="mk-term-comment"># Logs what would be sent, sends nothing — safe to run on day one</div>
+          <div className="mk-term-comment">
+            # Logs what would be sent, sends nothing — safe to run on day one
+          </div>
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">bematist dry-run</span>
           </div>
           <br />
-          <div className="mk-term-comment"># Pre-flight — ingest reachable, adapters healthy, binary signature valid</div>
+          <div className="mk-term-comment">
+            # Pre-flight — ingest reachable, adapters healthy, binary signature valid
+          </div>
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">bematist doctor</span>
           </div>
           <br />
-          <div className="mk-term-comment"># Stream the egress journal — every byte that left this machine</div>
+          <div className="mk-term-comment">
+            # Stream the egress journal — every byte that left this machine
+          </div>
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">bematist audit --tail</span>
@@ -598,9 +626,7 @@ export default function InstallPage() {
           </span>
         </div>
 
-        <h3 className="mk-h3">
-          Agents supported in v1
-        </h3>
+        <h3 className="mk-h3">Agents supported in v1</h3>
         <table className="mk-table">
           <thead>
             <tr>
@@ -626,25 +652,19 @@ export default function InstallPage() {
           </tbody>
         </table>
 
-        <h3 className="mk-h3">
-          Collector commands
-        </h3>
+        <h3 className="mk-h3">Collector commands</h3>
         <ul className="mk-kv">
           {COMMANDS_TODAY.map((c) => (
             <li key={c.cmd}>
               <span style={{ color: "var(--mk-ink)", fontFamily: "var(--font-mk-mono)" }}>
                 {c.cmd}
               </span>
-              <span className="mk-muted">
-                {c.body}
-              </span>
+              <span className="mk-muted">{c.body}</span>
             </li>
           ))}
         </ul>
 
-        <h3 className="mk-h3">
-          Platform capabilities
-        </h3>
+        <h3 className="mk-h3">Platform capabilities</h3>
         <ul className="mk-kv">
           <li>
             <span style={{ color: "var(--mk-ink)" }}>Self-host on your infra</span>
@@ -673,13 +693,15 @@ export default function InstallPage() {
           <li>
             <span style={{ color: "var(--mk-ink)" }}>Local egress journal</span>
             <span className="mk-muted">
-              Every byte that leaves the machine is logged on the machine. Tailed with `bematist audit`.
+              Every byte that leaves the machine is logged on the machine. Tailed with `bematist
+              audit`.
             </span>
           </li>
           <li>
             <span style={{ color: "var(--mk-ink)" }}>On-device redaction of prompt content</span>
             <span className="mk-muted">
-              Secrets and PII are stripped before anything is sent. Full-prompt mode is opt-in, never default.
+              Secrets and PII are stripped before anything is sent. Full-prompt mode is opt-in,
+              never default.
             </span>
           </li>
           <li>
@@ -711,9 +733,7 @@ export default function InstallPage() {
           </span>
         </div>
 
-        <h3 className="mk-h3">
-          Agents on the roadmap
-        </h3>
+        <h3 className="mk-h3">Agents on the roadmap</h3>
         <table className="mk-table">
           <thead>
             <tr>
@@ -737,9 +757,7 @@ export default function InstallPage() {
           </tbody>
         </table>
 
-        <h3 className="mk-h3">
-          Features on the roadmap
-        </h3>
+        <h3 className="mk-h3">Features on the roadmap</h3>
         <div className="mk-features">
           {ROADMAP.map((r, i) => (
             <div key={r.title} className="mk-feature">
@@ -822,9 +840,7 @@ export default function InstallPage() {
       {/* Closing */}
       <section className="mk-closing" aria-label="Next steps">
         <div className="mk-closing-inner">
-          <p className="mk-closing-quote">
-            The data was always yours. We just made it legible.
-          </p>
+          <p className="mk-closing-quote">The data was always yours. We just made it legible.</p>
           <p className="mk-closing-body">
             Apache 2.0 for the collector, dashboard, adapters, schemas, and CLI. The managed-cloud
             gateway is BSL 1.1 and converts to Apache 2.0 after four years.

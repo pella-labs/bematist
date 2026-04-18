@@ -1,6 +1,13 @@
 import { cn, TooltipProvider } from "@bematist/ui";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, IBM_Plex_Sans, Inter, JetBrains_Mono, Space_Mono } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+  IBM_Plex_Sans,
+  Inter,
+  JetBrains_Mono,
+  Space_Mono,
+} from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
 

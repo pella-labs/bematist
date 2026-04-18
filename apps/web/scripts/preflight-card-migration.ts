@@ -102,7 +102,11 @@ try {
   `;
   const have = new Set(existing.map((r) => r.tablename));
   for (const t of requiredTables) {
-    record(`table:${t}`, have.has(t), have.has(t) ? "present" : "MISSING — run db:migrate:pg first");
+    record(
+      `table:${t}`,
+      have.has(t),
+      have.has(t) ? "present" : "MISSING — run db:migrate:pg first",
+    );
   }
 
   // 5. DDL privilege — create a throwaway table, then drop it. Unique suffix
@@ -135,14 +139,19 @@ printReport();
 process.exit(hardFail ? 1 : 0);
 
 function printReport(): void {
+  // This is a CLI tool — stdout is the whole point. biome's noConsole rule
+  // exists to keep console noise out of app/library code, not ops scripts.
   const pad = (s: string, n: number) => s.padEnd(n);
   let width = 0;
   for (const r of results) width = Math.max(width, r.name.length);
+  // biome-ignore lint/suspicious/noConsole: CLI preflight output
   console.log("\nPreflight — /card migration (Firebase → Better Auth)\n");
   for (const r of results) {
     const mark = r.ok ? "PASS" : "FAIL";
     const line = `  [${mark}] ${pad(r.name, width)}  ${r.detail ?? ""}`;
+    // biome-ignore lint/suspicious/noConsole: CLI preflight output
     console.log(line);
   }
+  // biome-ignore lint/suspicious/noConsole: CLI preflight output
   console.log(`\n${hardFail ? "FAIL" : "OK"} — ${results.length} check(s)\n`);
 }

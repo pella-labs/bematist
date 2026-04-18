@@ -196,19 +196,42 @@ const SectionHead = ({ title, sub }: { title: string; sub?: string }) => (
 );
 
 function shortModelName(name: string): string {
+  // Claude
+  if (name.includes("opus-4-7")) return "Opus 4.7";
   if (name.includes("opus-4-6")) return "Opus 4.6";
   if (name.includes("opus-4-5")) return "Opus 4.5";
+  if (name.includes("opus-4")) return "Opus 4";
+  if (name.includes("3-opus") || name.includes("claude-3-opus")) return "Opus 3";
   if (name.includes("opus")) return "Opus";
+  if (name.includes("sonnet-4-7")) return "Sonnet 4.7";
   if (name.includes("sonnet-4-6")) return "Sonnet 4.6";
-  if (name.includes("sonnet-4-2")) return "Sonnet 4";
+  if (name.includes("sonnet-4-5")) return "Sonnet 4.5";
+  if (name.includes("sonnet-4")) return "Sonnet 4";
+  if (name.includes("3-5-sonnet") || name.includes("3.5-sonnet")) return "Sonnet 3.5";
   if (name.includes("sonnet")) return "Sonnet";
+  if (name.includes("haiku-4-5")) return "Haiku 4.5";
+  if (name.includes("haiku-4")) return "Haiku 4";
   if (name.includes("haiku")) return "Haiku 3.5";
-  if (name.includes("gpt-5.4")) return "GPT-5.4";
+  // OpenAI / Codex — longest-match first (spark/mini must come before generic codex)
   if (name.includes("codex-spark")) return "Codex Spark";
   if (name.includes("codex-mini")) return "Codex Mini";
   if (name.includes("gpt-5.3-codex")) return "Codex 5.3";
   if (name.includes("gpt-5.2-codex")) return "Codex 5.2";
   if (name.includes("gpt-5.1-codex")) return "Codex 5.1";
+  if (name.includes("gpt-5.4")) return "GPT-5.4";
+  if (name.includes("gpt-5")) return "GPT-5";
+  if (name.includes("gpt-4o-mini")) return "GPT-4o mini";
+  if (name.includes("gpt-4o")) return "GPT-4o";
+  if (name.includes("gpt-4")) return "GPT-4";
+  if (name.startsWith("o3-mini")) return "o3-mini";
+  if (name.startsWith("o3")) return "o3";
+  if (name.startsWith("o4-mini")) return "o4-mini";
+  // Google
+  if (name.includes("gemini-1.5-pro")) return "Gemini 1.5 Pro";
+  if (name.includes("gemini-pro")) return "Gemini Pro";
+  // Cursor's own
+  if (name.includes("cursor-small")) return "Cursor Small";
+  if (name.includes("cursor-fast")) return "Cursor Fast";
   if (name === "unknown") return "Unknown";
   return name;
 }
@@ -279,7 +302,10 @@ function getDailyColor(
 export function CardPage({
   demoData,
   compact = false,
-}: { demoData?: CardData; compact?: boolean } = {}) {
+}: {
+  demoData?: CardData;
+  compact?: boolean;
+} = {}) {
   const params = useParams<{ id?: string }>();
   const id = params?.id;
   const [data, setData] = useState<CardData | null>(demoData ?? null);
@@ -1574,7 +1600,6 @@ export function CardPage({
       }}
       data-compact={compact ? "true" : undefined}
     >
-
       {/* Top bar: source toggle + theme toggle */}
       <div className={`global-toggle ${showShare ? "show" : ""}`}>
         {s.codex.sessions > 0 && (

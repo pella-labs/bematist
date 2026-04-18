@@ -264,7 +264,9 @@ export default function MarketingHome() {
           04 / Install
         </span>
         <div className="mk-terminal" style={{ marginBottom: 20 }}>
-          <div className="mk-term-comment"># Five minutes to first event — signed binary, no proxy, no API keys.</div>
+          <div className="mk-term-comment">
+            # Five minutes to first event — signed binary, no proxy, no API keys.
+          </div>
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">docker compose up -d</span>
