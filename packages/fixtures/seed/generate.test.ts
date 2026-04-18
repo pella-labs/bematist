@@ -9,9 +9,9 @@ describe("perf seed generator", () => {
     expect(plan.devs).toHaveLength(100);
     expect(plan.days).toBe(90);
     expect(plan.eventsPerDevPerDay).toBe(100);
-    expect(plan.devs.filter((d) => d.orgSlug === "acme-small")).toHaveLength(7);
-    expect(plan.devs.filter((d) => d.orgSlug === "bolt-mid")).toHaveLength(33);
-    expect(plan.devs.filter((d) => d.orgSlug === "crux-large")).toHaveLength(60);
+    expect(plan.devs.filter((d) => d.orgSlug === "acmesmall")).toHaveLength(7);
+    expect(plan.devs.filter((d) => d.orgSlug === "boltmid")).toHaveLength(33);
+    expect(plan.devs.filter((d) => d.orgSlug === "cruxlarge")).toHaveLength(60);
   });
 
   test("buildPlan is deterministic across runs (same seed)", () => {
