@@ -230,6 +230,8 @@ jobs:
 
       - name: k6 dashboard gate
         id: k6_dashboard
+        # Warn-level when K6_GATE_M2=0 (M2 default); merge-blocking when '1' (M3).
+        continue-on-error: ${{ env.K6_GATE_M2 != '1' }}
         run: bash tests/perf/run.sh dashboard
 
       - name: k6 ingest gate
@@ -237,6 +239,7 @@ jobs:
         # Always run even if dashboard already failed — surfaces both numbers
         # in the same artifact set for triage.
         if: always() && steps.gate.conclusion == 'success'
+        continue-on-error: ${{ env.K6_GATE_M2 != '1' }}
         run: bash tests/perf/run.sh ingest
 
       - name: Upload summaries + service logs
