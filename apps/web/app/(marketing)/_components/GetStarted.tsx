@@ -59,7 +59,7 @@ export function GetStarted() {
   const handleSignIn = async () => {
     await signIn.social({
       provider: "github",
-      callbackURL: "/?getstarted=1#get-started",
+      callbackURL: "/card?getstarted=1",
     });
   };
 

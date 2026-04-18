@@ -270,10 +270,13 @@ export async function POST(req: Request) {
   // Upsert so re-submitting (after minting a fresh token) replaces the card
   // rather than 500-ing on PK collision. created_at is refreshed so the
   // public page shows the latest capture time.
+  // pg-js auto-serializes an object param to JSON text for a jsonb column;
+  // do NOT pre-stringify (doing so turned `stats` into a string-typed jsonb
+  // value and blew up `data.stats.combined` on the render side).
   await pg.query(
     `INSERT INTO cards
        (card_id, owner_user_id, github_username, display_name, avatar_url, stats, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6::jsonb, now())
+     VALUES ($1, $2, $3, $4, $5, $6, now())
      ON CONFLICT (card_id) DO UPDATE SET
        owner_user_id   = EXCLUDED.owner_user_id,
        github_username = EXCLUDED.github_username,
@@ -281,14 +284,7 @@ export async function POST(req: Request) {
        avatar_url      = EXCLUDED.avatar_url,
        stats           = EXCLUDED.stats,
        created_at      = EXCLUDED.created_at`,
-    [
-      cardId,
-      ownerUserId,
-      row.github_username,
-      displayName,
-      avatarUrl,
-      JSON.stringify(parse.data),
-    ],
+    [cardId, ownerUserId, row.github_username, displayName, avatarUrl, parse.data],
   );
 
   const baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";
