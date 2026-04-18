@@ -3,6 +3,9 @@ import { assertRole, type Ctx } from "../auth";
 import { useFixtures } from "../env";
 import type {
   Cluster,
+  ClusterContributor,
+  ClusterContributorsInput,
+  ClusterContributorsOutput,
   ClusterListInput,
   ClusterListOutput,
   TwinFinderInput,
@@ -500,4 +503,155 @@ function randomUnitVec(seed: number, dim: number): number[] {
 
 function perturb(base: readonly number[], seed: number, magnitude: number): number[] {
   return base.map((v, i) => v + (lcg(seed + i * 37) - 0.5) * magnitude);
+}
+
+/**
+ * Cluster Contributors — distinct engineers in a cluster, returned as opaque
+ * hashes only. Powers the "click a cluster card → see color-dotted IC
+ * silhouettes" UX on `/dashboard/clusters`.
+ *
+ * k>=3 contributor floor enforced BEFORE any per-contributor row is returned:
+ * under-floor clusters surface only the count (never ids), matching the
+ * pattern used by `findSessionTwins` + `listClusters`. Engineer ids leave the
+ * API only as `engineer_id_hash` — the same sha256-first-16 stub
+ * `@bematist/scoring`'s `findTwins` uses (will be replaced by
+ * `HMAC(engineer_id, tenant_salt)` when tenant salts land).
+ *
+ * Dual-mode:
+ *   - `USE_FIXTURES=0` reads `cluster_assignment_mv` ⨝ `events` for
+ *     per-engineer counts, k-stat from `prompt_cluster_stats`.
+ *   - Otherwise a deterministic fixture universe (same seed as the cluster
+ *     list, so the two views are consistent).
+ *
+ * TIER-A ALLOWLIST: SELECT list is `engineer_id` (hashed before return) +
+ * `session_id` (count only). No `prompt_text`, no `prompt_abstract`, no
+ * `tool_input/output`, no `raw_attrs`.
+ */
+export async function listClusterContributors(
+  ctx: Ctx,
+  input: ClusterContributorsInput,
+): Promise<ClusterContributorsOutput> {
+  assertRole(ctx, ["admin", "manager", "engineer", "auditor", "viewer"]);
+  if (useFixtures()) return listClusterContributorsFixture(ctx, input);
+  return listClusterContributorsReal(ctx, input);
+}
+
+function listClusterContributorsFixture(
+  ctx: Ctx,
+  input: ClusterContributorsInput,
+): ClusterContributorsOutput {
+  const limit = input.limit ?? 25;
+
+  // Reuse the twin-finder fixture universe so cluster ids line up with what
+  // the Twin Finder page surfaces. Seed by tenant so multiple tenants get
+  // different mappings.
+  const universe = buildTwinFixtureUniverse(ctx.tenant_id, `contrib:${input.cluster_id}`, 0);
+
+  const stats = universe.clusterStats.find((s) => s.cluster_id === input.cluster_id);
+  if (!stats) return { ok: false, cluster_id: input.cluster_id, reason: "not_found" };
+
+  if (stats.distinct_engineers < CLUSTER_CONTRIBUTOR_FLOOR) {
+    return {
+      ok: false,
+      cluster_id: input.cluster_id,
+      reason: "cohort_too_small",
+      contributor_count: stats.distinct_engineers,
+    };
+  }
+
+  // Aggregate by engineer across the fixture candidates in this cluster.
+  const counts = new Map<string, number>();
+  for (const c of universe.candidates) {
+    if (c.cluster_id !== input.cluster_id) continue;
+    counts.set(c.engineer_id, (counts.get(c.engineer_id) ?? 0) + 1);
+  }
+
+  const contributors: ClusterContributor[] = Array.from(counts.entries())
+    .map(([engId, count]) => ({
+      engineer_id_hash: hashEngineerIdStub(engId),
+      session_count: count,
+    }))
+    .sort((a, b) => b.session_count - a.session_count)
+    .slice(0, limit);
+
+  return {
+    ok: true,
+    cluster_id: input.cluster_id,
+    contributors,
+    contributor_count: stats.distinct_engineers,
+  };
+}
+
+async function listClusterContributorsReal(
+  ctx: Ctx,
+  input: ClusterContributorsInput,
+): Promise<ClusterContributorsOutput> {
+  // Pull the contributor k-stat + per-engineer counts in parallel for lowest p95.
+  const [statsRows, contribRows] = await Promise.all([
+    ctx.db.ch.query<{ distinct_engineers: number }>(
+      `SELECT uniqMerge(contributing_engineers_state) AS distinct_engineers
+       FROM prompt_cluster_stats
+       WHERE org_id = {tenant_id:String}
+         AND cluster_id = {cluster_id:String}`,
+      { tenant_id: ctx.tenant_id, cluster_id: input.cluster_id },
+    ),
+    ctx.db.ch.query<{ engineer_id: string; session_count: number }>(
+      `SELECT
+         e.engineer_id AS engineer_id,
+         uniq(e.session_id) AS session_count
+       FROM cluster_assignment_mv FINAL AS a
+       INNER JOIN events AS e
+         ON e.org_id = a.org_id
+        AND e.session_id = a.session_id
+        AND e.prompt_index = a.prompt_index
+       WHERE a.org_id = {tenant_id:String}
+         AND a.cluster_id = {cluster_id:String}
+       GROUP BY e.engineer_id
+       ORDER BY session_count DESC
+       LIMIT {limit:UInt32}`,
+      {
+        tenant_id: ctx.tenant_id,
+        cluster_id: input.cluster_id,
+        limit: input.limit ?? 25,
+      },
+    ),
+  ]);
+
+  const distinctEngineers = Number(statsRows[0]?.distinct_engineers ?? 0);
+  if (distinctEngineers === 0 && contribRows.length === 0) {
+    return { ok: false, cluster_id: input.cluster_id, reason: "not_found" };
+  }
+  if (distinctEngineers < CLUSTER_CONTRIBUTOR_FLOOR) {
+    return {
+      ok: false,
+      cluster_id: input.cluster_id,
+      reason: "cohort_too_small",
+      contributor_count: distinctEngineers,
+    };
+  }
+
+  const contributors: ClusterContributor[] = contribRows.map((r) => ({
+    engineer_id_hash: hashEngineerIdStub(r.engineer_id),
+    session_count: Number(r.session_count),
+  }));
+
+  return {
+    ok: true,
+    cluster_id: input.cluster_id,
+    contributors,
+    contributor_count: distinctEngineers,
+  };
+}
+
+/**
+ * sha256-first-16-chars hash stub mirroring `@bematist/scoring`'s
+ * `hashEngineerId`. In production this is replaced by
+ * `HMAC(engineer_id, tenant_salt)` at the ingest boundary. Centralized here
+ * so the UI can render consistent color dots across Twin Finder + cluster
+ * contributors views (same engineer → same hash → same color).
+ */
+function hashEngineerIdStub(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = Math.imul(31, h) + id.charCodeAt(i);
+  return `eh_${(h >>> 0).toString(16).padStart(8, "0")}`;
 }
