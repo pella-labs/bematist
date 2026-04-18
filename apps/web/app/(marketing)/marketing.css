@@ -846,14 +846,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(
-    90% 60% at 50% 0%,
-    rgba(110, 138, 111, 0.15),
-    transparent 60%
-  );
-  border: 1px solid var(--mk-border);
-  border-radius: 14px;
-  padding: 32px;
+  background: transparent;
+  border: none;
+  padding: 0;
   overflow: hidden;
 }
 

@@ -69,7 +69,7 @@ export default function MarketingHome() {
             </p>
             <div className="mk-hero-actions">
               <Link href="/demo" className="mk-btn mk-btn-primary">
-                Try with demo data
+                Try it now
               </Link>
               <a
                 href="https://github.com/pella-labs/bematist"

@@ -26,6 +26,7 @@ import {
 } from './card-utils'
 import './card.css'
 import './holo.css'
+import './card-bematist.css'
 
 /* ── Icons ── */
 const FlameIcon = ({ size = 14, color = '#ff9f43' }: { size?: number; color?: string }) => (
@@ -954,9 +955,7 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
   )
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", background: '#8FA6BB', overflow: 'hidden', width: '100vw', height: '100vh', WebkitFontSmoothing: 'antialiased' }}>
-      {/* Grid background — same as landing page */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 1, pointerEvents: 'none', backgroundImage: 'linear-gradient(rgba(90,123,155,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(90,123,155,0.15) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+    <div style={{ fontFamily: "'Inter', sans-serif", background: 'transparent', overflow: 'hidden', width: '100%', height: '100%', WebkitFontSmoothing: 'antialiased', position: 'relative' }}>
 
       {/* Top bar: source toggle + theme toggle */}
       <div className={`global-toggle ${showShare ? 'show' : ''}`}>
