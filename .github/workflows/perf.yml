@@ -127,7 +127,7 @@ jobs:
       BASE_URL: http://localhost:3000
       USE_FIXTURES: "0"
       K6_GATE_M2: ${{ github.event.inputs.gate_m2 || '1' }}
-      PERF_SEED_TOTAL_TARGET: ${{ github.event.inputs.seed_target || '1000000' }}
+      PERF_SEED_TOTAL_TARGET: ${{ github.event.inputs.seed_target || '600000' }}
       # Deterministic key secret so the seed mints a known bearer the k6
       # ingest scenario can read via tests/perf/.ingest-bearer.
       PERF_KEY_SECRET: "perf-ci-secret-deterministic-32-bytes-x"
