@@ -7,6 +7,7 @@ import type { ClickHouseClient } from "@clickhouse/client";
 import PgBoss from "pg-boss";
 import { ch } from "./clickhouse";
 import { db, pgClient } from "./db";
+import { startKafkaGithubConsumer } from "./github/kafkaConsumer";
 import {
   createLocalSemaphore,
   createNoopRecomputeEmitter,
@@ -126,6 +127,20 @@ export async function startWorker() {
     LINKER_RECONCILE_SCAFFOLD_SCHEDULE,
   );
 
+  // G2 — Kafka consumer for `github.webhooks`. Opt-in via
+  // KAFKA_TRANSPORT=kafkajs; stays off in solo/embedded mode (no Redpanda
+  // broker). Consumer runs in the same process as the linker loop.
+  startKafkaGithubConsumerLoop().catch((err) => {
+    console.error(
+      JSON.stringify({
+        level: "error",
+        app: "worker-github-kafka",
+        msg: "consumer-crashed",
+        err: err instanceof Error ? err.message : String(err),
+      }),
+    );
+  });
+
   // Redis Streams consumer loop for `session_repo_recompute:<tenant_id>`.
   // Fire-and-forget — the loop self-paces via XREADGROUP BLOCK + a short
   // interval. Surfaces errors via console.error; a production deploy
@@ -142,6 +157,51 @@ export async function startWorker() {
   });
 
   return boss;
+}
+
+/**
+ * Start the kafkajs consumer for `github.webhooks` when
+ * `KAFKA_TRANSPORT=kafkajs`. No-op when the operator left the default
+ * (solo mode / tests). Uses the same `consumeMessage` pipeline as the
+ * in-memory path.
+ */
+async function startKafkaGithubConsumerLoop(): Promise<void> {
+  const transport = (process.env.KAFKA_TRANSPORT ?? "kafkajs").toLowerCase();
+  if (transport !== "kafkajs") {
+    console.log("[worker] KAFKA_TRANSPORT=memory — skipping kafka consumer");
+    return;
+  }
+  const brokersRaw = process.env.KAFKA_BROKERS ?? process.env.REDPANDA_BROKERS ?? "";
+  const brokers = brokersRaw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  const finalBrokers = brokers.length > 0 ? brokers : ["localhost:9092"];
+
+  // Recompute producer — the in-memory test double is fine here because the
+  // linker already consumes from session_repo_recompute:* via its own node-
+  // redis client. This emitter is kept for future wiring symmetry; for G2
+  // it's a no-op so the consumer's UPSERT path is exercised end-to-end
+  // without double-publishing recompute events.
+  const { createInMemoryRecomputeStream } = await import(
+    "../../ingest/src/github-app/recomputeStream"
+  );
+
+  await startKafkaGithubConsumer(
+    {
+      brokers: finalBrokers,
+      topic: process.env.GITHUB_WEBHOOKS_TOPIC ?? "github.webhooks",
+      groupId: process.env.BEMATIST_WORKER_GROUP_ID ?? "bematist-github-worker",
+    },
+    {
+      sql: pgClient,
+      recompute: createInMemoryRecomputeStream(),
+    },
+  );
+  console.log("[worker] kafka github consumer started", {
+    brokers: finalBrokers,
+    topic: "github.webhooks",
+  });
 }
 
 /**
