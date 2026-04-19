@@ -1,6 +1,11 @@
 import { log } from "../../../logger";
 import { readLinesFromOffset } from "./safeRead";
-import type { RawCodexLine, RawCodexPayload } from "./types";
+import type {
+  RawCodexLine,
+  RawCodexPayload,
+  RawCodexSessionMeta,
+  RawCodexTurnContext,
+} from "./types";
 
 export interface CodexUsageSnapshot {
   input_tokens: number;
@@ -35,6 +40,16 @@ export interface ParsedCodexSession {
   durationMs: number | null;
   firstTimestamp: string | null;
   lastTimestamp: string | null;
+  /** session_meta payload (cwd, model_provider, optional gitBranch). */
+  sessionMeta: RawCodexSessionMeta | null;
+  /** Latest active model seen anywhere in the rollout — turn_context is
+   *  authoritative; token_count.payload.model is a fallback. Used to stamp
+   *  gen_ai_request_model when per-turn isn't granular. */
+  activeModel: string | null;
+  /** Collection of tool invocations (exec_command / apply_patch). Key is the
+   *  derived tool_name (command basename, or "apply_patch"); value is count.
+   *  Mined for tool_name attribution — NOT a privacy-sensitive surface. */
+  toolBreakdown: Map<string, number>;
 }
 
 export interface ParseOptions {
@@ -66,6 +81,9 @@ export function parseLines(lines: string[], opts: ParseOptions = {}): ParsedCode
   let lastTimestamp: string | null = null;
   let sessionId: string | null = null;
   let tokenCountSeq = 0;
+  let sessionMeta: RawCodexSessionMeta | null = null;
+  let activeModel: string | null = null;
+  const toolBreakdown = new Map<string, number>();
 
   for (const raw of lines) {
     let parsed: RawCodexLine;
@@ -85,6 +103,22 @@ export function parseLines(lines: string[], opts: ParseOptions = {}): ParsedCode
 
     const kind = extractKind(parsed);
     const payload = extractPayload(parsed);
+
+    // session_meta: Codex writes one per rollout (cwd, originator, etc.).
+    if (kind === "session_meta" && payload) {
+      sessionMeta = payload as RawCodexSessionMeta;
+      if (!sessionId && sessionMeta.id) sessionId = sessionMeta.id;
+    }
+
+    // turn_context: authoritative source of the active model for a turn.
+    // Newer Codex CLI no longer stamps model on token_count; turn_context is
+    // the only place we reliably see `gpt-5.3-codex` / `gpt-5.4` / etc.
+    if (kind === "turn_context" && payload) {
+      const tc = payload as RawCodexTurnContext;
+      const model =
+        tc.collaboration_mode?.settings?.model ?? tc.model ?? (payload as RawCodexPayload).model;
+      if (model) activeModel = model;
+    }
 
     if (kind === "token_count" && payload) {
       // Newer CLI: `payload.info` is null on rate-limit-only pings — skip,
@@ -117,12 +151,25 @@ export function parseLines(lines: string[], opts: ParseOptions = {}): ParsedCode
         cumulative,
         timestamp: parsed.timestamp ?? prev?.timestamp ?? "",
       };
-      const model = payload.model ?? prev?.model;
+      // Prefer explicit payload model, then prior-known, then latest turn_context.
+      const model = payload.model ?? prev?.model ?? activeModel ?? undefined;
       if (model !== undefined) merged.model = model;
       const turnId = parsed.turn_id ?? prev?.turn_id;
       if (turnId !== undefined) merged.turn_id = turnId;
       perTurnUsage.set(turnKey, merged);
       lastCumulative = cumulative;
+    }
+
+    // toolBreakdown mining — count invocations by derived tool name so
+    // Dashboard "Insights → tool usage" has non-empty data without any
+    // prompt-text exposure. Keys: "apply_patch" for patch_apply_start, or
+    // the first whitespace-delimited token of exec_command payload.command.
+    if (kind === "exec_command_start" && payload?.command) {
+      const name = deriveToolNameFromCommand(payload.command);
+      toolBreakdown.set(name, (toolBreakdown.get(name) ?? 0) + 1);
+    }
+    if (kind === "patch_apply_start") {
+      toolBreakdown.set("apply_patch", (toolBreakdown.get("apply_patch") ?? 0) + 1);
     }
   }
 
@@ -150,14 +197,49 @@ export function parseLines(lines: string[], opts: ParseOptions = {}): ParsedCode
     durationMs,
     firstTimestamp,
     lastTimestamp,
+    sessionMeta,
+    activeModel,
+    toolBreakdown,
   };
 }
 
+/**
+ * Derive a stable tool_name from a shell command. First whitespace token
+ * (`bun test` → "bun"; `/usr/bin/git status` → "git"). Strips path and
+ * trailing colon/quotes. Returns "shell" as a safe fallback when input is
+ * empty or looks like pure shell syntax (e.g. "&&").
+ */
+export function deriveToolNameFromCommand(command: string): string {
+  if (!command) return "shell";
+  // Take first whitespace-delimited token; strip leading quotes and any path prefix.
+  const first = command
+    .trim()
+    .split(/\s+/, 1)[0]
+    ?.replace(/^['"]+|['"]+$/g, "");
+  if (!first) return "shell";
+  const base = first.split("/").pop() ?? first;
+  // Guard against pure operators / flags.
+  if (!/^[A-Za-z0-9_.+-]+$/.test(base)) return "shell";
+  return base;
+}
+
 export function extractKind(line: RawCodexLine): string | undefined {
-  return line.event_msg?.type ?? line.type;
+  // Three rollout shapes to cover:
+  //   1. Wrapped nested:  { event_msg: { type, payload } }
+  //   2. Bare top-level:  { type, payload }
+  //   3. Real-CLI wrapper: { type: "event_msg", payload: { type: <real>, ... } }
+  //      — here the inner `payload.type` IS the event kind.
+  const wrapped = line.event_msg?.type;
+  if (wrapped) return wrapped;
+  const outer = line.type;
+  if (outer === "event_msg" && line.payload?.type) return line.payload.type;
+  return outer;
 }
 
 export function extractPayload(line: RawCodexLine): RawCodexPayload | undefined {
+  // For the real-CLI wrapper (`type:"event_msg"`), the inner payload IS the
+  // effective payload (fields like input_tokens, model live there).
+  if (line.type === "event_msg" && line.payload) return line.payload;
   return line.event_msg?.payload ?? line.payload;
 }
 

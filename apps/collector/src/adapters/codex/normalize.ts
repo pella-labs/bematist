@@ -3,6 +3,7 @@ import { pricingVersionString } from "@bematist/config";
 import type { Event } from "@bematist/schema";
 import {
   type CodexTurnUsage,
+  deriveToolNameFromCommand,
   extractKind,
   extractPayload,
   type ParsedCodexSession,
@@ -47,17 +48,25 @@ const MODEL_PRICING_PER_MTOK: Record<string, { input: number; output: number; ca
   "o4-mini": { input: 1.1, output: 4.4, cached: 0.55 },
 };
 
+/** Extra context the adapter resolves outside the JSONL (e.g. branch from `.git/HEAD`). */
+export interface NormalizeExtras {
+  /** Active git branch for the session's `cwd`. Denormalized onto every event
+   *  via `raw_attrs.branch`; ingest copies it into CH column `branch`. */
+  branch?: string;
+}
+
 export function normalizeSession(
   parsed: ParsedCodexSession,
   id: ServerIdentity,
   sourceVersion: string,
+  extras: NormalizeExtras = {},
 ): Event[] {
   const session_id = parsed.sessionId ?? "unknown";
   const events: Event[] = [];
   let seq = 0;
 
   for (const line of parsed.entries) {
-    const mapped = mapLine(line, parsed, id, sourceVersion, session_id, seq);
+    const mapped = mapLine(line, parsed, id, sourceVersion, session_id, seq, extras);
     for (const e of mapped) {
       events.push(e);
       seq++;
@@ -73,10 +82,18 @@ function mapLine(
   sourceVersion: string,
   session_id: string,
   seq: number,
+  extras: NormalizeExtras,
 ): Event[] {
   const kind = extractKind(line);
   if (!kind) return [];
   const payload = extractPayload(line);
+
+  // Attach the resolved git branch on every event via raw_attrs — ingest
+  // canonicalize() copies raw_attrs.branch into CH column `branch` so outcome
+  // attribution joins (PR/commit) work for Codex sessions the same as Claude.
+  const raw_attrs: Record<string, unknown> | undefined = extras.branch
+    ? { branch: extras.branch }
+    : undefined;
 
   const base = {
     schema_version: 1 as const,
@@ -91,9 +108,10 @@ function mapLine(
     tier: id.tier,
     session_id,
     event_seq: seq,
+    ...(raw_attrs ? { raw_attrs } : {}),
   };
 
-  if (kind === "session_start" || kind === "SessionStart") {
+  if (kind === "session_start" || kind === "SessionStart" || kind === "session_meta") {
     return [
       {
         ...base,
@@ -117,11 +135,14 @@ function mapLine(
   }
 
   if (kind === "user_message" || kind === "UserMessage") {
+    // Prefer the model named on the user_message; fall back to the latest
+    // turn_context model. Newer Codex omits model on user_message entirely.
+    const reqModel = payload?.model ?? parsed.activeModel ?? undefined;
     return [
       {
         ...base,
         client_event_id: deterministicId("llm_request", session_id, seq, line),
-        gen_ai: { system: "openai", request: { model: payload?.model, max_tokens: 4096 } },
+        gen_ai: { system: "openai", request: { model: reqModel, max_tokens: 4096 } },
         dev_metrics: { event_kind: "llm_request" },
       } as Event,
     ];
@@ -131,15 +152,22 @@ function mapLine(
     const turnKey = line.turn_id ?? findTurnKeyForSeq(parsed, line);
     const turn = turnKey ? parsed.perTurnUsage.get(turnKey) : undefined;
     if (!turn) return [];
-    const cost = costForTurn(turn);
+    // Model priority: explicit turn model → latest turn_context activeModel.
+    const respModel = turn.model ?? parsed.activeModel ?? undefined;
+    const turnForCost: CodexTurnUsage = respModel ? { ...turn, model: respModel } : turn;
+    const cost = costForTurn(turnForCost);
     return [
       {
         ...base,
         client_event_id: deterministicId("llm_response", session_id, seq, line),
         gen_ai: {
           system: "openai",
+          // Stamp the request model too so gen_ai_request_model isn't empty
+          // on the llm_response row — the CH column is populated from
+          // gen_ai.request.model, not gen_ai.response.model.
+          request: respModel ? { model: respModel } : undefined,
           response: {
-            model: turn.model,
+            model: respModel,
             finish_reasons: payload?.finish_reason ? [payload.finish_reason] : undefined,
           },
           usage: {
@@ -158,13 +186,14 @@ function mapLine(
   }
 
   if (kind === "exec_command_start" || kind === "ExecCommandStart") {
+    const toolName = payload?.command ? deriveToolNameFromCommand(payload.command) : "shell";
     return [
       {
         ...base,
         client_event_id: deterministicId("exec_command_start", session_id, seq, line),
         dev_metrics: {
           event_kind: "exec_command_start",
-          tool_name: "shell",
+          tool_name: toolName,
         },
       } as Event,
     ];
@@ -173,13 +202,16 @@ function mapLine(
   if (kind === "exec_command_end" || kind === "ExecCommandEnd") {
     const exit = payload?.exit_code;
     const failure = exit !== undefined && exit !== 0;
+    // exec_command_end rarely carries `command` — look back at the prior
+    // exec_command_start for the same turn to attribute tool_name.
+    const toolName = findToolNameForExecEnd(parsed, line) ?? "shell";
     return [
       {
         ...base,
         client_event_id: deterministicId("exec_command_end", session_id, seq, line),
         dev_metrics: {
           event_kind: "exec_command_end",
-          tool_name: "shell",
+          tool_name: toolName,
           tool_status: failure ? "error" : "ok",
           duration_ms: payload?.duration_ms,
           first_try_failure: failure ? true : undefined,
@@ -219,6 +251,29 @@ function mapLine(
   }
 
   return [];
+}
+
+/**
+ * Walk `parsed.entries` to find the most recent exec_command_start (same
+ * turn_id when available) and return its derived tool_name. Used to attribute
+ * tool_name on exec_command_end, which doesn't carry the original command.
+ */
+function findToolNameForExecEnd(
+  parsed: ParsedCodexSession,
+  endLine: RawCodexLine,
+): string | undefined {
+  let last: string | undefined;
+  for (const e of parsed.entries) {
+    if (e === endLine) return last;
+    const k = extractKind(e);
+    if (k === "exec_command_start" || k === "ExecCommandStart") {
+      const p = extractPayload(e);
+      if (p?.command && (!endLine.turn_id || e.turn_id === endLine.turn_id)) {
+        last = deriveToolNameFromCommand(p.command);
+      }
+    }
+  }
+  return last;
 }
 
 function findTurnKeyForSeq(parsed: ParsedCodexSession, line: RawCodexLine): string | undefined {

@@ -23,6 +23,39 @@ export interface RawCodexLine {
   payload?: RawCodexPayload;
 }
 
+/**
+ * Session-level metadata Codex writes at the top of every rollout JSONL
+ * (type = "session_meta"). We mine this for `cwd` (→ git branch resolution)
+ * and — when Codex starts emitting it — `gitBranch` directly.
+ */
+export interface RawCodexSessionMeta {
+  id?: string;
+  timestamp?: string;
+  cwd?: string;
+  originator?: string;
+  cli_version?: string;
+  source?: string;
+  model_provider?: string;
+  /** Direct branch field (not emitted by current Codex CLI but reserved). */
+  gitBranch?: string;
+  git_branch?: string;
+}
+
+/**
+ * Per-turn context Codex writes at the start of every turn
+ * (type = "turn_context"). Carries the ACTUAL active model for the turn —
+ * authoritative when token_count.payload.model is absent (newer CLI shape).
+ */
+export interface RawCodexTurnContext {
+  turn_id?: string;
+  cwd?: string;
+  model?: string;
+  collaboration_mode?: {
+    mode?: string;
+    settings?: { model?: string };
+  };
+}
+
 export interface RawCodexEventMsg {
   type?: string;
   payload?: RawCodexPayload;

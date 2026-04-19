@@ -1,4 +1,4 @@
-import { readdir } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { Event } from "@bematist/schema";
 import type { Adapter, AdapterContext, AdapterHealth } from "@bematist/sdk";
@@ -47,13 +47,26 @@ export class CodexAdapter implements Adapter {
     for (const path of files) {
       const offsetKey = `offset:${path}`;
       const cumulativeKey = `cumulative:${path}`;
+      const branchKey = `branch:${path}`;
       const prevOffset = Number.parseInt((await ctx.cursor.get(offsetKey)) ?? "0", 10);
       const priorCumulative = parseCumulative(await ctx.cursor.get(cumulativeKey));
+      let branch: string | undefined = (await ctx.cursor.get(branchKey)) ?? undefined;
 
       if (prevOffset === 0) {
         const parsed = await parseSessionFile(path, { priorCumulative });
+        // Resolve git branch from session_meta.gitBranch (future Codex) OR the
+        // `cwd` repo's current HEAD. Cached per rollout so later polls skip it.
+        if (!branch) {
+          branch = await resolveBranch(parsed.sessionMeta?.gitBranch, parsed.sessionMeta?.cwd);
+          if (branch) await ctx.cursor.set(branchKey, branch);
+        }
         out.push(
-          ...normalizeSession(parsed, { ...this.identity, tier: ctx.tier }, SOURCE_VERSION_DEFAULT),
+          ...normalizeSession(
+            parsed,
+            { ...this.identity, tier: ctx.tier },
+            SOURCE_VERSION_DEFAULT,
+            branch ? { branch } : {},
+          ),
         );
         const { nextOffset } = await readLinesFromOffset(path, 0);
         await ctx.cursor.set(offsetKey, String(nextOffset));
@@ -68,7 +81,12 @@ export class CodexAdapter implements Adapter {
       const parsed = parseLines(lines, { priorCumulative });
       parsed.sessionId = parsed.sessionId ?? sessionIdFromPath(path);
       out.push(
-        ...normalizeSession(parsed, { ...this.identity, tier: ctx.tier }, SOURCE_VERSION_DEFAULT),
+        ...normalizeSession(
+          parsed,
+          { ...this.identity, tier: ctx.tier },
+          SOURCE_VERSION_DEFAULT,
+          branch ? { branch } : {},
+        ),
       );
       await ctx.cursor.set(offsetKey, String(nextOffset));
       if (parsed.lastCumulative) {
@@ -142,6 +160,37 @@ async function findRolloutFiles(root: string): Promise<string[]> {
   }
   await walk(root);
   return out;
+}
+
+/**
+ * Resolve the active git branch for a Codex session.
+ *
+ * Priority:
+ *   1. `sessionMeta.gitBranch` if Codex ever starts emitting it (reserved).
+ *   2. Read `<cwd>/.git/HEAD` and parse `ref: refs/heads/<name>`.
+ *
+ * Returns undefined on any failure — non-fatal, branch is a join-key nicety
+ * (denormalized outcome attribution), not a required field.
+ *
+ * Exported for tests.
+ */
+export async function resolveBranch(
+  gitBranch: string | undefined,
+  cwd: string | undefined,
+): Promise<string | undefined> {
+  if (gitBranch && typeof gitBranch === "string" && gitBranch.length > 0) return gitBranch;
+  if (!cwd) return undefined;
+  try {
+    const head = await readFile(join(cwd, ".git", "HEAD"), "utf8");
+    const m = head.match(/^ref:\s*refs\/heads\/(.+?)\s*$/m);
+    if (m?.[1]) return m[1];
+    // Detached HEAD — first 12 chars of the sha.
+    const sha = head.trim();
+    if (/^[0-9a-f]{7,40}$/i.test(sha)) return `detached-${sha.substring(0, 12)}`;
+  } catch {
+    // Missing .git or not a repo — return undefined; non-fatal.
+  }
+  return undefined;
 }
 
 export { ZERO_SNAPSHOT };
