@@ -111,14 +111,8 @@ function FreshKeyPanel({
   orgSlug: string;
   ingestUrl: string;
 }) {
-  // Target shape agreed with team-lead: canonical release URL + env vars
-  // prefixed onto the `sh` invocation. Today `packaging/install.sh` doesn't
-  // itself read $BEMATIST_ENDPOINT/$BEMATIST_TOKEN (only $BEMATIST_REPO /
-  // $BEMATIST_PREFIX) — follow-up is for the installer to persist those
-  // two values into the collector config on first run. Until then the shape
-  // still works as copy-paste documentation for the user to set in their
-  // shell before `bematist serve`.
-  const installCommand = `curl -fsSL https://github.com/pella-labs/bematist/releases/latest/download/install.sh | BEMATIST_ENDPOINT=${ingestUrl} BEMATIST_TOKEN=${bearer} sh`;
+  const releaseCommand = `curl -fsSL https://github.com/pella-labs/bematist/releases/latest/download/install.sh | BEMATIST_ENDPOINT=${ingestUrl} BEMATIST_TOKEN=${bearer} sh`;
+  const repoCommand = `BEMATIST_ENDPOINT=${ingestUrl} BEMATIST_TOKEN=${bearer} bun --filter @bematist/collector start`;
 
   return (
     <Card className="flex flex-col gap-4">
@@ -132,21 +126,29 @@ function FreshKeyPanel({
         <Badge tone="neutral">org: {orgSlug}</Badge>
       </CardHeader>
 
-      <div className="flex flex-col gap-2">
-        <div className="overflow-x-auto rounded-md border border-border bg-muted/40 p-4 font-mono text-xs leading-relaxed text-foreground">
-          {installCommand}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
+          <div className="text-xs font-medium text-muted-foreground">
+            Option A — released binary (recommended)
+          </div>
+          <div className="overflow-x-auto rounded-md border border-border bg-muted/40 p-4 font-mono text-xs leading-relaxed text-foreground">
+            {releaseCommand}
+          </div>
+          <div className="flex items-center justify-end">
+            <CopyCommandButton command={releaseCommand} />
+          </div>
         </div>
-        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-          <span>
-            Prefer Homebrew?{" "}
-            <Link
-              href="/install"
-              className="cursor-pointer underline underline-offset-2 hover:text-foreground"
-            >
-              Full install runbook →
-            </Link>
-          </span>
-          <CopyCommandButton command={installCommand} />
+
+        <div className="flex flex-col gap-2">
+          <div className="text-xs font-medium text-muted-foreground">
+            Option B — from repo checkout (dev deploys, pre-release)
+          </div>
+          <div className="overflow-x-auto rounded-md border border-border bg-muted/40 p-4 font-mono text-xs leading-relaxed text-foreground">
+            {repoCommand}
+          </div>
+          <div className="flex items-center justify-end">
+            <CopyCommandButton command={repoCommand} />
+          </div>
         </div>
       </div>
 
