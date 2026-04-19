@@ -84,8 +84,10 @@ services:
       - "127.0.0.1:9644:9644"
     volumes:
       - redpanda-data:/var/lib/redpanda/data
+    # Note: rpk v24.3+ dropped the --brokers flag on `cluster health`; the
+    # command defaults to the local broker, which is what we want here.
     healthcheck:
-      test: ["CMD-SHELL", "rpk cluster health --brokers localhost:9092 | grep -q 'Healthy:.*true'"]
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
       interval: 10s
       timeout: 5s
       retries: 10

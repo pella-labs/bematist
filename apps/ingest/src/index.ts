@@ -10,6 +10,7 @@ import { createLuaRateLimiter } from "./auth/rateLimit";
 import { createRealClickHouseWriter } from "./clickhouse/realWriter";
 import { createBunRedisDedupStore } from "./dedup/bunRedisDedupStore";
 import { getDeps, setDeps } from "./deps";
+import { createKafkaWebhookBus, parseBrokersEnv } from "./github-app/kafkaWebhookBus";
 import { assertFlagCoherence, FlagIncoherentError, parseFlags } from "./flags";
 import { logger } from "./logger";
 import { startOtlpServer } from "./otlp/server";
@@ -69,6 +70,38 @@ if (process.env.NODE_ENV !== "test") {
     const clickhouseWriter = createRealClickHouseWriter();
 
     setDeps({ dedupStore, rateLimiter, wal, clickhouseWriter });
+
+    // G2 — swap the in-memory webhook bus for a real Kafka producer unless
+    // the operator opts out via KAFKA_TRANSPORT=memory (solo / embedded
+    // mode). The in-memory default stays authoritative for unit tests so
+    // bun test boots never hit the network.
+    const transport = (process.env.KAFKA_TRANSPORT ?? "kafkajs").toLowerCase();
+    if (transport === "kafkajs") {
+      try {
+        const brokers = parseBrokersEnv(process.env);
+        const kafkaBus = createKafkaWebhookBus({
+          brokers,
+          clientId: process.env.KAFKA_CLIENT_ID ?? "bematist-ingest",
+        });
+        // Ensure topic exists with 32 partitions (PRD §7.1).
+        await kafkaBus.ensureTopic("github.webhooks", 32);
+        setDeps({ githubWebhookBus: kafkaBus });
+        logger.info({ brokers }, "kafka webhook bus wired (kafkajs → github.webhooks)");
+      } catch (err) {
+        logger.error(
+          {
+            err: err instanceof Error ? err.message : String(err),
+            code: "KAFKA_BUS_WIRING_FAILED",
+          },
+          "kafka webhook bus wiring failed; falling back to in-memory (webhooks will accumulate in-process)",
+        );
+      }
+    } else {
+      logger.info(
+        { transport },
+        "KAFKA_TRANSPORT=memory — in-memory webhook bus retained (solo mode)",
+      );
+    }
     logger.info(
       { bun_version: Bun.version, redis_url: process.env.REDIS_URL ?? "default" },
       "runtime adapters wired (bun.redis dedup, node-redis lua+streams, @clickhouse/client)",
