@@ -49,7 +49,8 @@ export async function loadInputs(
   )) as unknown as Array<{ github_repo_tracking_mode: string }>;
   const org = orgRows[0];
   if (!org) return null;
-  const tenantMode: TrackingMode = org.github_repo_tracking_mode === "selected" ? "selected" : "all";
+  const tenantMode: TrackingMode =
+    org.github_repo_tracking_mode === "selected" ? "selected" : "all";
 
   const installationRows = (await sql.unsafe(
     `SELECT installation_id::text AS installation_id, status
@@ -83,13 +84,13 @@ export async function loadInputs(
 
   const { commit_shas, pr_numbers } = await loadSessionShas(ch, tenantId, sessionId);
 
-  const pullRequests = commit_shas.length > 0 || pr_numbers.length > 0
-    ? await loadPullRequests(sql, tenantId, commit_shas, pr_numbers)
-    : [];
+  const pullRequests =
+    commit_shas.length > 0 || pr_numbers.length > 0
+      ? await loadPullRequests(sql, tenantId, commit_shas, pr_numbers)
+      : [];
 
-  const deployments = commit_shas.length > 0
-    ? await loadDeployments(sql, tenantId, commit_shas)
-    : [];
+  const deployments =
+    commit_shas.length > 0 ? await loadDeployments(sql, tenantId, commit_shas) : [];
 
   const aliases = await loadAliases(sql, tenantId);
 

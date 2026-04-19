@@ -35,6 +35,14 @@ export interface Ctx {
  */
 export interface PgClient {
   query<T = unknown>(sql: string, params?: unknown[]): Promise<T[]>;
+  /**
+   * Run `fn` inside a single Postgres transaction. Every `query` call on the
+   * `tx` argument reuses one connection so `SET LOCAL` and transaction-scoped
+   * GUCs (e.g. `app.is_global_admin` — B1) stay in force. When omitted by a
+   * fake/minimal PgClient, callers should fall back to their own transaction
+   * primitive or a no-op.
+   */
+  transaction?<T>(fn: (tx: PgClient) => Promise<T>): Promise<T>;
 }
 
 export interface ClickHouseClient {
