@@ -262,7 +262,7 @@
 .bematist-marketing .mk-hero-card-slot {
   position: relative;
   width: 100%;
-  /* matches CardPage compact mode minHeight so the hero grid row
+  /* Matches .card-root[data-compact] min-height so the hero grid row
      reserves the right amount of vertical space without fighting
      the absolute-positioned controls inside the card pane. */
   min-height: 720px;
@@ -472,9 +472,10 @@
 
 .bematist-marketing .mk-ring {
   position: absolute;
-  inset: 0;
+  inset: 8%;
   z-index: 1;
   pointer-events: none;
+  transform-origin: 50% 50%;
   animation: mk-ring-spin 120s linear infinite;
 }
 
@@ -482,7 +483,7 @@
   animation-direction: reverse;
   animation-duration: 180s;
   opacity: 0.35;
-  inset: -8%;
+  inset: 0;
 }
 
 @keyframes mk-ring-spin {
@@ -808,16 +809,8 @@
   border-radius: 16px;
   overflow: hidden;
   background:
-    radial-gradient(
-      140% 90% at 20% 0%,
-      rgba(110, 138, 111, 0.18),
-      transparent 55%
-    ),
-    radial-gradient(
-      100% 80% at 90% 100%,
-      rgba(176, 123, 62, 0.22),
-      transparent 55%
-    ),
+    radial-gradient(140% 90% at 20% 0%, rgba(110, 138, 111, 0.18), transparent 55%),
+    radial-gradient(100% 80% at 90% 100%, rgba(176, 123, 62, 0.22), transparent 55%),
     linear-gradient(160deg, #14161a, #0a0b0d 60%);
   box-shadow:
     0 40px 80px -40px rgba(0, 0, 0, 0.8),
@@ -945,11 +938,7 @@
 
 .bematist-marketing .wrapped-card-bar {
   flex: 1;
-  background: linear-gradient(
-    180deg,
-    var(--mk-accent),
-    rgba(110, 138, 111, 0.3)
-  );
+  background: linear-gradient(180deg, var(--mk-accent), rgba(110, 138, 111, 0.3));
   border-radius: 2px 2px 0 0;
   min-height: 4px;
 }
@@ -1152,9 +1141,7 @@
   flex-shrink: 0;
 }
 
-.bematist-marketing
-  .mk-getstarted-entry-card
-  > div:not(.mk-getstarted-entry-chevron) {
+.bematist-marketing .mk-getstarted-entry-card > div:not(.mk-getstarted-entry-chevron) {
   flex: 1;
   min-width: 0;
 }
@@ -1238,9 +1225,7 @@
   transition: transform 0.18s;
 }
 
-.bematist-marketing
-  .mk-getstarted-entry-primary:hover
-  .mk-getstarted-entry-chevron {
+.bematist-marketing .mk-getstarted-entry-primary:hover .mk-getstarted-entry-chevron {
   transform: translateX(2px);
 }
 
@@ -1523,11 +1508,7 @@
 
 .bematist-marketing .mk-dashboard-shot-chart-bar {
   flex: 1;
-  background: linear-gradient(
-    180deg,
-    var(--mk-accent),
-    rgba(110, 138, 111, 0.2)
-  );
+  background: linear-gradient(180deg, var(--mk-accent), rgba(110, 138, 111, 0.2));
   border-radius: 3px 3px 0 0;
 }
 
@@ -1556,7 +1537,7 @@
     gap: 48px;
   }
   .bematist-marketing .mk-hero-card-slot {
-    min-height: 620px;
+    min-height: 720px;
   }
   .bematist-marketing .wrapped-card-wrap {
     justify-self: center;
@@ -1694,7 +1675,7 @@
     justify-content: center;
   }
   .bematist-marketing .mk-hero-card-slot {
-    min-height: 680px;
+    min-height: 720px;
   }
   .bematist-marketing .mk-getstarted {
     align-items: stretch;
@@ -1749,16 +1730,16 @@
     font-size: clamp(28px, 7vw, 36px);
   }
   .bematist-marketing .mk-demo-card-host {
-    min-height: 620px;
+    min-height: 720px;
     max-height: none;
     aspect-ratio: auto;
   }
   .bematist-marketing .mk-demo-card-host .card-scene {
-    top: 12px;
+    top: 80px;
     bottom: auto;
     transform: translateX(-50%);
     width: min(360px, calc(100% - 24px));
-    height: calc(100% - 80px);
+    height: calc(100% - 136px);
   }
   .bematist-marketing .mk-demo-card-host .card-page-dots {
     bottom: 24px;
@@ -1864,17 +1845,17 @@
     padding: 40px 14px 32px;
   }
   .bematist-marketing .mk-hero-card-slot {
-    min-height: 660px;
+    min-height: 720px;
   }
   .bematist-marketing .mk-demo-card-host {
-    min-height: 600px;
+    min-height: 680px;
   }
   .bematist-marketing .mk-demo-card-host .card-scene {
-    top: 8px;
+    top: 72px;
     bottom: auto;
     transform: translateX(-50%);
     width: min(340px, calc(100% - 16px));
-    height: calc(100% - 72px);
+    height: calc(100% - 120px);
   }
   .bematist-marketing .mk-monolith {
     min-height: 320px;

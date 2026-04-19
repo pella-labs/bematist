@@ -23,11 +23,15 @@
   pointer-events: none;
 }
 
-/* Compact mode — embedded card (e.g. hero). Taller scene, no share-bar,
-   dots anchored near bottom. */
+/* Compact mode — embedded card (e.g. hero). Top-anchored so the filter
+   pill gets a guaranteed 32–40px gap above the card face instead of the
+   tiny visual gap a centered layout produced at typical hero heights. */
 [data-compact="true"] .card-scene {
   width: min(380px, calc(100% - 32px));
   height: 560px;
+  top: 96px;
+  bottom: auto;
+  transform: translateX(-50%);
 }
 [data-compact="true"] .global-toggle {
   top: 24px;
@@ -110,11 +114,7 @@
   height: 220px;
   top: 30%;
   right: -60px;
-  background: radial-gradient(
-    circle,
-    rgba(59, 130, 246, 0.15),
-    transparent 70%
-  );
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.15), transparent 70%);
   animation-duration: 9s;
   animation-delay: -3s;
 }
@@ -123,11 +123,7 @@
   height: 260px;
   bottom: -60px;
   left: 20%;
-  background: radial-gradient(
-    circle,
-    rgba(236, 72, 153, 0.12),
-    transparent 70%
-  );
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.12), transparent 70%);
   animation-duration: 11s;
   animation-delay: -5s;
 }
@@ -691,11 +687,7 @@
   height: 200px;
   bottom: -40px;
   left: -30px;
-  background: radial-gradient(
-    circle,
-    rgba(59, 130, 246, 0.15),
-    transparent 70%
-  );
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.15), transparent 70%);
   animation-duration: 9s;
   animation-delay: -4s;
 }
@@ -1056,13 +1048,7 @@
 .p2-banner-bg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    145deg,
-    #7c3aed 0%,
-    #6d28d9 30%,
-    #4338ca 60%,
-    #2563eb 100%
-  );
+  background: linear-gradient(145deg, #7c3aed 0%, #6d28d9 30%, #4338ca 60%, #2563eb 100%);
   z-index: 0;
 }
 .p2-banner-bg::after {
@@ -1070,21 +1056,9 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(
-      circle at 75% 20%,
-      rgba(236, 72, 153, 0.3),
-      transparent 50%
-    ),
-    radial-gradient(
-      circle at 25% 80%,
-      rgba(56, 189, 248, 0.2),
-      transparent 50%
-    ),
-    radial-gradient(
-      circle at 50% 50%,
-      rgba(250, 204, 21, 0.08),
-      transparent 40%
-    );
+    radial-gradient(circle at 75% 20%, rgba(236, 72, 153, 0.3), transparent 50%),
+    radial-gradient(circle at 25% 80%, rgba(56, 189, 248, 0.2), transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(250, 204, 21, 0.08), transparent 40%);
 }
 .p2-banner-content {
   position: relative;
@@ -1213,26 +1187,12 @@
 
 /* Cream overrides for page 2 */
 .cream .p2-banner-bg {
-  background: linear-gradient(
-    145deg,
-    #7a6299 0%,
-    #6a5490 30%,
-    #5a80a8 60%,
-    #4a98b8 100%
-  );
+  background: linear-gradient(145deg, #7a6299 0%, #6a5490 30%, #5a80a8 60%, #4a98b8 100%);
 }
 .cream .p2-banner-bg::after {
   background:
-    radial-gradient(
-      circle at 75% 20%,
-      rgba(196, 122, 32, 0.15),
-      transparent 50%
-    ),
-    radial-gradient(
-      circle at 25% 80%,
-      rgba(58, 154, 122, 0.12),
-      transparent 50%
-    );
+    radial-gradient(circle at 75% 20%, rgba(196, 122, 32, 0.15), transparent 50%),
+    radial-gradient(circle at 25% 80%, rgba(58, 154, 122, 0.12), transparent 50%);
 }
 .cream .p2-wave path {
   fill: #f5f2ec;
@@ -2003,13 +1963,7 @@
 
 /* ═══ Cream Theme ═══ */
 .cream .card-bg {
-  background: linear-gradient(
-    160deg,
-    #f5f2ec,
-    #ede9e0 40%,
-    #e5e0d5 70%,
-    #f0ede6
-  );
+  background: linear-gradient(160deg, #f5f2ec, #ede9e0 40%, #e5e0d5 70%, #f0ede6);
 }
 .cream .card-bg::after {
   background-image: none;
@@ -2075,25 +2029,13 @@
   opacity: 0.4;
 }
 .cream .ab1 {
-  background: radial-gradient(
-    circle,
-    rgba(180, 160, 200, 0.25),
-    transparent 70%
-  );
+  background: radial-gradient(circle, rgba(180, 160, 200, 0.25), transparent 70%);
 }
 .cream .ab2 {
-  background: radial-gradient(
-    circle,
-    rgba(160, 180, 210, 0.2),
-    transparent 70%
-  );
+  background: radial-gradient(circle, rgba(160, 180, 210, 0.2), transparent 70%);
 }
 .cream .ab3 {
-  background: radial-gradient(
-    circle,
-    rgba(170, 200, 185, 0.2),
-    transparent 70%
-  );
+  background: radial-gradient(circle, rgba(170, 200, 185, 0.2), transparent 70%);
 }
 .cream .card-flipper:is(:hover, .is-hovering) .aurora-blob {
   opacity: 0;
@@ -2377,30 +2319,35 @@
      with auto height on absolutely-positioned boxes when both insets are
      set, and we've been burned by that here. */
   .card-root {
-    min-height: 720px;
+    min-height: 760px;
   }
   .card-root[data-compact="true"] {
-    min-height: 680px;
+    min-height: 720px;
   }
+  /* Stack: toggle (top 16, h ~36) → 28px gap → card face → bottom reserve.
+     Full mode leaves 96px below for dots (bottom 56) + share-bar (bottom 10).
+     Compact trims bottom reserve since share-bar is hidden. Fixed coordinates
+     avoid Safari's quirky auto-height on absolutely-positioned boxes when
+     both insets are set. */
   .card-scene {
-    top: 56px;
+    top: 80px;
     bottom: auto;
     left: 50%;
     transform: translateX(-50%);
     width: min(380px, calc(100vw - 32px));
-    height: calc(100% - 116px);
+    height: calc(100% - 176px);
   }
   [data-compact="true"] .card-scene {
-    top: 56px;
+    top: 80px;
     bottom: auto;
     width: min(340px, calc(100vw - 32px));
-    height: calc(100% - 92px);
+    height: calc(100% - 128px);
   }
   .global-toggle {
-    top: 10px;
+    top: 16px;
   }
   [data-compact="true"] .global-toggle {
-    top: 10px;
+    top: 16px;
   }
   /* Anchor the side nav buttons to the card's flank rather than a fixed
      vw offset, so they never get pushed past the viewport edge. */
