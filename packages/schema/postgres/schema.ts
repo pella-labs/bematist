@@ -1,23 +1,39 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
+  bigserial,
   boolean,
   char,
+  customType,
   index,
   integer,
   jsonb,
   pgTable,
   real,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
   uuid,
+  varchar,
 } from "drizzle-orm/pg-core";
+
+// bytea helper — Drizzle doesn't ship a first-class `bytea` column; we use
+// customType so the TS type is `Buffer | Uint8Array` and the raw column type
+// is `bytea`. Reads/writes go through the postgres.js binary codec.
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 export const orgs = pgTable("orgs", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  /** PRD §9.9 — per-org tracking scope. 'all' | 'selected'. Default 'all' (A8). */
+  github_repo_tracking_mode: text("github_repo_tracking_mode").notNull().default("all"),
 });
 
 export const users = pgTable("users", {
@@ -207,7 +223,8 @@ export const developers = pgTable("developers", {
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** HMAC of (repo_full_name, tenant_salt) per contract 09 open Q 2. */
+/** HMAC of (repo_full_name, tenant_salt) per contract 09 open Q 2.
+ *  Extended in G1 per PRD §9.9 — GitHub provider_repo_id + tracking state. */
 export const repos = pgTable("repos", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   org_id: uuid("org_id")
@@ -215,6 +232,14 @@ export const repos = pgTable("repos", {
     .references(() => orgs.id),
   repo_id_hash: text("repo_id_hash").notNull().unique(),
   provider: text("provider").notNull(), // github | gitlab | bitbucket
+  /** GitHub's stable numeric repo ID (D33). Nullable until backfilled. */
+  provider_repo_id: varchar("provider_repo_id", { length: 32 }),
+  default_branch: text("default_branch"),
+  first_seen_at: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  archived_at: timestamp("archived_at", { withTimezone: true }),
+  deleted_at: timestamp("deleted_at", { withTimezone: true }),
+  /** 'inherit' | 'included' | 'excluded' per PRD §9.9 (A8 default 'all' on orgs). */
+  tracking_state: text("tracking_state").notNull().default("inherit"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -285,6 +310,11 @@ export const gitEvents = pgTable(
     merged_at: timestamp("merged_at", { withTimezone: true }),
     payload: jsonb("payload").notNull(),
     received_at: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+    // G1 additions per PRD §9.9 — scoring signal inputs. Populated by
+    // backfill worker (apps/worker/src/github-backfill/) + incoming webhooks.
+    branch: text("branch"),
+    repo_id_hash: bytea("repo_id_hash"),
+    author_association: text("author_association"),
   },
   (table) => ({
     prNodeUnique: uniqueIndex("git_events_pr_node_id_key").on(table.pr_node_id),
@@ -430,4 +460,174 @@ export const embedding_cache = pgTable("embedding_cache", {
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   last_hit_at: timestamp("last_hit_at", { withTimezone: true }).notNull().defaultNow(),
   hit_count: integer("hit_count").notNull().default(0),
+});
+
+// ---------------------------------------------------------------------------
+// GitHub integration (PRD-github-integration §9.1–§9.8). Full canonical DDL
+// lives in custom/0004_github_integration_g1.sql — this Drizzle mirror gives
+// app code typed access. Every table is RLS-protected (org_isolation policy
+// via app_current_org()); `tenant_id` is the alias the PRD uses for orgs.id.
+// ---------------------------------------------------------------------------
+
+/** PRD §9.1 — one row per GitHub App installation per tenant. */
+export const github_installations = pgTable(
+  "github_installations",
+  {
+    id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    tenant_id: uuid("tenant_id")
+      .notNull()
+      .references(() => orgs.id, { onDelete: "cascade" }),
+    installation_id: bigint("installation_id", { mode: "bigint" }).notNull(),
+    github_org_id: bigint("github_org_id", { mode: "bigint" }).notNull(),
+    github_org_login: text("github_org_login").notNull(),
+    app_id: bigint("app_id", { mode: "bigint" }).notNull(),
+    /** 'active' | 'suspended' | 'revoked' | 'reconnecting' */
+    status: text("status").notNull(),
+    token_ref: text("token_ref").notNull(),
+    webhook_secret_active_ref: text("webhook_secret_active_ref").notNull(),
+    /** D55 — dual-accept rotation. Populated for 10-minute window during rotation. */
+    webhook_secret_previous_ref: text("webhook_secret_previous_ref"),
+    webhook_secret_rotated_at: timestamp("webhook_secret_rotated_at", { withTimezone: true }),
+    last_reconciled_at: timestamp("last_reconciled_at", { withTimezone: true }),
+    installed_at: timestamp("installed_at", { withTimezone: true }).notNull().defaultNow(),
+    suspended_at: timestamp("suspended_at", { withTimezone: true }),
+    revoked_at: timestamp("revoked_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantStatusIdx: index("gh_inst_tenant_status_idx").on(table.tenant_id, table.status),
+  }),
+);
+
+/** PRD §9.2 — PR state per tenant/repo/pr_number. title_hash is sha256, never raw. */
+export const github_pull_requests = pgTable(
+  "github_pull_requests",
+  {
+    tenant_id: uuid("tenant_id")
+      .notNull()
+      .references(() => orgs.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull().default("github"),
+    provider_repo_id: varchar("provider_repo_id", { length: 32 }).notNull(),
+    pr_number: integer("pr_number").notNull(),
+    pr_node_id: text("pr_node_id").notNull(),
+    /** 'open' | 'closed' | 'merged' */
+    state: text("state").notNull(),
+    draft: boolean("draft").notNull().default(false),
+    /** sha256(title); never raw title (PRD §Security). */
+    title_hash: bytea("title_hash").notNull(),
+    base_ref: text("base_ref").notNull(),
+    head_ref: text("head_ref").notNull(),
+    head_sha: char("head_sha", { length: 40 }).notNull(),
+    merge_commit_sha: char("merge_commit_sha", { length: 40 }),
+    /** hmac(tenant_salt, login); never raw login. */
+    author_login_hash: bytea("author_login_hash").notNull(),
+    author_association: text("author_association"),
+    additions: integer("additions").notNull().default(0),
+    deletions: integer("deletions").notNull().default(0),
+    changed_files: integer("changed_files").notNull().default(0),
+    commits_count: integer("commits_count").notNull().default(0),
+    opened_at: timestamp("opened_at", { withTimezone: true }).notNull(),
+    closed_at: timestamp("closed_at", { withTimezone: true }),
+    merged_at: timestamp("merged_at", { withTimezone: true }),
+    ingested_at: timestamp("ingested_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  // biome-ignore lint/suspicious/noExplicitAny: drizzle primaryKey helper typed loosely
+  (_table): Record<string, any> => ({}),
+);
+
+/** PRD §9.3 — check-suite summary per tenant/repo/head_sha/suite_id. */
+export const github_check_suites = pgTable("github_check_suites", {
+  tenant_id: uuid("tenant_id")
+    .notNull()
+    .references(() => orgs.id, { onDelete: "cascade" }),
+  provider_repo_id: varchar("provider_repo_id", { length: 32 }).notNull(),
+  head_sha: char("head_sha", { length: 40 }).notNull(),
+  suite_id: bigint("suite_id", { mode: "bigint" }).notNull(),
+  /** 'queued' | 'in_progress' | 'completed' */
+  status: text("status").notNull(),
+  /** nullable until completed; one of the 8 GitHub conclusions. */
+  conclusion: text("conclusion"),
+  runs_count: integer("runs_count").notNull().default(0),
+  failed_runs_count: integer("failed_runs_count").notNull().default(0),
+  started_at: timestamp("started_at", { withTimezone: true }),
+  completed_at: timestamp("completed_at", { withTimezone: true }),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** PRD §9.4 — deployment state per tenant/repo/deployment_id. */
+export const github_deployments = pgTable("github_deployments", {
+  tenant_id: uuid("tenant_id")
+    .notNull()
+    .references(() => orgs.id, { onDelete: "cascade" }),
+  provider_repo_id: varchar("provider_repo_id", { length: 32 }).notNull(),
+  deployment_id: bigint("deployment_id", { mode: "bigint" }).notNull(),
+  environment: text("environment").notNull(),
+  sha: char("sha", { length: 40 }).notNull(),
+  ref: text("ref").notNull(),
+  /** 'pending'|'queued'|'in_progress'|'success'|'failure'|'error'|'inactive' */
+  status: text("status").notNull(),
+  first_success_at: timestamp("first_success_at", { withTimezone: true }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** PRD §9.5 — parsed CODEOWNERS state (D47 input). */
+export const github_code_owners = pgTable("github_code_owners", {
+  tenant_id: uuid("tenant_id")
+    .notNull()
+    .references(() => orgs.id, { onDelete: "cascade" }),
+  provider_repo_id: varchar("provider_repo_id", { length: 32 }).notNull(),
+  ref: text("ref").notNull(),
+  content_sha256: bytea("content_sha256").notNull(),
+  /** [{pattern, owners:[{type:'team'|'user', id_hash}]}] */
+  rules: jsonb("rules").notNull(),
+  parsed_at: timestamp("parsed_at", { withTimezone: true }).notNull().defaultNow(),
+  superseded_at: timestamp("superseded_at", { withTimezone: true }),
+});
+
+/** PRD §9.6 — derived session↔repo linkage. Partitioned by RANGE(computed_at);
+ *  partitions created monthly by G1-linker cron. D57: evidence is hashes +
+ *  counts only, never raw titles/messages/logins. */
+export const session_repo_links = pgTable("session_repo_links", {
+  tenant_id: uuid("tenant_id").notNull(),
+  session_id: uuid("session_id").notNull(),
+  repo_id_hash: bytea("repo_id_hash").notNull(),
+  /** 'direct_repo' | 'commit_link' | 'pr_link' | 'deployment_link' */
+  match_reason: text("match_reason").notNull(),
+  provider_repo_id: varchar("provider_repo_id", { length: 32 }).notNull(),
+  evidence: jsonb("evidence").notNull(),
+  confidence: smallint("confidence").notNull(),
+  inputs_sha256: bytea("inputs_sha256").notNull(),
+  computed_at: timestamp("computed_at", { withTimezone: true }).notNull(),
+  stale_at: timestamp("stale_at", { withTimezone: true }),
+});
+
+/** PRD §9.7 — physical eligibility table (D54). Written same-txn as links. */
+export const session_repo_eligibility = pgTable("session_repo_eligibility", {
+  tenant_id: uuid("tenant_id")
+    .notNull()
+    .references(() => orgs.id, { onDelete: "cascade" }),
+  session_id: uuid("session_id").notNull(),
+  effective_at: timestamp("effective_at", { withTimezone: true }).notNull(),
+  eligibility_reasons: jsonb("eligibility_reasons").notNull(),
+  eligible: boolean("eligible").notNull(),
+  inputs_sha256: bytea("inputs_sha256").notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** PRD §9.8 — rename/transfer/salt-rotation provenance. Retirement worker
+ *  lives in G1-linker (not this PR) and honors retires_at + archived_at. */
+export const repo_id_hash_aliases = pgTable("repo_id_hash_aliases", {
+  tenant_id: uuid("tenant_id")
+    .notNull()
+    .references(() => orgs.id, { onDelete: "cascade" }),
+  old_hash: bytea("old_hash").notNull(),
+  new_hash: bytea("new_hash").notNull(),
+  /** 'rename' | 'transfer' | 'salt_rotation' | 'provider_change' */
+  reason: text("reason").notNull(),
+  migrated_at: timestamp("migrated_at", { withTimezone: true }).notNull().defaultNow(),
+  retires_at: timestamp("retires_at", { withTimezone: true }).notNull(),
+  archived_at: timestamp("archived_at", { withTimezone: true }),
 });
