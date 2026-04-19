@@ -11,7 +11,11 @@
  * not a refactor sprint.
  */
 export function useFixtures(): boolean {
-  return process.env.USE_FIXTURES !== "0";
+  if (process.env.USE_FIXTURES === "1") return true;
+  if (process.env.USE_FIXTURES === "0") return false;
+  // Default: off in production so real deploys (Railway) hit CH; on in dev
+  // so a laptop without CH running still boots a usable dashboard.
+  return process.env.NODE_ENV !== "production";
 }
 
 /**

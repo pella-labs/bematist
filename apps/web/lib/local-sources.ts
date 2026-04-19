@@ -179,7 +179,14 @@ function rehydrateLive(data: LocalData, now: number): LocalData {
   return { ...data, blocks: refreshed, activeBlock };
 }
 
-const USE_CH = process.env.BEMATIST_USE_CH === "1";
+// Default: on in production (CH-backed pages), off in dev (filesystem + grammata
+// so a laptop without CH still works). Explicit env wins either way.
+const USE_CH = (() => {
+  const v = process.env.BEMATIST_USE_CH;
+  if (v === "1") return true;
+  if (v === "0") return false;
+  return process.env.NODE_ENV === "production";
+})();
 
 async function readFreshFromCh(): Promise<LocalData> {
   const { ensureBackfill } = await import("./ch-backfill");
