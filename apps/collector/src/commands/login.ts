@@ -10,6 +10,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { hostname, platform } from "node:os";
+
 // Types mirror packages/api/src/schemas/deviceAuth.ts. Inlined here so the
 // compiled binary doesn't transitively pull @bematist/api (which would drag
 // in server-side query code we don't run on-device). Keep these in sync if
@@ -31,6 +32,7 @@ interface DevicePollResponse {
   user_email?: string;
   slow_down_by?: number;
 }
+
 import { atomicWrite, configEnvPath, dataDir } from "@bematist/config";
 import { COLLECTOR_VERSION, parseEnvFile } from "../config";
 
@@ -113,8 +115,7 @@ function deviceLabel(): string {
 }
 
 function openInBrowser(url: string): boolean {
-  const cmd =
-    platform() === "darwin" ? "open" : platform() === "win32" ? "cmd" : "xdg-open";
+  const cmd = platform() === "darwin" ? "open" : platform() === "win32" ? "cmd" : "xdg-open";
   const args = platform() === "win32" ? ["/c", "start", "", url] : [url];
   const r = spawnSync(cmd, args, { stdio: "ignore" });
   return r.status === 0;
@@ -171,9 +172,7 @@ export async function runLogin(args: string[]): Promise<void> {
   const opts = parseArgs(args);
 
   if (!opts.force && existingToken()) {
-    console.error(
-      "bematist: already logged in (token exists in ~/.bematist/config.env).",
-    );
+    console.error("bematist: already logged in (token exists in ~/.bematist/config.env).");
     console.error("bematist: re-run with --force to replace, or `bematist logout` to clear.");
     process.exit(1);
   }
@@ -228,12 +227,10 @@ export async function runLogin(args: string[]): Promise<void> {
         continue;
       case "expired":
         console.error("bematist: code expired before you approved. Run `bematist login` again.");
-        process.exit(1);
-      // biome-ignore lint/suspicious/noFallthroughSwitchClause: process.exit ends flow.
+        return process.exit(1);
       case "denied":
         console.error("bematist: request denied. Run `bematist login` if you want to retry.");
-        process.exit(1);
-      // biome-ignore lint/suspicious/noFallthroughSwitchClause: approved is terminal success.
+        return process.exit(1);
       case "approved": {
         if (!poll.bearer || !poll.endpoint) {
           console.error("bematist: server returned approved status without credentials; aborting.");

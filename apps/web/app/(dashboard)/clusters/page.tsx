@@ -222,6 +222,7 @@ export default async function ClustersPage({ searchParams }: ClustersPageProps) 
 
         <Card>
           <form className="flex flex-wrap items-end gap-3" method="get">
+            {/* biome-ignore lint/a11y/noLabelWithoutControl: <label> wraps the <Input> custom component which renders an <input> — biome can't statically detect that across the component boundary. */}
             <label className="flex flex-col gap-1.5 text-xs">
               <span className="text-muted-foreground">Session id</span>
               <Input
@@ -233,6 +234,7 @@ export default async function ClustersPage({ searchParams }: ClustersPageProps) 
                 className="w-56"
               />
             </label>
+            {/* biome-ignore lint/a11y/noLabelWithoutControl: <label> wraps the <Input> custom component which renders an <input> — biome can't statically detect that across the component boundary. */}
             <label className="flex flex-col gap-1.5 text-xs">
               <span className="text-muted-foreground">Prompt index</span>
               <Input
@@ -243,6 +245,7 @@ export default async function ClustersPage({ searchParams }: ClustersPageProps) 
                 className="w-24"
               />
             </label>
+            {/* biome-ignore lint/a11y/noLabelWithoutControl: <label> wraps the <Input> custom component which renders an <input> — biome can't statically detect that across the component boundary. */}
             <label className="flex flex-col gap-1.5 text-xs">
               <span className="text-muted-foreground">Top K</span>
               <Input

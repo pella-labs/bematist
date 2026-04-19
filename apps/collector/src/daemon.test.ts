@@ -3,10 +3,10 @@
 // behavior: template rendering, path resolution, dispatch to the right
 // implementation on each platform, and log-path layout.
 
+import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, expect, test } from "bun:test";
 import { daemonLogPaths, daemonStatus } from "./daemon";
 
 let tmp: string;
@@ -64,7 +64,9 @@ test("template substitution replaces @HOME@ and @BIN@ in launchd plist", () => {
   // it private but we verify the shape works by reading the template back
   // and doing the substitution here.
   const raw = readFileSync(join(launchdDir, "dev.bematist.collector.plist.tmpl"), "utf8");
-  const rendered = raw.replace(/@HOME@/g, "/Users/test").replace(/@BIN@/g, "/usr/local/bin/bematist");
+  const rendered = raw
+    .replace(/@HOME@/g, "/Users/test")
+    .replace(/@BIN@/g, "/usr/local/bin/bematist");
   expect(rendered).toBe("<home>/Users/test</home><bin>/usr/local/bin/bematist</bin>");
 
   rmSync(tmplDir, { recursive: true, force: true });
