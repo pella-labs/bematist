@@ -168,7 +168,7 @@ export function GetStarted() {
     }
   };
 
-  const cliCommand = cardToken ? `npx grammata pharos --token ${cardToken}` : "";
+  const cliCommand = cardToken ? `npx grammata ${cardToken}` : "";
 
   const handleCopy = () => {
     if (!cliCommand) return;
