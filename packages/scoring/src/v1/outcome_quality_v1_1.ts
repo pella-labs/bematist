@@ -84,10 +84,7 @@ export function computeOutcomeQualityV1_1(
   }
 
   // Sum the base weights of surviving terms.
-  const baseSum = survivors.reduce(
-    (s, t) => s + OUTCOME_QUALITY_V1_1_WEIGHTS[t],
-    0,
-  );
+  const baseSum = survivors.reduce((s, t) => s + OUTCOME_QUALITY_V1_1_WEIGHTS[t], 0);
 
   let value = 0;
   for (const t of survivors) {

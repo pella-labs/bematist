@@ -13,11 +13,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import {
-  resolveCodeowners,
-  type CodeownersInput,
-  type ParsedRule,
-} from "./github_codeowners_v1";
+import { type CodeownersInput, type ParsedRule, resolveCodeowners } from "./github_codeowners_v1";
 
 const rules: ParsedRule[] = [
   { pattern: "/frontend/**", owners: ["team:frontend"] },
@@ -44,9 +40,7 @@ describe("github_codeowners_v1", () => {
   });
 
   test("multi-team owner — returns full set", () => {
-    const result = resolveCodeowners(
-      input({ touched_paths: ["backend/api/users.ts"] }),
-    );
+    const result = resolveCodeowners(input({ touched_paths: ["backend/api/users.ts"] }));
     expect(result.owner_teams).toEqual(new Set(["team:backend", "team:platform"]));
     expect(result.codeowner_domain).toBe("backend");
   });
@@ -57,9 +51,7 @@ describe("github_codeowners_v1", () => {
         touched_paths: ["frontend/app/page.tsx", "backend/api/users.ts"],
       }),
     );
-    expect(result.owner_teams).toEqual(
-      new Set(["team:frontend", "team:backend", "team:platform"]),
-    );
+    expect(result.owner_teams).toEqual(new Set(["team:frontend", "team:backend", "team:platform"]));
     // Domain is the top-level of the first most-specific match.
     expect(result.codeowner_domain).toMatch(/^(frontend|backend)$/);
   });

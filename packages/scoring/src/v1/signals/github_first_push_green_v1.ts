@@ -56,10 +56,7 @@ export interface FirstPushGreenInput {
   team_cohort_size: number;
 }
 
-export type SuppressionReason =
-  | "k_anonymity"
-  | "insufficient_pushes"
-  | "repo_ci_inactive";
+export type SuppressionReason = "k_anonymity" | "insufficient_pushes" | "repo_ci_inactive";
 
 export interface FirstPushGreenResult {
   raw: number;

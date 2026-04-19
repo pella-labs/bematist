@@ -31,9 +31,6 @@ export function outcomeEventsUnion(counts: OutcomeEventCounts): number {
   return a + b + c;
 }
 
-export function computeConfidenceV1_1(
-  counts: OutcomeEventCounts,
-  active_days: number,
-): number {
+export function computeConfidenceV1_1(counts: OutcomeEventCounts, active_days: number): number {
   return computeConfidence(outcomeEventsUnion(counts), active_days);
 }

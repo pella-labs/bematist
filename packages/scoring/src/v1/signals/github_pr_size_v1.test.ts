@@ -80,11 +80,36 @@ describe("github_pr_size_v1", () => {
   test("winsorize p5/p95 on PR-LOC distribution", () => {
     const result = computePrSize({
       prs: [
-        basePr({ pr_number: 1, additions: 10, deletions: 0, files: [{ path: "a", additions: 10, deletions: 0, is_test: false }] }),
-        basePr({ pr_number: 2, additions: 50, deletions: 0, files: [{ path: "a", additions: 50, deletions: 0, is_test: false }] }),
-        basePr({ pr_number: 3, additions: 100, deletions: 0, files: [{ path: "a", additions: 100, deletions: 0, is_test: false }] }),
-        basePr({ pr_number: 4, additions: 200, deletions: 0, files: [{ path: "a", additions: 200, deletions: 0, is_test: false }] }),
-        basePr({ pr_number: 5, additions: 10000, deletions: 0, files: [{ path: "a", additions: 10000, deletions: 0, is_test: false }] }),
+        basePr({
+          pr_number: 1,
+          additions: 10,
+          deletions: 0,
+          files: [{ path: "a", additions: 10, deletions: 0, is_test: false }],
+        }),
+        basePr({
+          pr_number: 2,
+          additions: 50,
+          deletions: 0,
+          files: [{ path: "a", additions: 50, deletions: 0, is_test: false }],
+        }),
+        basePr({
+          pr_number: 3,
+          additions: 100,
+          deletions: 0,
+          files: [{ path: "a", additions: 100, deletions: 0, is_test: false }],
+        }),
+        basePr({
+          pr_number: 4,
+          additions: 200,
+          deletions: 0,
+          files: [{ path: "a", additions: 200, deletions: 0, is_test: false }],
+        }),
+        basePr({
+          pr_number: 5,
+          additions: 10000,
+          deletions: 0,
+          files: [{ path: "a", additions: 10000, deletions: 0, is_test: false }],
+        }),
       ],
       linguist_generated_globs: [],
     });

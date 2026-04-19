@@ -15,8 +15,8 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { score } from "./index";
 import type { FixtureCase } from "./eval/schema";
+import { score } from "./index";
 
 const FIXTURE_PATH = join(import.meta.dir, "__fixtures__", "archetypes.jsonl");
 
@@ -43,7 +43,9 @@ describe("v1 regression (D13 LOCKED)", () => {
   });
 
   test("v1 `metric_version` reads back exactly 'ai_leverage_v1'", () => {
-    const out = score(cases[0]!.input);
+    const first = cases[0];
+    if (first === undefined) throw new Error("no fixture cases");
+    const out = score(first.input);
     expect(out.metric_version).toBe("ai_leverage_v1");
   });
 });

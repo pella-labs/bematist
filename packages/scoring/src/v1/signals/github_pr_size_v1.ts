@@ -165,15 +165,13 @@ export function computePrSize(input: PrSizeInput): PrSizeResult {
   const test_to_prod_ratio = test_loc / Math.max(prod_loc, 1);
 
   return {
-    included_prs: perPr.map(
-      ({ pr_number, loc, prod_loc: pl, test_loc: tl, winsorized_loc }) => ({
-        pr_number,
-        loc,
-        prod_loc: pl,
-        test_loc: tl,
-        winsorized_loc,
-      }),
-    ),
+    included_prs: perPr.map(({ pr_number, loc, prod_loc: pl, test_loc: tl, winsorized_loc }) => ({
+      pr_number,
+      loc,
+      prod_loc: pl,
+      test_loc: tl,
+      winsorized_loc,
+    })),
     excluded_count,
     winsorized_loc_sum,
     prod_loc,

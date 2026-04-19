@@ -68,10 +68,7 @@ writeJsonl(
 // G2 — GitHub fixture expansion (PRD-github-integration §12.4 / D44).
 // 150 cases (100 adversarial + 50 normal) for the 650-case main run, plus
 // 50 held-out GitHub cases for the 150-case held-out run.
-writeJsonl(
-  join(FIXTURE_DIR, "github.jsonl"),
-  generateGithubCases(2026, "gh"),
-);
+writeJsonl(join(FIXTURE_DIR, "github.jsonl"), generateGithubCases(2026, "gh"));
 // Held-out GitHub split — 50 cases with normal counts shifted.
 writeJsonl(
   join(FIXTURE_DIR, "github_validation.jsonl"),

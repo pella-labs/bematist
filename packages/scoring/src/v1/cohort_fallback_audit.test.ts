@@ -14,9 +14,9 @@
 
 import { describe, expect, test } from "bun:test";
 import {
-  resolveCohortWithFallback,
   type CohortContext,
   type FallbackReason,
+  resolveCohortWithFallback,
 } from "./cohort_key_v1_1";
 
 const ctx: CohortContext = {

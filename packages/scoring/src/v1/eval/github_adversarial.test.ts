@@ -17,12 +17,8 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { scoreV1_1, type ScoringInputV1_1 } from "../index_v1_1";
-import {
-  generateGithubCases,
-  type GithubFixtureCase,
-  type GithubPersona,
-} from "./github_generate";
+import { type ScoringInputV1_1, scoreV1_1 } from "../index_v1_1";
+import { type GithubFixtureCase, type GithubPersona, generateGithubCases } from "./github_generate";
 
 const CASES = generateGithubCases(2026, "gh");
 

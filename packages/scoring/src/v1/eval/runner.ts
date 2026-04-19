@@ -22,7 +22,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { score } from "../index";
-import { scoreV1_1, type ScoringInputV1_1 } from "../index_v1_1";
+import { type ScoringInputV1_1, scoreV1_1 } from "../index_v1_1";
 import { GATES } from "./gates";
 import type { ArchetypeTag, FixtureCase } from "./schema";
 
@@ -65,9 +65,7 @@ function loadJsonl(path: string): FixtureCase[] {
 
 function evalFixture(name: string, cases: FixtureCase[]): FixtureResult {
   const results: CaseResult[] = cases.map((c) => {
-    const out = isV1_1Case(c)
-      ? scoreV1_1(c.input as unknown as ScoringInputV1_1)
-      : score(c.input);
+    const out = isV1_1Case(c) ? scoreV1_1(c.input as unknown as ScoringInputV1_1) : score(c.input);
     const actual = out.ai_leverage_score;
     const expected = c.expected_final_als;
     const error = Math.abs(actual - expected);

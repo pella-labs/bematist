@@ -11,18 +11,19 @@ import { describe, expect, test } from "bun:test";
 import {
   computeFirstPushGreen,
   type FirstPushGreenInput,
+  type FirstPushGreenPush,
 } from "./github_first_push_green_v1";
 
-const basePush = {
+const basePush: FirstPushGreenPush = {
   commit_sha: "a".repeat(40),
   pushed_at: "2026-04-10T10:00:00Z",
   non_config_file_changed: true,
   check_suite_completed_at: "2026-04-10T10:20:00Z",
-  check_suite_conclusion: "success" as const,
+  check_suite_conclusion: "success",
   check_suite_attempt_passed_on_rerun_within_24h: false,
 };
 
-function makeInput(pushes: typeof basePush[]): FirstPushGreenInput {
+function makeInput(pushes: FirstPushGreenPush[]): FirstPushGreenInput {
   return {
     pushes,
     repo_check_suites_last_7d: 10,

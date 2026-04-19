@@ -26,8 +26,8 @@ import { evaluateDisplayGates } from "./display_gates";
 import { normalizeAgainstCohort } from "./normalize";
 import {
   computeOutcomeQualityV1_1,
-  type Term,
   deploySuccessPerDollarV1Stub,
+  type Term,
 } from "./outcome_quality_v1_1";
 import { computeRawSubscores } from "./subscores";
 
@@ -113,10 +113,7 @@ export function scoreV1_1(input: ScoringInputV1_1): ScoringOutput & {
   const rawALS = composite(normalized);
 
   // Step 4 — confidence (v1.1 D48 union).
-  const confidence = computeConfidenceV1_1(
-    input.github.outcome_event_counts,
-    signals.active_days,
-  );
+  const confidence = computeConfidenceV1_1(input.github.outcome_event_counts, signals.active_days);
 
   // Step 5 — final.
   const finalALS = rawALS * confidence;

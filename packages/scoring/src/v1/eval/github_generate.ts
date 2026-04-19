@@ -28,11 +28,8 @@
  */
 
 import type { ScoringInput } from "../../index";
-import { scoreV1_1, type ScoringInputV1_1 } from "../index_v1_1";
-import {
-  authorAssociationTier,
-  type AuthorAssociation,
-} from "../signals/github_author_association_v1";
+import { type ScoringInputV1_1, scoreV1_1 } from "../index_v1_1";
+import type { AuthorAssociation } from "../signals/github_author_association_v1";
 import {
   computeFirstPushGreen,
   type FirstPushGreenInput,
@@ -314,9 +311,7 @@ const PERSONA_SPECS: GithubPersonaSpec[] = [
         pushed_at: "2026-04-10T10:00:00Z",
         non_config_file_changed: true,
         check_suite_completed_at: "2026-04-10T10:20:00Z",
-        check_suite_conclusion: (i < 3 ? "failure" : "success") as
-          | "success"
-          | "failure",
+        check_suite_conclusion: (i < 3 ? "failure" : "success") as "success" | "failure",
         // Flaky on the 3 reds — all passed on re-run.
         check_suite_attempt_passed_on_rerun_within_24h: i < 3,
       }));
@@ -486,9 +481,7 @@ function normalFirstPushInput(
     pushed_at: "2026-04-10T10:00:00Z",
     non_config_file_changed: true,
     check_suite_completed_at: "2026-04-10T10:20:00Z",
-    check_suite_conclusion: (rng() < passRate ? "success" : "failure") as
-      | "success"
-      | "failure",
+    check_suite_conclusion: (rng() < passRate ? "success" : "failure") as "success" | "failure",
     check_suite_attempt_passed_on_rerun_within_24h: false,
   }));
   return {

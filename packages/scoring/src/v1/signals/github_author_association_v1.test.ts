@@ -7,9 +7,9 @@
 
 import { describe, expect, test } from "bun:test";
 import {
-  authorAssociationTier,
   type AuthorAssociation,
   type AuthorAssociationTier,
+  authorAssociationTier,
 } from "./github_author_association_v1";
 
 describe("github_author_association_v1", () => {

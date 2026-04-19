@@ -11,9 +11,9 @@
 import { describe, expect, test } from "bun:test";
 import {
   buildCohortKey,
+  type CohortContext,
   orgTenureBucket,
   resolveCohortWithFallback,
-  type CohortContext,
 } from "./cohort_key_v1_1";
 
 const context: CohortContext = {
