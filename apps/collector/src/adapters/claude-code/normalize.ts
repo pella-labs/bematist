@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { pricingVersionString } from "@bematist/config";
 import type { Event } from "@bematist/schema";
+import { log } from "../../logger";
 import type { ParsedSession } from "./parsers/parseSessionFile";
 import type { RawClaudeContentBlock, RawClaudeSessionLine, RawClaudeUsage } from "./parsers/types";
 
@@ -9,6 +10,77 @@ export interface ServerIdentity {
   engineerId: string;
   deviceId: string;
   tier: "A" | "B" | "C";
+}
+
+/**
+ * Window in which a per-line `timestamp` is trusted. Outside this window
+ * (wildly past, or more than 5 min in the future) we treat the dev's clock
+ * as corrupt and clamp to collector-received time. Default is 7 days;
+ * override via env `CLAUDE_TS_CLAMP_WINDOW_MS`.
+ *
+ * Motivation (bug #13a): year-2099 timestamps from corrupted-BIOS dev
+ * machines corrupt monthly ClickHouse partitions (`toYYYYMM(ts)` lands in
+ * 209x). We clamp silently with a per-session WARN log rather than
+ * carrying forward the bad timestamp.
+ */
+const DEFAULT_TS_CLAMP_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const TS_FUTURE_SLACK_MS = 5 * 60 * 1000; // 5-minute future tolerance
+
+function getClampWindowMs(): number {
+  const raw = process.env.CLAUDE_TS_CLAMP_WINDOW_MS;
+  if (!raw) return DEFAULT_TS_CLAMP_WINDOW_MS;
+  const n = Number.parseInt(raw, 10);
+  if (Number.isFinite(n) && n > 0) return n;
+  return DEFAULT_TS_CLAMP_WINDOW_MS;
+}
+
+/**
+ * Attempt to return a clamped ISO timestamp. Returns:
+ *   - { iso, clamped: false } if timestamp is within window (or undefined —
+ *     caller falls back to `new Date(nowMs)`).
+ *   - { iso, clamped: true } if we had to clamp to now.
+ * `nowMs` is injected so callers can share a single "poll start" wall time
+ * and so tests can pin the clock.
+ */
+export function resolveTimestamp(
+  input: string | undefined,
+  nowMs: number,
+  windowMs: number = getClampWindowMs(),
+): { iso: string; clamped: boolean } {
+  if (!input) return { iso: new Date(nowMs).toISOString(), clamped: false };
+  const parsed = Date.parse(input);
+  if (!Number.isFinite(parsed)) {
+    // Unparseable string is as dangerous as a wildly-skewed one.
+    return { iso: new Date(nowMs).toISOString(), clamped: true };
+  }
+  const lowerBound = nowMs - windowMs;
+  const upperBound = nowMs + TS_FUTURE_SLACK_MS;
+  if (parsed < lowerBound || parsed > upperBound) {
+    return { iso: new Date(nowMs).toISOString(), clamped: true };
+  }
+  return { iso: new Date(parsed).toISOString(), clamped: false };
+}
+
+/**
+ * Shared per-session clock-skew state. `nowMs` is frozen at the start of
+ * normalization so every clamped event lands at the same instant (and
+ * tests are deterministic when callers inject a value). `clampedCount` is
+ * bumped each time a line's timestamp had to be replaced with `nowMs`.
+ * `warned` is the once-per-session gate so a 10k-line clock-skewed session
+ * doesn't WARN 10k times.
+ */
+interface ClampCtx {
+  nowMs: number;
+  windowMs: number;
+  clampedCount: number;
+  warned: boolean;
+}
+
+export interface NormalizeOpts {
+  /** Pinned wall-clock (ms) — test seam for deterministic clamping. */
+  nowMs?: number;
+  /** Override the clamp window (ms). Defaults to env or 7d. */
+  clampWindowMs?: number;
 }
 
 const MODEL_PRICING_PER_MTOK: Record<
@@ -29,10 +101,18 @@ export function normalizeSession(
   parsed: ParsedSession,
   id: ServerIdentity,
   sourceVersion: string,
+  opts: NormalizeOpts = {},
 ): Event[] {
   const session_id = parsed.sessionId ?? "unknown";
   const events: Event[] = [];
   let seq = 0;
+
+  const clampCtx: ClampCtx = {
+    nowMs: opts.nowMs ?? Date.now(),
+    windowMs: opts.clampWindowMs ?? getClampWindowMs(),
+    clampedCount: 0,
+    warned: false,
+  };
 
   // Real-format sessions (`~/.claude/projects/**.jsonl`) never emit an explicit
   // `session_start` line — the session begins at the first user message. The
@@ -47,7 +127,16 @@ export function normalizeSession(
       timestamp: parsed.firstTimestamp,
     };
     if (parsed.sessionId) synthetic.sessionId = parsed.sessionId;
-    const startEvents = mapLine(synthetic, -1, parsed, id, sourceVersion, session_id, seq);
+    const startEvents = mapLine(
+      synthetic,
+      -1,
+      parsed,
+      id,
+      sourceVersion,
+      session_id,
+      seq,
+      clampCtx,
+    );
     for (const e of startEvents) {
       events.push(e);
       seq++;
@@ -57,7 +146,7 @@ export function normalizeSession(
   for (let idx = 0; idx < parsed.entries.length; idx++) {
     const line = parsed.entries[idx];
     if (!line) continue;
-    const eventsForLine = mapLine(line, idx, parsed, id, sourceVersion, session_id, seq);
+    const eventsForLine = mapLine(line, idx, parsed, id, sourceVersion, session_id, seq, clampCtx);
     for (const e of eventsForLine) {
       events.push(e);
       seq++;
@@ -74,10 +163,37 @@ function mapLine(
   sourceVersion: string,
   session_id: string,
   seq: number,
+  clampCtx: ClampCtx,
 ): Event[] {
+  const { iso, clamped } = resolveTimestamp(line.timestamp, clampCtx.nowMs, clampCtx.windowMs);
+  if (clamped) {
+    clampCtx.clampedCount += 1;
+    if (!clampCtx.warned) {
+      clampCtx.warned = true;
+      log.warn(
+        {
+          session_id,
+          originalTs: line.timestamp,
+          nowMs: clampCtx.nowMs,
+          windowMs: clampCtx.windowMs,
+        },
+        "claude-code: clock-skewed timestamp clamped to collector-received time",
+      );
+    }
+  }
+
+  // Schema drift note is a Tier-C-only field — it's metadata about the
+  // parse, not a counter or a prompt, and only a Tier-C tenant's allowlist
+  // permits `raw_attrs` to surface drift markers. Tier A/B instances get
+  // the clamp silently (log-only).
+  const baseRawAttrs: Record<string, unknown> = {};
+  if (clamped && id.tier === "C") {
+    baseRawAttrs.schema_drift_note = "ts_clamped";
+  }
+
   const base = {
     schema_version: 1 as const,
-    ts: line.timestamp ?? new Date().toISOString(),
+    ts: iso,
     tenant_id: id.tenantId,
     engineer_id: id.engineerId,
     device_id: id.deviceId,
@@ -88,6 +204,7 @@ function mapLine(
     tier: id.tier,
     session_id,
     event_seq: seq,
+    ...(Object.keys(baseRawAttrs).length > 0 ? { raw_attrs: baseRawAttrs } : {}),
   };
 
   if (line.type === "session_start") {
@@ -337,6 +454,7 @@ type EventBase = {
   tier: "A" | "B" | "C";
   session_id: string;
   event_seq: number;
+  raw_attrs?: Record<string, unknown>;
 };
 
 /**

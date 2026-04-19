@@ -1,6 +1,50 @@
+import { statSync } from "node:fs";
 import { log } from "../../../logger";
-import { readLinesFromOffset } from "./safeRead";
+import { readLinesFromOffset as realReadLinesFromOffset } from "./safeRead";
 import type { RawClaudeSessionLine, RawClaudeUsage } from "./types";
+
+/**
+ * Hard byte cap on any single JSONL we parse. Files larger than this are
+ * tailed: we skip everything before `size - maxFileBytes` and drop the
+ * first (partial) line in the remaining window. Guards against OOM / poll
+ * timeouts on multi-GB historical sessions (observed 2.8 GB real case —
+ * Walid, see collector config.ts rationale).
+ *
+ * Tradeoff: when we truncate from the front we LOSE any early-session
+ * events beyond the tail window. In steady state the adapter's `max_seq`
+ * cursor tracks what's been emitted so subsequent polls resume where the
+ * last left off — truncation only bites on the first poll catching up to a
+ * file that was already beyond the cap when the collector started.
+ */
+const DEFAULT_MAX_FILE_BYTES = 512 * 1024 * 1024; // 512 MiB
+const DEFAULT_MAX_LINES = 2_000_000;
+
+export interface ParseSessionFileOpts {
+  /**
+   * Hard byte cap. Files larger than this are tailed — we read only the last
+   * `maxFileBytes` bytes and discard the first partial line. Defaults to 512
+   * MiB; env override `BEMATIST_CLAUDE_MAX_BYTES` picked up by the adapter.
+   */
+  maxFileBytes?: number;
+  /**
+   * Hard line cap. If the parsed buffer exceeds this many lines (after the
+   * byte tail is applied), we keep the tail-most `maxLines` only. Defaults
+   * to 2,000,000; env override `BEMATIST_CLAUDE_MAX_LINES` picked up by the
+   * adapter.
+   */
+  maxLines?: number;
+  /**
+   * Test seams — do NOT use from product code. Let the 600-MiB integration
+   * test verify the tail offset without writing an actual giant file (and
+   * without using `mock.module`, which leaks process-wide in Bun and breaks
+   * neighbouring tests that use the real reader).
+   */
+  _statSync?: (path: string) => { size: number };
+  _readLinesFromOffset?: (
+    path: string,
+    offset: number,
+  ) => Promise<{ lines: string[]; nextOffset: number }>;
+}
 
 export interface ParsedSession {
   sessionId: string | null;
@@ -43,6 +87,12 @@ export interface ParsedSession {
   durationMs: number | null;
   firstTimestamp: string | null;
   lastTimestamp: string | null;
+  /**
+   * True iff the source file exceeded `maxFileBytes` or `maxLines` and we
+   * tailed it. Adapter logs this so operators can see which sessions are
+   * dropping early events.
+   */
+  truncated: boolean;
 }
 
 /**
@@ -51,17 +101,66 @@ export interface ParsedSession {
  * D17 P0 fixes baked in:
  *   1. Per-requestId dedup with Map<requestId, usage>, max-per-field.
  *   2. durationMs = lastTimestamp − firstTimestamp.
- *   3. Safe file reader — no size cap.
+ *   3. Safe file reader — no 50 MB silent-drop limit.
+ *   4. Bounded memory: files over `maxFileBytes` (default 512 MiB) are
+ *      tailed rather than read whole. Prevents multi-GB historical JSONL
+ *      from OOM-ing the collector or blowing through the orchestrator
+ *      per-poll timeout.
  *
  * Line-parse failures log warn and skip that line; a corrupted tail line never
  * kills the whole session.
  */
-export async function parseSessionFile(path: string): Promise<ParsedSession> {
-  const { lines } = await readLinesFromOffset(path, 0);
-  return parseLines(lines);
+export async function parseSessionFile(
+  path: string,
+  opts: ParseSessionFileOpts = {},
+): Promise<ParsedSession> {
+  const maxFileBytes = opts.maxFileBytes ?? DEFAULT_MAX_FILE_BYTES;
+  const maxLines = opts.maxLines ?? DEFAULT_MAX_LINES;
+  const stat = opts._statSync ?? statSync;
+  const readLinesFromOffset = opts._readLinesFromOffset ?? realReadLinesFromOffset;
+
+  let size = 0;
+  try {
+    size = stat(path).size;
+  } catch {
+    // File gone between discovery and parse — readLinesFromOffset(path, 0)
+    // will also fail cleanly; let it produce an empty result.
+    return parseLines([], false);
+  }
+
+  let offset = 0;
+  let truncated = false;
+  if (size > maxFileBytes) {
+    offset = size - maxFileBytes;
+    truncated = true;
+    log.warn(
+      { path, size, maxFileBytes, offset },
+      "claude-code: JSONL exceeds max bytes — tailing last window, early events dropped",
+    );
+  }
+
+  const { lines: rawLines } = await readLinesFromOffset(path, offset);
+
+  // When we started mid-file, the first line we got is almost certainly a
+  // fragment from the middle of a JSON object — drop it.
+  let lines = rawLines;
+  if (offset > 0 && lines.length > 0) {
+    lines = lines.slice(1);
+  }
+
+  if (lines.length > maxLines) {
+    log.warn(
+      { path, lineCount: lines.length, maxLines },
+      "claude-code: JSONL exceeds max lines — keeping tail only",
+    );
+    lines = lines.slice(lines.length - maxLines);
+    truncated = true;
+  }
+
+  return parseLines(lines, truncated);
 }
 
-export function parseLines(lines: string[]): ParsedSession {
+export function parseLines(lines: string[], truncated = false): ParsedSession {
   const entries: RawClaudeSessionLine[] = [];
   const perRequestUsage = new Map<string, RawClaudeUsage>();
   const perUsageKey = new Map<string, RawClaudeUsage>();
@@ -167,6 +266,7 @@ export function parseLines(lines: string[]): ParsedSession {
     durationMs,
     firstTimestamp,
     lastTimestamp,
+    truncated,
   };
 }
 

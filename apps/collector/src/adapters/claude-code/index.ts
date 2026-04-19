@@ -5,9 +5,30 @@ import type { Event } from "@bematist/schema";
 import type { Adapter, AdapterContext, AdapterHealth } from "@bematist/sdk";
 import { type DiscoverySources, discoverSources } from "./discovery";
 import { normalizeSession } from "./normalize";
-import { parseSessionFile } from "./parsers/parseSessionFile";
+import { type ParseSessionFileOpts, parseSessionFile } from "./parsers/parseSessionFile";
 
 const SOURCE_VERSION_DEFAULT = "1.0.x";
+
+/**
+ * Pull optional parse caps from env vars. We deliberately don't reach into
+ * `@bematist/config` for these — they're adapter-local tuning knobs for
+ * operators seeing OOM / timeout on multi-GB historical JSONL (bug #4). A
+ * bad string parses to NaN which falls through to parseSessionFile's default.
+ */
+function readParseOptsFromEnv(): ParseSessionFileOpts {
+  const opts: ParseSessionFileOpts = {};
+  const bytesRaw = process.env.BEMATIST_CLAUDE_MAX_BYTES;
+  if (bytesRaw) {
+    const n = Number.parseInt(bytesRaw, 10);
+    if (Number.isFinite(n) && n > 0) opts.maxFileBytes = n;
+  }
+  const linesRaw = process.env.BEMATIST_CLAUDE_MAX_LINES;
+  if (linesRaw) {
+    const n = Number.parseInt(linesRaw, 10);
+    if (Number.isFinite(n) && n > 0) opts.maxLines = n;
+  }
+  return opts;
+}
 
 interface Identity {
   tenantId: string;
@@ -87,7 +108,13 @@ export class ClaudeCodeAdapter implements Adapter {
       const prevMaxStr = await ctx.cursor.get(maxSeqKey);
       const prevMax = prevMaxStr === null ? -1 : Number.parseInt(prevMaxStr, 10);
 
-      const parsed = await parseSessionFile(path);
+      const parsed = await parseSessionFile(path, readParseOptsFromEnv());
+      if (parsed.truncated) {
+        ctx.log.warn(`claude-code: ${path} was tailed (file over byte/line cap)`, {
+          path,
+          sessionId: parsed.sessionId,
+        });
+      }
       const events = normalizeSession(
         parsed,
         { ...this.identity, tier: ctx.tier },
