@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { collectPoll } from "../../test-helpers";import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { loadFixture } from "@bematist/fixtures";
@@ -60,7 +60,7 @@ test("poll() returns [] when state.vscdb does not exist", async () => {
     const a = new CursorAdapter({ tenantId: "org_t", engineerId: "eng_t", deviceId: "dev_t" });
     const ctx = mkCtx();
     await a.init(ctx);
-    expect(await a.poll(ctx, new AbortController().signal)).toEqual([]);
+    expect(await collectPoll(a, ctx)).toEqual([]);
   } finally {
     if (prev === undefined) delete process.env.CURSOR_STATE_DB;
     else process.env.CURSOR_STATE_DB = prev;
@@ -78,7 +78,7 @@ test("poll() returns [] without crashing on a corrupt state.vscdb", async () => 
       const a = new CursorAdapter({ tenantId: "o", engineerId: "e", deviceId: "d" });
       const ctx = mkCtx();
       await a.init(ctx);
-      const events = await a.poll(ctx, new AbortController().signal);
+      const events = await collectPoll(a, ctx);
       expect(events).toEqual([]);
     } finally {
       if (prev === undefined) delete process.env.CURSOR_STATE_DB;
@@ -100,7 +100,7 @@ test("poll() against the golden state.vscdb emits canonical events", async () =>
       const a = new CursorAdapter({ tenantId: "org_t", engineerId: "eng_t", deviceId: "dev_t" });
       const ctx = mkCtx();
       await a.init(ctx);
-      const events = await a.poll(ctx, new AbortController().signal);
+      const events = await collectPoll(a, ctx);
       expect(events.length).toBeGreaterThan(0);
       const kinds = new Set(events.map((e) => e.dev_metrics.event_kind));
       expect(kinds.has("session_start")).toBe(true);
@@ -128,9 +128,9 @@ test("poll() advances the unix-ms cursor and returns nothing on a second pass", 
       const a = new CursorAdapter({ tenantId: "org_t", engineerId: "eng_t", deviceId: "dev_t" });
       const ctx = mkCtx();
       await a.init(ctx);
-      const first = await a.poll(ctx, new AbortController().signal);
+      const first = await collectPoll(a, ctx);
       expect(first.length).toBeGreaterThan(0);
-      const second = await a.poll(ctx, new AbortController().signal);
+      const second = await collectPoll(a, ctx);
       expect(second).toEqual([]);
     } finally {
       if (prev === undefined) delete process.env.CURSOR_STATE_DB;
@@ -168,7 +168,7 @@ test("health() flips to fidelity='estimated' after seeing Auto-mode rows", async
       const a = new CursorAdapter({ tenantId: "o", engineerId: "e", deviceId: "d" });
       const ctx = mkCtx();
       await a.init(ctx);
-      await a.poll(ctx, new AbortController().signal);
+      await collectPoll(a, ctx);
       const h = await a.health(ctx);
       expect(h.status).toBe("ok");
       expect(h.fidelity).toBe("estimated");

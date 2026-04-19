@@ -1,7 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Event } from "@bematist/schema";
-import type { Adapter, AdapterContext, AdapterHealth } from "@bematist/sdk";
+import type { Adapter, AdapterContext, AdapterHealth, EventEmitter } from "@bematist/sdk";
 import { resolveGitContext } from "../../lib/git-context";
 import { type CodexDiscoverySources, discoverSources } from "./discovery";
 import { type NormalizeExtras, normalizeSession } from "./normalize";
@@ -39,13 +38,13 @@ export class CodexAdapter implements Adapter {
     });
   }
 
-  async poll(ctx: AdapterContext, _signal: AbortSignal): Promise<Event[]> {
+  async poll(ctx: AdapterContext, signal: AbortSignal, emit: EventEmitter): Promise<void> {
     const s = this.sources ?? discoverSources();
-    if (!s.sessionsDirExists) return [];
+    if (!s.sessionsDirExists) return;
 
     const files = await findRolloutFiles(s.sessionsDir);
-    const out: Event[] = [];
     for (const path of files) {
+      if (signal.aborted) return;
       const offsetKey = `offset:${path}`;
       const cumulativeKey = `cumulative:${path}`;
       const branchKey = `branch:${path}`;
@@ -79,14 +78,14 @@ export class CodexAdapter implements Adapter {
         const extras: NormalizeExtras = {};
         if (branch) extras.branch = branch;
         if (commit_sha) extras.commit_sha = commit_sha;
-        out.push(
-          ...normalizeSession(
-            parsed,
-            { ...this.identity, tier: ctx.tier },
-            SOURCE_VERSION_DEFAULT,
-            extras,
-          ),
-        );
+        for (const e of normalizeSession(
+          parsed,
+          { ...this.identity, tier: ctx.tier },
+          SOURCE_VERSION_DEFAULT,
+          extras,
+        )) {
+          emit(e);
+        }
         const { nextOffset } = await readLinesFromOffset(path, 0);
         await ctx.cursor.set(offsetKey, String(nextOffset));
         if (parsed.lastCumulative) {
@@ -102,20 +101,19 @@ export class CodexAdapter implements Adapter {
       const extras: NormalizeExtras = {};
       if (branch) extras.branch = branch;
       if (commit_sha) extras.commit_sha = commit_sha;
-      out.push(
-        ...normalizeSession(
-          parsed,
-          { ...this.identity, tier: ctx.tier },
-          SOURCE_VERSION_DEFAULT,
-          extras,
-        ),
-      );
+      for (const e of normalizeSession(
+        parsed,
+        { ...this.identity, tier: ctx.tier },
+        SOURCE_VERSION_DEFAULT,
+        extras,
+      )) {
+        emit(e);
+      }
       await ctx.cursor.set(offsetKey, String(nextOffset));
       if (parsed.lastCumulative) {
         await ctx.cursor.set(cumulativeKey, JSON.stringify(parsed.lastCumulative));
       }
     }
-    return out;
   }
 
   async health(_ctx: AdapterContext): Promise<AdapterHealth> {

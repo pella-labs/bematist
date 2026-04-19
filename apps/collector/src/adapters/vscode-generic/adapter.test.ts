@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { collectPoll } from "../../test-helpers";import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadFixture } from "@bematist/fixtures";
@@ -63,7 +63,7 @@ function makeExampleHandler(): VSCodeExtensionHandler {
     async discover(_ctx: VSCodeExtensionContext) {
       return ["/virtual/example-output.jsonl"];
     },
-    async parse(ctx: VSCodeExtensionContext, _path: string, _signal: AbortSignal) {
+    async parse(ctx: VSCodeExtensionContext, _path: string, _signal: AbortSignal, emit) {
       const sessionId = "ex_01";
       const ts = "2026-04-17T15:00:00.000Z";
       const env = baseEvent({
@@ -74,19 +74,17 @@ function makeExampleHandler(): VSCodeExtensionHandler {
         fidelity: "estimated",
         costEstimated: true,
       });
-      return [
-        {
-          ...env,
-          client_event_id: deterministicEventId(
-            "example-corp.dummy-ai",
-            sessionId,
-            0,
-            "session_start",
-            null,
-          ),
-          dev_metrics: { event_kind: "session_start", duration_ms: 0 },
-        },
-      ];
+      emit({
+        ...env,
+        client_event_id: deterministicEventId(
+          "example-corp.dummy-ai",
+          sessionId,
+          0,
+          "session_start",
+          null,
+        ),
+        dev_metrics: { event_kind: "session_start", duration_ms: 0 },
+      });
     },
   };
 }
@@ -153,7 +151,7 @@ test("poll() returns [] when no VS Code profile is on disk", async () => {
     const a = new VSCodeGenericAdapter(identity);
     const ctx = mkCtx();
     await a.init(ctx);
-    const events = await a.poll(ctx, new AbortController().signal);
+    const events = await collectPoll(a, ctx);
     expect(events).toEqual([]);
   } finally {
     if (prev === undefined) delete process.env.BEMATIST_VSCODE_USER_ROOT;
@@ -178,13 +176,13 @@ test("poll() does not propagate handler.discover() errors — logs and continues
             throw new Error("broken on purpose");
           },
           async parse() {
-            return [];
+            // no-op — the broken.discover test exercises the discover failure path.
           },
         },
       ]);
       const ctx = mkCtx();
       await a.init(ctx);
-      const events = await a.poll(ctx, new AbortController().signal);
+      const events = await collectPoll(a, ctx);
       // Twinny default handler is also registered and finds nothing in this
       // empty profile; broken handler should not crash the poll.
       expect(events).toEqual([]);
@@ -230,7 +228,7 @@ test("health() collapses to the worst registered handler fidelity", async () => 
           return [];
         },
         async parse() {
-          return [];
+          // no-op handler — useful for the "broken.discover" / fidelity path tests.
         },
       };
       const a = new VSCodeGenericAdapter(identity, [aggHandler]);
@@ -258,7 +256,7 @@ test("poll() routes to a registered community handler and emits its events", asy
       a.register(makeExampleHandler());
       const ctx = mkCtx();
       await a.init(ctx);
-      const events = await a.poll(ctx, new AbortController().signal);
+      const events = await collectPoll(a, ctx);
       // Example handler emits 1 synthetic session_start; twinny finds nothing
       // in this empty profile.
       expect(events.length).toBe(1);
@@ -286,7 +284,7 @@ test("poll() honors aborted signal", async () => {
       await a.init(ctx);
       const ctrl = new AbortController();
       ctrl.abort();
-      const events = await a.poll(ctx, ctrl.signal);
+      const events = await collectPoll(a, ctx, ctrl.signal);
       expect(events).toEqual([]);
     } finally {
       if (prev === undefined) delete process.env.BEMATIST_VSCODE_USER_ROOT;

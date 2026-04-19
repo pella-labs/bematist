@@ -1,8 +1,8 @@
-import type { Event } from "@bematist/schema";
 import type {
   Adapter,
   AdapterContext,
   AdapterHealth,
+  EventEmitter,
   VSCodeDistro,
   VSCodeExtensionContext,
   VSCodeExtensionHandler,
@@ -65,14 +65,13 @@ export class VSCodeGenericAdapter implements Adapter {
     });
   }
 
-  async poll(ctx: AdapterContext, signal: AbortSignal): Promise<Event[]> {
+  async poll(ctx: AdapterContext, signal: AbortSignal, emit: EventEmitter): Promise<void> {
     if (this.profiles.length === 0) this.profiles = discoverProfiles();
-    if (this.profiles.length === 0) return [];
+    if (this.profiles.length === 0) return;
 
-    const all: Event[] = [];
     for (const profile of this.profiles) {
       for (const handler of this.handlers) {
-        if (signal.aborted) return all;
+        if (signal.aborted) return;
         const hCtx: VSCodeExtensionContext = {
           userDir: profile.userDir,
           distro: profile.distro,
@@ -91,10 +90,9 @@ export class VSCodeGenericAdapter implements Adapter {
           continue;
         }
         for (const p of paths) {
-          if (signal.aborted) return all;
+          if (signal.aborted) return;
           try {
-            const events = await handler.parse(hCtx, p, signal);
-            all.push(...events);
+            await handler.parse(hCtx, p, signal, emit);
           } catch (e) {
             ctx.log.warn("vscode-generic: handler.parse threw", {
               ext: handler.extensionId,
@@ -105,7 +103,6 @@ export class VSCodeGenericAdapter implements Adapter {
         }
       }
     }
-    return all;
   }
 
   async health(_ctx: AdapterContext): Promise<AdapterHealth> {

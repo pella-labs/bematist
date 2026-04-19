@@ -1,5 +1,4 @@
-import type { Event } from "@bematist/schema";
-import type { Adapter, AdapterContext, AdapterHealth } from "@bematist/sdk";
+import type { Adapter, AdapterContext, AdapterHealth, EventEmitter } from "@bematist/sdk";
 import { openReadOnlyCopy } from "./copyRead";
 import { type DiscoverySources, discoverSources } from "./discovery";
 import { normalizeGenerations } from "./normalize";
@@ -33,16 +32,16 @@ export class CursorAdapter implements Adapter {
     });
   }
 
-  async poll(ctx: AdapterContext, _signal: AbortSignal): Promise<Event[]> {
+  async poll(ctx: AdapterContext, _signal: AbortSignal, emit: EventEmitter): Promise<void> {
     const s = this.sources ?? discoverSources();
-    if (!s.dbExists) return [];
+    if (!s.dbExists) return;
 
     let opened: ReturnType<typeof openReadOnlyCopy>;
     try {
       opened = openReadOnlyCopy(s.dbPath);
     } catch (e) {
       ctx.log.warn("cursor: copy-read failed", { err: errStr(e), path: s.dbPath });
-      return [];
+      return;
     }
 
     try {
@@ -61,14 +60,14 @@ export class CursorAdapter implements Adapter {
 
       this.lastAutoSeen = fresh.some((g) => g.mode === "auto" || g.mode === undefined);
 
+      for (const e of events) emit(e);
+
       if (fresh.length > 0) {
         const newMax = Math.max(...fresh.map((g) => g.unixMs), cursorMax);
         await ctx.cursor.set(CURSOR_MAX_UNIX_KEY, String(newMax));
       }
-      return events;
     } catch (e) {
       ctx.log.warn("cursor: parse failed", { err: errStr(e) });
-      return [];
     } finally {
       opened.cleanup();
     }

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { Event } from "@bematist/schema";
-import type { Adapter, AdapterContext } from "@bematist/sdk";
+import type { Adapter, AdapterContext, EventEmitter } from "@bematist/sdk";
 import { runOnce } from "./index";
 
 function mkLogger() {
@@ -27,14 +27,32 @@ function mkCtx(): AdapterContext {
   };
 }
 
-function mkAdapter(id: string, pollImpl: () => Promise<Event[]>): Adapter {
+function mkAdapter(id: string, events: Event[]): Adapter {
   return {
     id,
     label: id,
     version: "0.0.0",
     supportedSourceVersions: "*",
     async init() {},
-    poll: async () => pollImpl(),
+    async poll(_ctx, _signal, emit) {
+      for (const e of events) emit(e);
+    },
+    async health() {
+      return { status: "ok", fidelity: "full" };
+    },
+  };
+}
+
+function mkThrowingAdapter(id: string, err: unknown): Adapter {
+  return {
+    id,
+    label: id,
+    version: "0.0.0",
+    supportedSourceVersions: "*",
+    async init() {},
+    async poll() {
+      throw err;
+    },
     async health() {
       return { status: "ok", fidelity: "full" };
     },
@@ -58,61 +76,54 @@ const ev = (id: string): Event =>
     cost_estimated: false,
   }) as Event;
 
-test("runOnce invokes every enabled adapter and returns combined events", async () => {
-  const a = mkAdapter("a", async () => [ev("a")]);
-  const b = mkAdapter("b", async () => [ev("b"), ev("c")]);
-  const events = await runOnce([a, b], () => mkCtx(), {
-    concurrency: 2,
-    perPollTimeoutMs: 1000,
-  });
+function collect(): { emit: EventEmitter; events: Event[] } {
+  const events: Event[] = [];
+  return { emit: (e) => events.push(e), events };
+}
+
+test("runOnce invokes every enabled adapter and streams combined events", async () => {
+  const a = mkAdapter("a", [ev("a")]);
+  const b = mkAdapter("b", [ev("b"), ev("c")]);
+  const { emit, events } = collect();
+  await runOnce([a, b], () => mkCtx(), { concurrency: 2, perPollTimeoutMs: 1000 }, emit);
   expect(events.length).toBe(3);
 });
 
 test("adapter throwing in poll does not crash the orchestrator", async () => {
-  const good = mkAdapter("good", async () => [ev("g")]);
-  const bad = mkAdapter("bad", async () => {
-    throw new Error("kaboom");
-  });
-  const events = await runOnce([good, bad], () => mkCtx(), {
-    concurrency: 2,
-    perPollTimeoutMs: 1000,
-  });
+  const good = mkAdapter("good", [ev("g")]);
+  const bad = mkThrowingAdapter("bad", new Error("kaboom"));
+  const { emit, events } = collect();
+  await runOnce([good, bad], () => mkCtx(), { concurrency: 2, perPollTimeoutMs: 1000 }, emit);
   expect(events.length).toBe(1);
   expect(events[0]?.client_event_id).toContain("g");
 });
 
-test("adapter exceeding perPollTimeoutMs is signaled; honoring the signal returns partial", async () => {
-  // New contract (v0.1.7): the orchestrator fires ac.abort() when the
-  // timeout elapses and then AWAITS the adapter's promise — it no longer
-  // races with a "resolve([])" discard path. Adapters that honor the
-  // signal return what they've emitted so far; whatever they return is
-  // what the orchestrator collects. Adapters that ignore the signal keep
-  // running (acceptable trade-off vs. the old silent event-dropping).
+test("adapter exceeding perPollTimeoutMs is signaled; emits before abort are kept", async () => {
+  // Streaming contract (post-refactor): anything the adapter emitted before
+  // abort is already durable on the journal side, so "partial progress" is
+  // always retained — regardless of whether the adapter honors the signal.
+  // The old test verified the Promise-return path; the new invariant is
+  // simpler: emits survive timeout.
   const respectful: Adapter = {
     id: "respectful",
     label: "respectful",
     version: "0.0.0",
     supportedSourceVersions: "*",
     async init() {},
-    async poll(_ctx, signal) {
-      const emitted: Event[] = [ev("early")];
-      // Pretend we're in the middle of a backfill when the signal fires:
-      // spin until abort, then return what we've emitted so far.
+    async poll(_ctx, signal, emit) {
+      emit(ev("early"));
       await new Promise<void>((resolve) => {
         if (signal.aborted) return resolve();
         signal.addEventListener("abort", () => resolve(), { once: true });
       });
-      return emitted;
     },
     async health() {
       return { status: "ok", fidelity: "full" };
     },
   };
-  const fast = mkAdapter("fast", async () => [ev("ok")]);
-  const events = await runOnce([respectful, fast], () => mkCtx(), {
-    concurrency: 2,
-    perPollTimeoutMs: 50,
-  });
+  const fast = mkAdapter("fast", [ev("ok")]);
+  const { emit, events } = collect();
+  await runOnce([respectful, fast], () => mkCtx(), { concurrency: 2, perPollTimeoutMs: 50 }, emit);
   expect(events.map((e) => e.client_event_id).some((id) => id.includes("ok"))).toBe(true);
   expect(events.map((e) => e.client_event_id).some((id) => id.includes("early"))).toBe(true);
 });

@@ -19,6 +19,16 @@ import type { Database } from "bun:sqlite";
 import type { Event } from "@bematist/schema";
 import type { Adapter } from "@bematist/sdk";
 import { buildRegistry } from "./adapters";
+// ───────────────────────────────────────────────────────────────────────────
+// Streaming refactor (2026-04-19): previously this loop ran poll and flush
+// in a single serialized while-loop. A long first-poll backfill (walid hit
+// ~4,975 JSONL files) blocked flush for ~20 minutes — cursors advanced
+// per-file but events were held in one in-memory array until poll returned.
+// The loop now runs `pollLoop` and `flushLoop` as independent async tasks.
+// Adapters emit events via a callback wired to `journal.enqueue`, so events
+// land in SQLite per-file and flush drains whatever's already queued — no
+// "bubbling." See orchestrator/index.ts rationale.
+// ───────────────────────────────────────────────────────────────────────────
 import type { CollectorConfig } from "./config";
 import { SqliteCursorStore } from "./cursor/store";
 import type { EgressLog } from "./egress/egressLog";
@@ -105,6 +115,70 @@ export function startLoop(deps: LoopDeps): LoopHandle {
     resolveDone = r;
   });
 
+  // Shared halt signal — set when a fatal flush result tells us to give up.
+  let fatalHalt = false;
+
+  // Streaming emit — wired to the journal. Every adapter event lands in
+  // SQLite per-emit, so the flush loop (running independently) can drain
+  // whatever's already durable without waiting for poll to finish.
+  const emit = (event: Event) => {
+    try {
+      journal.enqueue(event);
+    } catch (e) {
+      log.warn({ err: String(e) }, "journal.enqueue failed (event dropped)");
+    }
+  };
+
+  const pollLoop = async () => {
+    while (!ac.signal.aborted && !fatalHalt) {
+      try {
+        await runOnce(
+          registry,
+          (a) => mkAdapterContext(config, db, a),
+          {
+            concurrency: config.adapterConcurrency,
+            perPollTimeoutMs: config.perPollTimeoutMs,
+          },
+          emit,
+        );
+      } catch (e) {
+        log.warn({ err: String(e) }, "orchestrator poll cycle failed");
+      }
+      if (ac.signal.aborted || fatalHalt) break;
+      await sleepImpl(config.pollIntervalMs);
+    }
+  };
+
+  const flushLoop = async () => {
+    while (!ac.signal.aborted && !fatalHalt) {
+      let delayMs = config.flushIntervalMs;
+      try {
+        const result = await flushBatch(journal, egressLog, {
+          endpoint: config.endpoint,
+          token: config.token,
+          fetchImpl,
+          dryRun: config.dryRun,
+          batchSize: config.batchSize,
+          ingestOnlyTo: config.ingestOnlyTo,
+          signal: ac.signal,
+        });
+        if (result.fatal) {
+          log.fatal({ reason: result.note }, "egress fatal — halting loop");
+          fatalHalt = true;
+          ac.abort();
+          break;
+        }
+        if (result.retryAfterSeconds) {
+          delayMs = Math.max(config.flushIntervalMs, result.retryAfterSeconds * 1000);
+        }
+      } catch (e) {
+        log.warn({ err: String(e) }, "flush cycle failed");
+      }
+      if (ac.signal.aborted || fatalHalt) break;
+      await sleepImpl(delayMs);
+    }
+  };
+
   const run = async () => {
     // Init adapters. Adapter-level failures are non-fatal: log + skip.
     for (const a of registry) {
@@ -115,73 +189,24 @@ export function startLoop(deps: LoopDeps): LoopHandle {
       }
     }
 
-    let pollTimer = 0;
-    let flushTimer = 0;
-    const TICK_MS = 100;
-
-    while (!ac.signal.aborted) {
-      // POLL cycle.
-      if (pollTimer <= 0) {
-        try {
-          const events = await runOnce(registry, (a) => mkAdapterContext(config, db, a), {
-            concurrency: config.adapterConcurrency,
-            perPollTimeoutMs: config.perPollTimeoutMs,
-          });
-          for (const e of events) journal.enqueue(e as Event);
-          if (events.length > 0) {
-            log.debug({ count: events.length }, "adapters emitted events");
-          }
-        } catch (e) {
-          log.warn({ err: String(e) }, "orchestrator poll cycle failed");
-        }
-        pollTimer = config.pollIntervalMs;
-      }
-
-      // FLUSH cycle.
-      if (flushTimer <= 0) {
-        try {
-          const result = await flushBatch(journal, egressLog, {
-            endpoint: config.endpoint,
-            token: config.token,
-            fetchImpl,
-            dryRun: config.dryRun,
-            batchSize: config.batchSize,
-            ingestOnlyTo: config.ingestOnlyTo,
-            signal: ac.signal,
-          });
-          if (result.fatal) {
-            log.fatal({ reason: result.note }, "egress fatal — halting loop");
-            break;
-          }
-          // honor Retry-After by delaying the next flush
-          if (result.retryAfterSeconds) {
-            flushTimer = Math.max(config.flushIntervalMs, result.retryAfterSeconds * 1000);
-          } else {
-            flushTimer = config.flushIntervalMs;
-          }
-        } catch (e) {
-          log.warn({ err: String(e) }, "flush cycle failed");
-          flushTimer = config.flushIntervalMs;
-        }
-      }
-
-      await sleepImpl(TICK_MS);
-      pollTimer -= TICK_MS;
-      flushTimer -= TICK_MS;
-    }
+    // Run poll and flush as independent async loops — neither blocks the
+    // other. Poll emits per-file, flush drains in parallel.
+    await Promise.all([pollLoop(), flushLoop()]);
 
     // Shutdown: one last flush pass so we don't leave in-flight-but-unpushed rows.
-    try {
-      await flushBatch(journal, egressLog, {
-        endpoint: config.endpoint,
-        token: config.token,
-        fetchImpl,
-        dryRun: config.dryRun,
-        batchSize: config.batchSize,
-        ingestOnlyTo: config.ingestOnlyTo,
-      });
-    } catch (e) {
-      log.warn({ err: String(e) }, "shutdown flush failed");
+    if (!fatalHalt) {
+      try {
+        await flushBatch(journal, egressLog, {
+          endpoint: config.endpoint,
+          token: config.token,
+          fetchImpl,
+          dryRun: config.dryRun,
+          batchSize: config.batchSize,
+          ingestOnlyTo: config.ingestOnlyTo,
+        });
+      } catch (e) {
+        log.warn({ err: String(e) }, "shutdown flush failed");
+      }
     }
 
     for (const a of registry) {

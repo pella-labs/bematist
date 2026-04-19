@@ -71,11 +71,19 @@ export async function runDryRun(_args: string[]): Promise<void> {
     }
   }
 
-  const events = await runOnce(registry, mkCtx, {
-    concurrency: config.adapterConcurrency,
-    perPollTimeoutMs: config.perPollTimeoutMs,
-  });
-  for (const e of events) journal.enqueue(e as Event);
+  const events: Event[] = [];
+  await runOnce(
+    registry,
+    mkCtx,
+    {
+      concurrency: config.adapterConcurrency,
+      perPollTimeoutMs: config.perPollTimeoutMs,
+    },
+    (e) => {
+      events.push(e);
+      journal.enqueue(e);
+    },
+  );
 
   const _flush = await flushBatch(journal, egress, {
     endpoint: config.endpoint,

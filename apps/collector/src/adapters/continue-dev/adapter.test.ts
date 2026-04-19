@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { collectPoll } from "../../test-helpers";import { copyFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadFixture } from "@bematist/fixtures";
@@ -69,7 +69,7 @@ test("poll() returns [] when dev_data dir is missing", async () => {
     const a = new ContinueDevAdapter({ tenantId: "o", engineerId: "e", deviceId: "d" });
     const ctx = mkCtx();
     await a.init(ctx);
-    expect(await a.poll(ctx, new AbortController().signal)).toEqual([]);
+    expect(await collectPoll(a, ctx)).toEqual([]);
   } finally {
     if (prev === undefined) delete process.env.BEMATIST_CONTINUE_DIR;
     else process.env.BEMATIST_CONTINUE_DIR = prev;
@@ -85,7 +85,7 @@ test("poll() reads all 4 streams and emits the expected canonical Event[]", asyn
     });
     const ctx = mkCtx();
     await a.init(ctx);
-    const events = await a.poll(ctx, new AbortController().signal);
+    const events = await collectPoll(a, ctx);
     const kinds = new Set(events.map((e) => e.dev_metrics.event_kind));
     for (const k of [
       "llm_request",
@@ -111,14 +111,14 @@ test("poll() advances per-stream cursors and a second poll returns []", async ()
     });
     const ctx = mkCtx();
     await a.init(ctx);
-    const first = await a.poll(ctx, new AbortController().signal);
+    const first = await collectPoll(a, ctx);
     expect(first.length).toBeGreaterThan(0);
     for (const stream of CONTINUE_STREAM_NAMES) {
       const v = await ctx.cursor.get(cursorKey(stream));
       expect(v).toBeDefined();
       expect(Number.parseInt(v ?? "0", 10)).toBeGreaterThan(0);
     }
-    const second = await a.poll(ctx, new AbortController().signal);
+    const second = await collectPoll(a, ctx);
     expect(second.length).toBe(0);
   });
 });
@@ -165,7 +165,7 @@ test("poll honors ctx.tier — Tier-A identity flows to every emitted event", as
     });
     const ctx = mkCtx({ tier: "A" });
     await a.init(ctx);
-    const events = await a.poll(ctx, new AbortController().signal);
+    const events = await collectPoll(a, ctx);
     expect(events.length).toBeGreaterThan(0);
     for (const e of events) expect(e.tier).toBe("A");
   });
@@ -207,7 +207,7 @@ test("incremental poll surfaces only newly appended lines, not previously consum
     });
     const ctx = mkCtx();
     await a.init(ctx);
-    await a.poll(ctx, new AbortController().signal);
+    await collectPoll(a, ctx);
     // Append a new chatInteraction row and poll again.
     const newRow = `${JSON.stringify({
       eventName: "chat",
@@ -218,7 +218,7 @@ test("incremental poll surfaces only newly appended lines, not previously consum
       timestamp: "2026-04-16T12:00:00.000Z",
     })}\n`;
     require("node:fs").appendFileSync(join(devData, "chatInteraction.jsonl"), newRow);
-    const next = await a.poll(ctx, new AbortController().signal);
+    const next = await collectPoll(a, ctx);
     expect(next.length).toBe(1);
     expect(next[0]?.session_id).toBe("sess_cont_03");
     expect(next[0]?.dev_metrics.event_kind).toBe("llm_request");

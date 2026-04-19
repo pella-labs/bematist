@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { collectPoll } from "../../test-helpers";import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadFixture } from "@bematist/fixtures";
@@ -69,7 +69,7 @@ test("poll() returns [] when neither SQLite nor legacy dir exists", async () => 
     const a = new OpenCodeAdapter({ tenantId: "org_t", engineerId: "eng_t", deviceId: "dev_t" });
     const ctx = mkCtx();
     await a.init(ctx);
-    const events = await a.poll(ctx, new AbortController().signal);
+    const events = await collectPoll(a, ctx);
     expect(events).toEqual([]);
   } finally {
     if (prev === undefined) delete process.env.OPENCODE_DATA_DIR;
@@ -104,7 +104,7 @@ test("poll() reads post-v1.2 SQLite fixture and emits canonical Events", async (
       });
       const ctx = mkCtx();
       await a.init(ctx);
-      const events = await a.poll(ctx, new AbortController().signal);
+      const events = await collectPoll(a, ctx);
       expect(events.length).toBeGreaterThan(0);
       const kinds = new Set(events.map((e) => e.dev_metrics.event_kind));
       expect(kinds.has("session_start")).toBe(true);
@@ -134,7 +134,7 @@ test("pre-v1.2 sharded JSON sessions are skipped with the exact warn line", asyn
       });
       const ctx = mkCtx(captured);
       await a.init(ctx);
-      const events = await a.poll(ctx, new AbortController().signal);
+      const events = await collectPoll(a, ctx);
       expect(events).toEqual([]);
       const skipWarnings = captured.filter(
         (l) => l.level === "warn" && l.msg === "opencode: pre-v1.2 session skipped",
@@ -164,9 +164,9 @@ test("re-poll does not double-count skipped sessions (idempotent counter)", asyn
       });
       const ctx = mkCtx(captured);
       await a.init(ctx);
-      await a.poll(ctx, new AbortController().signal);
-      await a.poll(ctx, new AbortController().signal);
-      await a.poll(ctx, new AbortController().signal);
+      await collectPoll(a, ctx);
+      await collectPoll(a, ctx);
+      await collectPoll(a, ctx);
       expect(a.getSkippedCount()).toBe(1);
       const skipWarnings = captured.filter(
         (l) => l.level === "warn" && l.msg === "opencode: pre-v1.2 session skipped",
@@ -191,7 +191,7 @@ test("mixed install (issue 13654): SQLite events ship + legacy sessions skipped"
       });
       const ctx = mkCtx(captured);
       await a.init(ctx);
-      const events = await a.poll(ctx, new AbortController().signal);
+      const events = await collectPoll(a, ctx);
       expect(events.length).toBeGreaterThan(0);
       expect(a.getSkippedCount()).toBe(1);
       const health = await a.health(ctx);

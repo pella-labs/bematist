@@ -64,14 +64,13 @@ function mkScriptedAdapter(id: string, scriptedRuns: Event[][]): Adapter {
     version: "0.0.0",
     supportedSourceVersions: "*",
     async init(_ctx: AdapterContext) {},
-    async poll(ctx: AdapterContext, _signal: AbortSignal) {
+    async poll(ctx, _signal, emit) {
       const emitted = scriptedRuns[callIdx] ?? [];
       callIdx += 1;
-      // Record the "cursor" so a restart knows where we left off.
+      for (const e of emitted) emit(e);
       if (emitted.length > 0) {
         await ctx.cursor.set("max_seq", String(emitted[emitted.length - 1]?.event_seq ?? 0));
       }
-      return emitted;
     },
     async health() {
       return { status: "ok" as const, fidelity: "full" as const };
@@ -188,15 +187,15 @@ test("restart resumes from cursor (no duplicate emissions)", async () => {
         const s = await ctx.cursor.get("max_seq");
         _maxSeqEmitted = s ? Number.parseInt(s, 10) : 0;
       },
-      async poll(ctx: AdapterContext, _sig: AbortSignal) {
+      async poll(ctx, _sig, emit) {
         const candidates = [mkEvent("c", 1), mkEvent("c", 2), mkEvent("c", 3)];
         const fresh = candidates.filter((e) => e.event_seq > _maxSeqEmitted);
+        for (const e of fresh) emit(e);
         if (fresh.length > 0) {
           _maxSeqEmitted = fresh[fresh.length - 1]?.event_seq ?? _maxSeqEmitted;
           await ctx.cursor.set("max_seq", String(_maxSeqEmitted));
           maxSeqSeenOnDisk = _maxSeqEmitted;
         }
-        return fresh;
       },
       async health() {
         return { status: "ok" as const, fidelity: "full" as const };
@@ -231,10 +230,11 @@ test("restart resumes from cursor (no duplicate emissions)", async () => {
   const emitted: number[] = [];
   const wrappingAdapter = makeAdapter();
   const originalPoll = wrappingAdapter.poll.bind(wrappingAdapter);
-  wrappingAdapter.poll = async (ctx, sig) => {
-    const result = await originalPoll(ctx, sig);
-    for (const e of result) emitted.push(e.event_seq);
-    return result;
+  wrappingAdapter.poll = async (ctx, sig, emit) => {
+    await originalPoll(ctx, sig, (e) => {
+      emitted.push(e.event_seq);
+      emit(e);
+    });
   };
 
   const second = startLoop({

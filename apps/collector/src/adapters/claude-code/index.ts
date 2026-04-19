@@ -1,8 +1,7 @@
 import { statSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import type { Event } from "@bematist/schema";
-import type { Adapter, AdapterContext, AdapterHealth } from "@bematist/sdk";
+import type { Adapter, AdapterContext, AdapterHealth, EventEmitter } from "@bematist/sdk";
 import { resolveGitContext } from "../../lib/git-context";
 import { type DiscoverySources, discoverSources } from "./discovery";
 import { type NormalizeExtras, normalizeSession } from "./normalize";
@@ -34,23 +33,23 @@ export class ClaudeCodeAdapter implements Adapter {
     });
   }
 
-  async poll(ctx: AdapterContext, signal: AbortSignal): Promise<Event[]> {
+  async poll(ctx: AdapterContext, signal: AbortSignal, emit: EventEmitter): Promise<void> {
     const s = this.sources ?? discoverSources();
-    if (!s.jsonlDirExists) return [];
+    if (!s.jsonlDirExists) return;
 
     const files = await findSessionFiles(s.jsonlDir);
-    const out: Event[] = [];
+    let emitted = 0;
     for (const path of files) {
       // Early-exit on abort so the orchestrator's timeout doesn't cause us
-      // to keep parsing + updating cursors past the deadline. Returning
-      // what we've emitted so far lets the next poll pick up from exactly
-      // where this one left off (signature cache does the rest).
+      // to keep parsing + updating cursors past the deadline. Everything
+      // already emitted is durable in the journal; next poll resumes from
+      // the per-file signature/max_seq cursor.
       if (signal.aborted) {
         const remaining = files.length - files.indexOf(path);
         ctx.log.info(
-          `claude-code: poll aborted mid-scan — emitted ${out.length}, ${remaining} files unprocessed`,
+          `claude-code: poll aborted mid-scan — emitted ${emitted}, ${remaining} files unprocessed`,
         );
-        break;
+        return;
       }
       // Two-stage dedup:
       //
@@ -117,10 +116,17 @@ export class ClaudeCodeAdapter implements Adapter {
         extras,
       );
 
+      // Streaming emit: events land in the journal per-file. Cursor
+      // updates MUST follow the emit calls so events are durable before
+      // we advance the "done" marker — otherwise a crash between emit and
+      // cursor set would re-emit on next poll (idempotency catches dupes
+      // via deterministicId + Redis SETNX at ingest, but save the round
+      // trip). See SDK Adapter.poll doc for the ordering invariant.
       let newHighWatermark = prevMax;
       for (const e of events) {
         if (e.event_seq > prevMax) {
-          out.push(e);
+          emit(e);
+          emitted++;
           if (e.event_seq > newHighWatermark) newHighWatermark = e.event_seq;
         }
       }
@@ -130,7 +136,6 @@ export class ClaudeCodeAdapter implements Adapter {
       }
       await ctx.cursor.set(signatureKey, sigNow);
     }
-    return out;
   }
 
   async health(_ctx: AdapterContext): Promise<AdapterHealth> {

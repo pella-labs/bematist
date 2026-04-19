@@ -50,9 +50,11 @@ test("renderTemplate substitutes @HOME@ and @BIN@ in launchd plist", () => {
     HOME: "/Users/test",
     BIN: "/usr/local/bin/bematist",
   });
-  expect(rendered).toContain('[ -f "/Users/test/.bematist/config.env" ]');
-  expect(rendered).toContain("set -a;"); // auto-export wrapper so vars propagate to exec
-  expect(rendered).toContain('exec "/usr/local/bin/bematist" serve');
+  // Direct exec: ProgramArguments = [binary, "serve"]. Any /bin/sh wrapper
+  // would regress the SIGSTOP bug (see templates.ts rationale block).
+  expect(rendered).toMatch(
+    /<key>ProgramArguments<\/key>\s*<array>\s*<string>\/usr\/local\/bin\/bematist<\/string>\s*<string>serve<\/string>\s*<\/array>/,
+  );
   expect(rendered).toContain("<string>/Users/test/.bematist/logs/out.log</string>");
   expect(rendered).not.toContain("@HOME@");
   expect(rendered).not.toContain("@BIN@");

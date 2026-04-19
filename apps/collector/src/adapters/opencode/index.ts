@@ -1,5 +1,4 @@
-import type { Event } from "@bematist/schema";
-import type { Adapter, AdapterContext, AdapterHealth } from "@bematist/sdk";
+import type { Adapter, AdapterContext, AdapterHealth, EventEmitter } from "@bematist/sdk";
 import { type DiscoverySources, discoverSources } from "./discovery";
 import { normalizeSession } from "./normalize";
 import { listLegacySessionIds, SkippedCounter } from "./skipped";
@@ -41,22 +40,22 @@ export class OpenCodeAdapter implements Adapter {
     });
   }
 
-  async poll(ctx: AdapterContext, _signal: AbortSignal): Promise<Event[]> {
+  async poll(ctx: AdapterContext, signal: AbortSignal, emit: EventEmitter): Promise<void> {
     const s = this.sources ?? discoverSources();
     this.recordSkippedLegacy(s, ctx);
-    if (!s.sqliteExists) return [];
+    if (!s.sqliteExists) return;
 
     const payloads = readAllSessions(s.sqlitePath);
-    const out: Event[] = [];
     for (const payload of payloads) {
-      const events = normalizeSession(
+      if (signal.aborted) return;
+      for (const e of normalizeSession(
         payload,
         { ...this.identity, tier: ctx.tier },
         SOURCE_VERSION_DEFAULT,
-      );
-      out.push(...events);
+      )) {
+        emit(e);
+      }
     }
-    return out;
   }
 
   async health(_ctx: AdapterContext): Promise<AdapterHealth> {

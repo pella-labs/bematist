@@ -1,5 +1,4 @@
-import type { Event } from "@bematist/schema";
-import type { Adapter, AdapterContext } from "@bematist/sdk";
+import type { Adapter, AdapterContext, EventEmitter } from "@bematist/sdk";
 import { log } from "../logger";
 import { Semaphore } from "./semaphore";
 
@@ -9,31 +8,34 @@ export interface RunOptions {
 }
 
 /**
- * Run every adapter's poll() concurrently (bounded by `opts.concurrency`)
- * and collect whatever events they emit.
+ * Run every adapter's poll() concurrently (bounded by `opts.concurrency`).
+ * Adapters stream events via the `emit` callback as they produce them
+ * (typically per-file for file-tailing adapters), so the journal sees
+ * events per-file rather than one giant batch at poll end. A slow-walking
+ * adapter no longer blocks the flush loop — flush runs independently on
+ * its own interval in loop.ts and drains whatever's already been emitted.
  *
  * On timeout: the abort signal fires. Adapters MUST honor it — the
- * contract is "finish the current file and return what you've emitted
- * so far." We then take whatever the Promise resolves with, even if
- * partial. We do NOT race the poll against a "resolve([])" timeout —
- * that silently discarded events the adapter had already emitted and
- * (worse) let the adapter keep running past the race, updating cursor
- * state for work whose output we'd already thrown away. Walid hit this
- * with 4,971 JSONL files: the first-poll backfill timed out at 30s, we
- * returned [], and subsequent polls skipped those files because the
- * cursor signatures marked them "done."
+ * contract is "finish the current file and return promptly." Anything
+ * the adapter emitted before abort is already durable in the journal, so
+ * a timed-out poll no longer loses work the way the old
+ * `Promise<Event[]>`-returning version did (Walid's 4,971-file backfill —
+ * it timed out at 30s, returned [], and subsequent polls skipped those
+ * files because cursor signatures marked them "done").
  *
  * A misbehaving adapter that ignores the signal can still hang this
- * function longer than `perPollTimeoutMs`. That's a known trade-off —
- * we'd rather a slow adapter than lost events.
+ * function longer than `perPollTimeoutMs`. Known trade-off — but because
+ * emits stream durably, the user still sees a rising queue and dashboard
+ * rather than a silent 20-minute window.
  */
 export async function runOnce(
   adapters: Adapter[],
   ctxFactory: (adapter: Adapter) => AdapterContext,
   opts: RunOptions,
-): Promise<Event[]> {
+  emit: EventEmitter,
+): Promise<void> {
   const sem = new Semaphore(opts.concurrency);
-  const results = await Promise.all(
+  await Promise.all(
     adapters.map(async (a) => {
       await sem.acquire();
       try {
@@ -50,11 +52,9 @@ export async function runOnce(
               }, opts.perPollTimeoutMs)
             : null;
         try {
-          const events = await a.poll(ctx, ac.signal);
-          return events;
+          await a.poll(ctx, ac.signal, emit);
         } catch (e) {
           log.warn({ adapter: a.id, err: String(e) }, "adapter poll failed");
-          return [];
         } finally {
           if (timer) clearTimeout(timer);
         }
@@ -63,7 +63,6 @@ export async function runOnce(
       }
     }),
   );
-  return results.flat();
 }
 
 export { Semaphore } from "./semaphore";

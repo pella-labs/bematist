@@ -1,5 +1,4 @@
-import type { Event } from "@bematist/schema";
-import type { Adapter, AdapterContext, AdapterHealth } from "@bematist/sdk";
+import type { Adapter, AdapterContext, AdapterHealth, EventEmitter } from "@bematist/sdk";
 import { type ContinueDiscovery, discoverSources } from "./discovery";
 import {
   normalizeChatInteraction,
@@ -53,19 +52,16 @@ export class ContinueDevAdapter implements Adapter {
     });
   }
 
-  async poll(ctx: AdapterContext, _signal: AbortSignal): Promise<Event[]> {
+  async poll(ctx: AdapterContext, _signal: AbortSignal, emit: EventEmitter): Promise<void> {
     const s = this.sources ?? discoverSources();
-    if (!s.baseDirExists) return [];
+    if (!s.baseDirExists) return;
 
     const identity = { ...this.identity, tier: ctx.tier };
-    const out: Event[] = [];
 
-    out.push(...(await this.pollChatInteraction(ctx, s, identity)));
-    out.push(...(await this.pollTokensGenerated(ctx, s, identity)));
-    out.push(...(await this.pollEditOutcome(ctx, s, identity)));
-    out.push(...(await this.pollToolUsage(ctx, s, identity)));
-
-    return out;
+    await this.pollChatInteraction(ctx, s, identity, emit);
+    await this.pollTokensGenerated(ctx, s, identity, emit);
+    await this.pollEditOutcome(ctx, s, identity, emit);
+    await this.pollToolUsage(ctx, s, identity, emit);
   }
 
   async health(_ctx: AdapterContext): Promise<AdapterHealth> {
@@ -114,56 +110,64 @@ export class ContinueDevAdapter implements Adapter {
     ctx: AdapterContext,
     s: ContinueDiscovery,
     identity: { tenantId: string; engineerId: string; deviceId: string; tier: "A" | "B" | "C" },
-  ): Promise<Event[]> {
+    emit: EventEmitter,
+  ): Promise<void> {
     const spec = s.streams.chatInteraction;
-    if (!spec.exists) return [];
+    if (!spec.exists) return;
     const offset = await this.readCursor(ctx, "chatInteraction");
     const parsed = await parseChatInteractionStream(spec.path, offset);
-    const events = normalizeChatInteraction(parsed.lines, identity, SOURCE_VERSION_DEFAULT);
+    for (const e of normalizeChatInteraction(parsed.lines, identity, SOURCE_VERSION_DEFAULT)) {
+      emit(e);
+    }
     await this.writeCursor(ctx, "chatInteraction", parsed.nextOffset);
-    return events;
   }
 
   private async pollTokensGenerated(
     ctx: AdapterContext,
     s: ContinueDiscovery,
     identity: { tenantId: string; engineerId: string; deviceId: string; tier: "A" | "B" | "C" },
-  ): Promise<Event[]> {
+    emit: EventEmitter,
+  ): Promise<void> {
     const spec = s.streams.tokensGenerated;
-    if (!spec.exists) return [];
+    if (!spec.exists) return;
     const offset = await this.readCursor(ctx, "tokensGenerated");
     const parsed = await parseTokensGeneratedStream(spec.path, offset);
-    const events = normalizeTokensGenerated(parsed.lines, identity, SOURCE_VERSION_DEFAULT);
+    for (const e of normalizeTokensGenerated(parsed.lines, identity, SOURCE_VERSION_DEFAULT)) {
+      emit(e);
+    }
     await this.writeCursor(ctx, "tokensGenerated", parsed.nextOffset);
-    return events;
   }
 
   private async pollEditOutcome(
     ctx: AdapterContext,
     s: ContinueDiscovery,
     identity: { tenantId: string; engineerId: string; deviceId: string; tier: "A" | "B" | "C" },
-  ): Promise<Event[]> {
+    emit: EventEmitter,
+  ): Promise<void> {
     const spec = s.streams.editOutcome;
-    if (!spec.exists) return [];
+    if (!spec.exists) return;
     const offset = await this.readCursor(ctx, "editOutcome");
     const parsed = await parseEditOutcomeStream(spec.path, offset);
-    const events = normalizeEditOutcome(parsed.lines, identity, SOURCE_VERSION_DEFAULT);
+    for (const e of normalizeEditOutcome(parsed.lines, identity, SOURCE_VERSION_DEFAULT)) {
+      emit(e);
+    }
     await this.writeCursor(ctx, "editOutcome", parsed.nextOffset);
-    return events;
   }
 
   private async pollToolUsage(
     ctx: AdapterContext,
     s: ContinueDiscovery,
     identity: { tenantId: string; engineerId: string; deviceId: string; tier: "A" | "B" | "C" },
-  ): Promise<Event[]> {
+    emit: EventEmitter,
+  ): Promise<void> {
     const spec = s.streams.toolUsage;
-    if (!spec.exists) return [];
+    if (!spec.exists) return;
     const offset = await this.readCursor(ctx, "toolUsage");
     const parsed = await parseToolUsageStream(spec.path, offset);
-    const events = normalizeToolUsage(parsed.lines, identity, SOURCE_VERSION_DEFAULT);
+    for (const e of normalizeToolUsage(parsed.lines, identity, SOURCE_VERSION_DEFAULT)) {
+      emit(e);
+    }
     await this.writeCursor(ctx, "toolUsage", parsed.nextOffset);
-    return events;
   }
 }
 
