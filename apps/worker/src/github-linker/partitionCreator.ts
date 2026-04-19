@@ -73,9 +73,14 @@ async function ensurePartition(
       `CREATE TABLE "${name}" PARTITION OF session_repo_links
          FOR VALUES FROM ('${startIso}') TO ('${endIso}')`,
     );
+    // B5 — partial unique scoped to the active row. Stale rows are history;
+    // only one active row per PK tuple at a time. Migration 0008 renames the
+    // index to `_active_unique_idx` for the seeded partitions; newly-created
+    // partitions adopt the same shape here.
     await tx.unsafe(
-      `CREATE UNIQUE INDEX IF NOT EXISTS "${name}_unique_idx"
-         ON "${name}" (tenant_id, session_id, repo_id_hash, match_reason)`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS "${name}_active_unique_idx"
+         ON "${name}" (tenant_id, session_id, repo_id_hash, match_reason)
+         WHERE stale_at IS NULL`,
     );
     await tx.unsafe(
       `CREATE INDEX IF NOT EXISTS "${name}_repo_computed_idx"

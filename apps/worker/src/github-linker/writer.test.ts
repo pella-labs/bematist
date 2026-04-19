@@ -148,14 +148,19 @@ describe("writeLinkerState — same-txn cascade", () => {
 
   test("inputs change — stale_at set on prior rows, new rows INSERTed", async () => {
     if (skip) return;
-    const s1 = computeLinkerState(baseInputs(), CLOCK);
+    // Use distinct clocks — the partition pkey includes `computed_at`, so
+    // re-running the same PK tuple with a fresh row requires a fresh
+    // timestamp. SYSTEM_CLOCK in prod naturally varies by millisecond.
+    const CLOCK1 = { now: () => "2026-04-18T12:00:00.000Z" };
+    const CLOCK2 = { now: () => "2026-04-18T12:10:00.000Z" };
+    const s1 = computeLinkerState(baseInputs(), CLOCK1);
     await writeLinkerState(sql, s1, tenantId);
 
     // Change inputs: drop PR → new state with different sha256
     const inp2 = baseInputs();
     inp2.pull_requests = [];
     inp2.session.commit_shas = [];
-    const s2 = computeLinkerState(inp2, CLOCK);
+    const s2 = computeLinkerState(inp2, CLOCK2);
     expect(s2.inputs_sha256.toString("hex")).not.toBe(s1.inputs_sha256.toString("hex"));
 
     const res = await writeLinkerState(sql, s2, tenantId);
@@ -171,12 +176,16 @@ describe("writeLinkerState — same-txn cascade", () => {
 
   test("B5 — re-link after inputs flip back, both stale old + new active row coexist", async () => {
     if (skip) return;
+    // Use distinct clocks per write so both rows land under different
+    // `computed_at` values (the partition pkey includes computed_at).
+    const CLOCK_A = { now: () => "2026-04-18T12:00:00.000Z" };
+    const CLOCK_B = { now: () => "2026-04-18T12:05:00.000Z" };
     // Step 1: write state A with a direct_repo + commit_link
     const inpA = baseInputs();
     // Force direct_repo match AND pr_link so we have multiple active rows to
     // flip later and prove commutativity across partial uniqueness.
     inpA.session.pr_numbers = [1];
-    const s1 = computeLinkerState(inpA, CLOCK);
+    const s1 = computeLinkerState(inpA, CLOCK_A);
     await writeLinkerState(sql, s1, tenantId);
 
     const afterFirst = await sql<
@@ -196,7 +205,7 @@ describe("writeLinkerState — same-txn cascade", () => {
     inpB.session.pr_numbers = [];
     // Force a minor change so sha flips even when only direct_repo remains.
     inpB.repos = [{ provider_repo_id: "101", tracking_state: "included" }];
-    const s2 = computeLinkerState(inpB, CLOCK);
+    const s2 = computeLinkerState(inpB, CLOCK_B);
     expect(s2.inputs_sha256.toString("hex")).not.toBe(firstHash);
     await writeLinkerState(sql, s2, tenantId);
 

@@ -79,8 +79,10 @@ export async function writeLinkerState(
     // INSERT new link rows. Partitioned tables require any ON CONFLICT
     // target to include the partition-routing column (`computed_at`) which
     // we can't guarantee uniqueness on. Instead: INSERT ... WHERE NOT EXISTS
-    // against the partition-local unique index
-    // (tenant_id, session_id, repo_id_hash, match_reason).
+    // against the partial unique index (B5, migration 0008): uniqueness is
+    // scoped to `stale_at IS NULL`, so a stale historical row for the same
+    // PK tuple no longer blocks a fresh insert. The guard below must
+    // mirror that partial predicate.
     let inserted = 0;
     for (const link of state.links) {
       const res = (await tx.unsafe(
@@ -94,6 +96,7 @@ export async function writeLinkerState(
                AND session_id = $2
                AND repo_id_hash = $3::bytea
                AND match_reason = $4
+               AND stale_at IS NULL
          )`,
         [
           link.tenant_id,
