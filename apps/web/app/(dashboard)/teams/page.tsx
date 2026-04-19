@@ -1,4 +1,4 @@
-import { getTwoByTwo, listTeams } from "@bematist/api";
+import { getTwoByTwo, isComplianceEnabled, listTeams, type schemas } from "@bematist/api";
 import {
   Badge,
   Card,
@@ -32,6 +32,7 @@ export default async function TeamsPage({
   const ctx = await getSessionCtx();
   const { team: selectedParam, cat } = await searchParams;
   const teamsList = await listTeams(ctx, { window: "30d" });
+  const showIdentities = !isComplianceEnabled();
 
   const eligible = teamsList.teams.find((t) => t.cohort_size >= 5);
   const selectedId =
@@ -44,6 +45,7 @@ export default async function TeamsPage({
     window: "30d",
     team_id: selectedId,
     ...(cat ? { task_category: cat } : {}),
+    ...(showIdentities ? { includeIdentities: true, bypassCohortFloor: true } : {}),
   });
 
   return (
@@ -148,7 +150,12 @@ export default async function TeamsPage({
                   ariaLabel={`2×2 scatter for ${selected?.label ?? "team"}`}
                 />
               }
-              table={<ScatterTable points={twoByTwo.points} />}
+              table={
+                <ScatterTable
+                  points={twoByTwo.points}
+                  {...(twoByTwo.identities ? { identities: twoByTwo.identities } : {})}
+                />
+              }
             />
           ) : (
             <div className="flex min-h-[220px] items-center justify-center py-6">
@@ -208,6 +215,7 @@ function formatCat(c: string): string {
 
 function ScatterTable({
   points,
+  identities,
 }: {
   points: {
     engineer_id_hash: string;
@@ -216,6 +224,7 @@ function ScatterTable({
     sessions: number;
     cost_usd: number;
   }[];
+  identities?: Record<string, schemas.DeveloperIdentity>;
 }) {
   return (
     <table className="w-full text-sm">
@@ -229,15 +238,24 @@ function ScatterTable({
         </tr>
       </thead>
       <tbody>
-        {points.map((p) => (
-          <tr key={p.engineer_id_hash} className="border-b border-border/50">
-            <td className="py-2 font-mono text-xs">{p.engineer_id_hash}</td>
-            <td className="py-2 text-right">{p.outcome_quality.toFixed(0)}</td>
-            <td className="py-2 text-right">{p.efficiency.toFixed(0)}</td>
-            <td className="py-2 text-right">{p.sessions}</td>
-            <td className="py-2 text-right">{USD.format(p.cost_usd)}</td>
-          </tr>
-        ))}
+        {points.map((p) => {
+          const identity = identities?.[p.engineer_id_hash];
+          const label = identity?.name ?? identity?.email ?? p.engineer_id_hash;
+          return (
+            <tr key={p.engineer_id_hash} className="border-b border-border/50">
+              <td
+                className={identity ? "py-2 text-xs" : "py-2 font-mono text-xs"}
+                title={identity?.email}
+              >
+                {label}
+              </td>
+              <td className="py-2 text-right">{p.outcome_quality.toFixed(0)}</td>
+              <td className="py-2 text-right">{p.efficiency.toFixed(0)}</td>
+              <td className="py-2 text-right">{p.sessions}</td>
+              <td className="py-2 text-right">{USD.format(p.cost_usd)}</td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );
