@@ -92,12 +92,44 @@ export async function handleGithubWebhookByInstallation(
     );
   }
 
-  if (installation.status === "revoked") {
-    incrCounter("github_webhook_redelivery_requests_total", { reason: "installation_revoked" });
+  // H6 — strict allowlist: only status='active' may proceed. Any other state
+  // is rejected with a distinct error code, counter reason, and audit row so
+  // on-call can distinguish suspended vs. revoked vs. reconnecting without
+  // cross-referencing installation state.
+  if (installation.status !== "active") {
+    const statusCodeMap: Record<string, string> = {
+      suspended: "INSTALLATION_SUSPENDED",
+      revoked: "INSTALLATION_REVOKED",
+      reconnecting: "INSTALLATION_RECONNECTING",
+    };
+    const code = statusCodeMap[installation.status] ?? "INSTALLATION_NOT_ACTIVE";
+    incrCounter("github_webhook_redelivery_requests_total", {
+      reason: `installation_${installation.status}`,
+    });
+    await deps
+      .auditSink({
+        tenant_id: installation.tenant_id,
+        action: "github.webhook.installation_not_active",
+        target_type: "github_installation",
+        target_id: installationIdStr,
+        metadata: {
+          status: installation.status,
+          code,
+          event: hdr(req, "x-github-event"),
+          delivery_id: hdr(req, "x-github-delivery"),
+          request_id: requestId,
+        },
+      })
+      .catch((err) => {
+        logger.warn(
+          { request_id: requestId, err: err instanceof Error ? err.message : String(err) },
+          "audit sink failed (installation_not_active)",
+        );
+      });
     return json(
       {
-        error: "installation revoked",
-        code: "INSTALLATION_REVOKED",
+        error: `installation ${installation.status}`,
+        code,
         request_id: requestId,
       },
       { status: 404 },
