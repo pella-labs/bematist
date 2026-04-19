@@ -16,9 +16,9 @@ import {
 import { dispatcherTick } from "./github-initial-sync/dispatcher";
 import { FsAliasArchiver, runAliasRetirement } from "./github-linker/aliasRetirement";
 import { createLinkerConsumer } from "./github-linker/consumer";
+import { loadInputs as linkerLoadInputs } from "./github-linker/loadInputs";
 import { ensurePartitionsFor } from "./github-linker/partitionCreator";
 import { runReconcileScaffold } from "./github-linker/reconcileScaffold";
-import type { LinkerInputs } from "./github-linker/state";
 import { PostgresAnomalyNotifier } from "./jobs/anomaly/pg_notifier";
 import type { CohortP95, DailyMetricRow } from "./jobs/anomaly/types";
 import { runAnomalyDetection } from "./jobs/anomaly_detect";
@@ -251,13 +251,12 @@ async function startLinkerConsumerLoop(): Promise<void> {
   });
   await redis.connect();
 
+  const chClient = ch();
   const consumer = createLinkerConsumer({
     redis,
     sql: pgClient,
-    // TODO(g3): wire this to ClickHouse session enrichment + Postgres
-    //           aggregator. Until then the consumer only runs
-    //           installation-state-change broadcasts end-to-end.
-    loadInputs: async (): Promise<LinkerInputs | null> => null,
+    loadInputs: (tenantId, sessionId) =>
+      linkerLoadInputs({ sql: pgClient, ch: chClient }, tenantId, sessionId),
   });
 
   // Long-running tick loop.

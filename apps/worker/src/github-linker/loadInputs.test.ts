@@ -71,7 +71,11 @@ async function seedRepo(providerRepoId: string, trackingState = "inherit"): Prom
   );
 }
 
-async function seedInstallation(installationId: string, status = "active"): Promise<void> {
+let installationCounter = BigInt(Date.now()) * 1_000n;
+async function seedInstallation(localId: string, status = "active"): Promise<void> {
+  // installation_id is globally UNIQUE per the schema; derive a monotonically
+  // increasing id so parallel test runs don't collide.
+  installationCounter += 1n;
   await sql.unsafe(
     `INSERT INTO github_installations
        (tenant_id, installation_id, github_org_id, github_org_login, app_id,
@@ -79,10 +83,9 @@ async function seedInstallation(installationId: string, status = "active"): Prom
      VALUES ($1, $2::bigint, $3::bigint, $4, $5::bigint, $6, 'sm/tok', 'sm/webhook')`,
     [
       tenantId,
-      installationId,
-      // deterministic but unique per tenant so the installation_id global unique holds
-      `${installationId}${BigInt(tenantId.replace(/-/g, "").slice(0, 8)) % 1000n}`,
-      "test-org",
+      installationCounter.toString(),
+      installationCounter.toString(),
+      `test-org-${localId}`,
       "99999",
       status,
     ],
@@ -214,12 +217,11 @@ describe("loadInputs — assembles LinkerInputs from PG + CH", () => {
     await cleanup();
   });
 
-  test("returns null when orgs.deleted_at IS NOT NULL", async () => {
+  test("returns null when orgs row is absent (tenant hard-deleted)", async () => {
     if (skip) return;
-    await sql.unsafe(`UPDATE orgs SET deleted_at = now() WHERE id = $1`, [tenantId]);
+    await sql.unsafe(`DELETE FROM orgs WHERE id = $1`, [tenantId]);
     const inputs = await loadInputs({ sql, ch }, tenantId, sessionId);
     expect(inputs).toBeNull();
-    await cleanup();
   });
 
   test("empty CH events → returns inputs with empty session shas (doesn't throw)", async () => {
