@@ -93,7 +93,7 @@ export function Slide01Cover({ totalPages }: { totalPages: number }) {
         <div>
           <div className="label">Presented by</div>
           <div className="val">
-            Walid Khori · David Alhe · Sebastian Garces · Jorge Alejandro Diaz · Sandesh Pathak
+            Walid Khori · David Aihe · Sebastian Garces · Jorge Alejandro Diaz · Sandesh Pathak
           </div>
         </div>
         <div>
