@@ -40,8 +40,8 @@
 --   reads `app.current_org_id` defensively (returns NULL if unset). Deviating
 --   here would require two RLS conventions in one codebase — avoided.
 --
--- Rollback: see packages/schema/postgres/rollback/0004_github_integration_g1.down.sql
--- Invoke via `bun run db:migrate:pg -- --rollback 0004_github_integration_g1`.
+-- Rollback: see packages/schema/postgres/rollback/0006_github_integration_g1.down.sql
+-- Invoke via `bun run db:migrate:pg -- --rollback 0006_github_integration_g1`.
 
 -- -------------------------------------------------------------------------
 -- Drop the G0 stub table so we can CREATE with the canonical shape.

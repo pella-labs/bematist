@@ -15,7 +15,15 @@ import { type NextRequest, NextResponse } from "next/server";
  * RSC render because the DB check catches it.
  */
 
-const BETTER_AUTH_COOKIE_NAME = "better-auth.session_token";
+// Better Auth names the session cookie `better-auth.session_token` by
+// default. In production (`secure: true` cookie attr) it automatically
+// adds the `__Secure-` prefix per RFC 6265bis §4.1.3.1 — same value,
+// stricter browser constraints. Check both so middleware works in local
+// HTTP dev and HTTPS deploys.
+const BETTER_AUTH_COOKIE_NAMES = [
+  "better-auth.session_token",
+  "__Secure-better-auth.session_token",
+];
 const LEGACY_SESSION_COOKIE_NAME = "bematist-session";
 
 /**
@@ -30,6 +38,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/privacy",
   "/home",
   "/card",
+  "/deck",
   "/_next",
   "/favicon",
 ];
@@ -40,8 +49,10 @@ function isPublicPath(pathname: string): boolean {
 }
 
 function hasSessionCookie(request: NextRequest): boolean {
-  const ba = request.cookies.get(BETTER_AUTH_COOKIE_NAME)?.value;
-  if (ba && ba.length > 0) return true;
+  for (const name of BETTER_AUTH_COOKIE_NAMES) {
+    const v = request.cookies.get(name)?.value;
+    if (v && v.length > 0) return true;
+  }
   const legacy = request.cookies.get(LEGACY_SESSION_COOKIE_NAME)?.value;
   return Boolean(legacy && legacy.length > 0);
 }

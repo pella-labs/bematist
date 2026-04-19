@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 
 type Row = schemas.SessionListItem;
+type Identities = Record<string, schemas.DeveloperIdentity>;
 
 const USD = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -17,7 +18,18 @@ const TIME = new Intl.DateTimeFormat("en-US", {
   timeStyle: "short",
 });
 
-export function SessionsTable({ rows }: { rows: Row[] }) {
+export function SessionsTable({
+  rows,
+  identities,
+}: {
+  rows: Row[];
+  /**
+   * Plaintext identity per `engineer_id`. Present only when the parent server
+   * component opted in via `includeIdentities: true` (compliance-OFF demo
+   * path). When undefined, the table falls back to `shortHash(engineer_id)`.
+   */
+  identities?: Identities;
+}) {
   const router = useRouter();
 
   const columns = useMemo<ColumnDef<Row, unknown>[]>(
@@ -47,14 +59,23 @@ export function SessionsTable({ rows }: { rows: Row[] }) {
         id: "engineer_id",
         header: "Engineer",
         size: 110,
-        cell: ({ row }) => (
-          <span
-            className="font-mono text-xs text-muted-foreground"
-            title={row.original.engineer_id}
-          >
-            {shortHash(row.original.engineer_id)}
-          </span>
-        ),
+        cell: ({ row }) => {
+          const identity = identities?.[row.original.engineer_id];
+          const displayLabel =
+            identity?.name ?? identity?.email ?? shortHash(row.original.engineer_id);
+          return (
+            <span
+              className={
+                identity
+                  ? "truncate text-xs text-foreground"
+                  : "font-mono text-xs text-muted-foreground"
+              }
+              title={identity?.email ?? row.original.engineer_id}
+            >
+              {displayLabel}
+            </span>
+          );
+        },
       },
       {
         id: "duration",
@@ -94,7 +115,7 @@ export function SessionsTable({ rows }: { rows: Row[] }) {
         cell: ({ row }) => <span className="tabular-nums">{row.original.accepted_edits}</span>,
       },
     ],
-    [],
+    [identities],
   );
 
   return (

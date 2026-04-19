@@ -2,7 +2,7 @@
 
 This file documents the post-backfill validation step for the
 `repos_github_provider_id_required` CHECK constraint added in
-`custom/0004_github_integration_g1.sql`.
+`custom/0006_github_integration_g1.sql`.
 
 ## When to run
 

@@ -18,14 +18,14 @@ const rollbackFolder = join(import.meta.dir, "rollback");
 // Invoke: `bun run db:migrate:pg -- --rollback <migration-name>`
 // Applies the matching .down.sql from packages/schema/postgres/rollback/.
 // The rollback file name convention: <migration-name>.down.sql
-// (e.g. 0004_github_integration_g1.down.sql reverses
-//        custom/0004_github_integration_g1.sql).
+// (e.g. 0006_github_integration_g1.down.sql reverses
+//        custom/0006_github_integration_g1.sql).
 const rollbackIdx = process.argv.indexOf("--rollback");
 if (rollbackIdx !== -1) {
   const target = process.argv[rollbackIdx + 1];
   if (!target) {
     console.error(
-      "[pg-migrate] --rollback requires a migration name (e.g. 0004_github_integration_g1)",
+      "[pg-migrate] --rollback requires a migration name (e.g. 0006_github_integration_g1)",
     );
     process.exit(1);
   }

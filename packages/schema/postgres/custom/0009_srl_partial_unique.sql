@@ -1,5 +1,5 @@
 -- ============================================================================
--- 0008_srl_partial_unique.sql — B5 fix
+-- 0009_srl_partial_unique.sql — B5 fix
 -- ============================================================================
 -- The G1 migration created a plain unique index per partition on
 -- (tenant_id, session_id, repo_id_hash, match_reason). That shape blocks a

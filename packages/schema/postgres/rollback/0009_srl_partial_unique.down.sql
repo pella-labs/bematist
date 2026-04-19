@@ -1,4 +1,4 @@
--- Rollback for 0008_srl_partial_unique.sql — restore plain unique shape.
+-- Rollback for 0009_srl_partial_unique.sql — restore plain unique shape.
 -- If partial-index rows have drifted to the point where a plain unique
 -- can't be restored (two active rows per PK tuple), the rollback will
 -- fail loudly and the operator must reconcile manually.

@@ -1,4 +1,9 @@
-import { findSessionTwins, listClusterContributors, listClusters } from "@bematist/api";
+import {
+  findSessionTwins,
+  isComplianceEnabled,
+  listClusterContributors,
+  listClusters,
+} from "@bematist/api";
 import { Badge, Button, Card, CardHeader, CardTitle, FidelityChip, Input } from "@bematist/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -33,8 +38,12 @@ interface ClustersPageProps {
 export default async function ClustersPage({ searchParams }: ClustersPageProps) {
   const ctx = await getSessionCtx();
   const sp = (await searchParams) ?? {};
+  const showIdentities = !isComplianceEnabled();
   const [data, twins, contributors] = await Promise.all([
-    listClusters(ctx, { window: "30d" }),
+    listClusters(ctx, {
+      window: "30d",
+      ...(showIdentities ? { includeBelowFloorClusters: true } : {}),
+    }),
     sp.session_id
       ? findSessionTwins(ctx, {
           session_id: sp.session_id,
@@ -43,7 +52,10 @@ export default async function ClustersPage({ searchParams }: ClustersPageProps) 
         })
       : Promise.resolve(null),
     sp.cluster_id
-      ? listClusterContributors(ctx, { cluster_id: sp.cluster_id })
+      ? listClusterContributors(ctx, {
+          cluster_id: sp.cluster_id,
+          ...(showIdentities ? { includeIdentities: true } : {}),
+        })
       : Promise.resolve(null),
   ]);
 
@@ -150,19 +162,31 @@ export default async function ClustersPage({ searchParams }: ClustersPageProps) 
                 </p>
               </CardHeader>
               <ul className="flex flex-wrap items-center gap-3">
-                {contributors.contributors.map((c) => (
-                  <li
-                    key={c.engineer_id_hash}
-                    className="flex items-center gap-2 rounded-full border border-border bg-background/50 px-2 py-1 text-xs"
-                  >
-                    <ContributorDot hash={c.engineer_id_hash} />
-                    <span className="font-mono text-muted-foreground">{c.engineer_id_hash}</span>
-                    <span className="tabular-nums">
-                      {c.session_count} session
-                      {c.session_count === 1 ? "" : "s"}
-                    </span>
-                  </li>
-                ))}
+                {contributors.contributors.map((c) => {
+                  const identity = contributors.identities?.[c.engineer_id_hash];
+                  const label = identity?.name ?? identity?.email ?? c.engineer_id_hash;
+                  return (
+                    <li
+                      key={c.engineer_id_hash}
+                      className="flex items-center gap-2 rounded-full border border-border bg-background/50 px-2 py-1 text-xs"
+                    >
+                      <ContributorDot
+                        hash={c.engineer_id_hash}
+                        {...(identity ? { developer: identity } : {})}
+                      />
+                      <span
+                        className={identity ? "text-foreground" : "font-mono text-muted-foreground"}
+                        title={identity?.email}
+                      >
+                        {label}
+                      </span>
+                      <span className="tabular-nums">
+                        {c.session_count} session
+                        {c.session_count === 1 ? "" : "s"}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </Card>
           ) : (

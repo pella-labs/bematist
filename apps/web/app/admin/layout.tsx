@@ -53,6 +53,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           >
             ↳ Repos
           </Link>
+          <Link
+            href="/admin/invites"
+            className="cursor-pointer rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            Invites
+          </Link>
         </nav>
         <div className="mt-4 flex flex-col gap-0.5 border-t border-border pt-4">
           <Link

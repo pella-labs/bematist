@@ -1,5 +1,5 @@
--- Rollback for custom/0004_github_integration_g1.sql.
--- Invoke via `bun run db:migrate:pg -- --rollback 0004_github_integration_g1`.
+-- Rollback for custom/0006_github_integration_g1.sql.
+-- Invoke via `bun run db:migrate:pg -- --rollback 0006_github_integration_g1`.
 -- See packages/schema/postgres/rollback.ts for the runner.
 --
 -- Strategy: drop in reverse dependency order. Every statement uses IF EXISTS

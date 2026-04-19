@@ -13,7 +13,7 @@
 //   6. `org_isolation` policy exists on every new table.
 //   7. `repos` / `git_events` / `orgs` extensions landed; `repos_github_provider_id_required`
 //      is NOT VALID (post-backfill VALIDATE happens in a follow-up migration).
-//   8. Rollback path (packages/schema/postgres/rollback/0004_github_integration_g1.down.sql)
+//   8. Rollback path (packages/schema/postgres/rollback/0006_github_integration_g1.down.sql)
 //      cleanly drops everything and re-applying forward restores the schema.
 //
 // Every assertion runs as postgres (superuser — inspects catalog, bypasses RLS).
@@ -55,7 +55,7 @@ beforeAll(async () => {
   const sql = postgres(SUPER_URL, { max: 2, idle_timeout: 5, connect_timeout: 5 });
   const repoRoot = join(import.meta.dir, "..", "..", "..", "..");
   const migrationSql = readFileSync(
-    join(repoRoot, "packages", "schema", "postgres", "custom", "0004_github_integration_g1.sql"),
+    join(repoRoot, "packages", "schema", "postgres", "custom", "0006_github_integration_g1.sql"),
     "utf8",
   );
   const rollbackSql = readFileSync(
@@ -65,7 +65,7 @@ beforeAll(async () => {
       "schema",
       "postgres",
       "rollback",
-      "0004_github_integration_g1.down.sql",
+      "0006_github_integration_g1.down.sql",
     ),
     "utf8",
   );
@@ -286,7 +286,7 @@ describe("G1 step 1 — rollback rehearsal", () => {
   });
 
   runIfPg("rollback .down.sql file exists on disk", () => {
-    const path = join(import.meta.dir, "..", "rollback", "0004_github_integration_g1.down.sql");
+    const path = join(import.meta.dir, "..", "rollback", "0006_github_integration_g1.down.sql");
     expect(existsSync(path)).toBe(true);
   });
 });

@@ -1,4 +1,4 @@
-import { getSession } from "@bematist/api";
+import { getSession, isComplianceEnabled } from "@bematist/api";
 import {
   Badge,
   Card,
@@ -9,11 +9,11 @@ import {
   FidelityChip,
   InsufficientData,
   RevealDialog,
-  renderWithRedactions,
 } from "@bematist/ui";
 import type { Metadata } from "next";
 import { revealSessionAction } from "@/lib/actions/session";
 import { getRevealedCtx } from "@/lib/session";
+import { PromptBody } from "./_PromptBody";
 
 export const metadata: Metadata = {
   title: "Session detail",
@@ -27,7 +27,14 @@ const USD = new Intl.NumberFormat("en-US", {
 
 export default async function SessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const ctx = await getRevealedCtx();
+  const baseCtx = await getRevealedCtx();
+  // Compliance OFF (demo): bypass the reveal-token gate so prompt content
+  // shows inline. Audit-immutability is preserved — `getSession` itself never
+  // writes to audit_log; only the explicit `revealSessionAction` does, and
+  // we don't render the dialog that would invoke it. So no audit row is
+  // written for "non-existent" reveal action.
+  const complianceOn = isComplianceEnabled();
+  const ctx = complianceOn ? baseCtx : { ...baseCtx, reveal_token: "demo" };
   const session = await getSession(ctx, { session_id: id });
 
   return (
@@ -81,7 +88,9 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         <CardHeader>
           <CardTitle>Prompt</CardTitle>
         </CardHeader>
-        {session.prompt_text === null ? (
+        {session.prompt_text !== null ? (
+          <PromptBody text={session.prompt_text} />
+        ) : complianceOn ? (
           <div className="flex flex-col items-start gap-4">
             <div className="flex items-center gap-2">
               <InsufficientData reason="consent_required">
@@ -95,9 +104,9 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             <RevealDialog sessionId={session.session_id} revealAction={revealSessionAction} />
           </div>
         ) : (
-          <div className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-foreground">
-            {renderWithRedactions(session.prompt_text)}
-          </div>
+          <p className="text-sm text-muted-foreground">
+            No prompt content available for this session.
+          </p>
         )}
       </Card>
     </div>

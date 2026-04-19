@@ -128,7 +128,10 @@ export default function MarketingHome() {
               30 seconds; the dashboard is where your team lives.
             </p>
             <div className="mk-hero-actions">
-              <Link href="/card" className="mk-btn mk-btn-primary">
+              <Link href="/auth/sign-in?intent=new-org" className="mk-btn mk-btn-primary">
+                Sign up with GitHub
+              </Link>
+              <Link href="/card" className="mk-btn mk-btn-ghost">
                 Grab your card
               </Link>
               <a

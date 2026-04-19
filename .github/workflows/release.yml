@@ -73,10 +73,14 @@ jobs:
             runner: ubuntu-latest
             bun_target: bun-linux-arm64
             ext: ""
-          - target: darwin-x64
-            runner: macos-13
-            bun_target: bun-darwin-x64
-            ext: ""
+          # darwin-x64 temporarily dropped due to sustained macos-13 runner
+          # queue contention on 2026-04-18. Team is all Apple Silicon at v0.1;
+          # re-add before v0.2 so Intel-Mac customers are covered.
+          #
+          # - target: darwin-x64
+          #   runner: macos-13
+          #   bun_target: bun-darwin-x64
+          #   ext: ""
           - target: darwin-arm64
             runner: macos-14
             bun_target: bun-darwin-arm64
@@ -365,7 +369,12 @@ jobs:
 
   release:
     name: publish GH release
-    needs: [meta, build, verify, collect-hashes, provenance, package, sbom]
+    # `package` temporarily dropped from the needs list — distro-package
+    # rendering (Homebrew / AUR / Chocolatey templates) still hard-codes
+    # darwin-x64, which we skip in v0.1.x. Re-add once render scripts handle
+    # a missing arch gracefully OR once darwin-x64 is back in the matrix.
+    # Distro publishing itself is still `if: false` on every channel.
+    needs: [meta, build, verify, collect-hashes, provenance, sbom]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -452,13 +461,10 @@ jobs:
           prerelease: ${{ contains(needs.meta.outputs.tag, '-') }}
           files: |
             release/${{ env.BINARY_NAME }}-*
-            release/*.deb
-            release/bematist.rb
-            release/PKGBUILD
-            release/bematist.nuspec
             release/manifest.sha256
             release/*.intoto.jsonl
             release/*.cdx.json
+            packaging/install.sh
 
   # ---------------------------------------------------------------------------
   # Registry-publish jobs.

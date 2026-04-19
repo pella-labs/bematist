@@ -469,7 +469,7 @@ export const embedding_cache = pgTable("embedding_cache", {
 
 // ---------------------------------------------------------------------------
 // GitHub integration (PRD-github-integration §9.1–§9.8). Full canonical DDL
-// lives in custom/0004_github_integration_g1.sql — this Drizzle mirror gives
+// lives in custom/0006_github_integration_g1.sql — this Drizzle mirror gives
 // app code typed access. Every table is RLS-protected (org_isolation policy
 // via app_current_org()); `tenant_id` is the alias the PRD uses for orgs.id.
 // ---------------------------------------------------------------------------
