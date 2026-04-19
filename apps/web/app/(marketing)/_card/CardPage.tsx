@@ -6,6 +6,7 @@
 import { toPng } from "html-to-image";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+
 // Client-side card fetch via the public /api/card/:id endpoint. Response
 // shape is locked in `apps/web/app/api/card/[id]/route.ts`.
 async function getCard(cardId: string) {
@@ -346,7 +347,11 @@ export function CardPage({
       .catch(() => setError("Card not found"));
   }, [id, demoData]);
 
-  // Card-relative pointer: drives both tilt (mx/my) and holo vars (pointer-x/y, background-x/y)
+  // Card-relative pointer: drives both tilt (mx/my) and holo vars (pointer-x/y, background-x/y).
+  // `data` is listed as a dependency so the effect re-runs after the async
+  // fetch on /card/:id mounts the flipper. See the deps array below for the
+  // full reasoning.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `data` is a re-run trigger, not a consumed value.
   useEffect(() => {
     const flipper = flipperRef.current;
     if (!flipper) return;
