@@ -83,12 +83,14 @@ export async function rotateWebhookSecret(
         "github.webhook_secret_rotated",
         "github_installation",
         installationId,
-        JSON.stringify({
+        // Pass object — postgres.js encodes jsonb. Stringifying produces a
+        // scalar, not a JSONB object (see trackingMode.ts note).
+        {
           new_secret_ref: input.new_secret_ref,
           window_minutes: ROTATION_WINDOW_MINUTES,
           rotated_at: rotatedAt.toISOString(),
           window_expires_at: windowExpiresAt.toISOString(),
-        }),
+        },
       ],
     );
   } catch (err) {

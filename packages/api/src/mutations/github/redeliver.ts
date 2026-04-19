@@ -171,7 +171,8 @@ export async function redeliverWebhooks(
         "github.webhook_redelivery_requested",
         "github_installation",
         installationId,
-        JSON.stringify({
+        // Pass object — postgres.js handles jsonb. See trackingMode.ts note.
+        {
           from: input.from,
           to: input.to,
           event_types: input.event_types ?? null,
@@ -179,7 +180,7 @@ export async function redeliverWebhooks(
           queued_attempts: queuedAttempts,
           failed_attempts: failedAttempts,
           elapsed_seconds: elapsedSeconds,
-        }),
+        },
       ],
     );
   } catch (err) {

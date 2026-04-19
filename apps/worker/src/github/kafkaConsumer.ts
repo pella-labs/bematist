@@ -23,6 +23,8 @@ export interface KafkaConsumerConfig {
   heartbeatIntervalMs?: number;
   /** Test-only hook: invoked after each successful message ack. */
   onCommit?: (offset: string) => void;
+  /** Default false — prod consumer starts at end-of-log. Tests pass true. */
+  fromBeginning?: boolean;
 }
 
 export interface KafkaConsumerHandle {
@@ -55,7 +57,7 @@ export async function startKafkaGithubConsumer(
   const consumer = kafka.consumer(consumerCfg);
 
   await consumer.connect();
-  await consumer.subscribe({ topic: config.topic, fromBeginning: false });
+  await consumer.subscribe({ topic: config.topic, fromBeginning: config.fromBeginning ?? false });
 
   await consumer.run({
     autoCommit: false, // manual commit after UPSERT

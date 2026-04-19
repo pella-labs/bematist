@@ -89,12 +89,13 @@ export async function patchRepoTracking(
         "github.repo_tracking_updated",
         "github_repo",
         input.provider_repo_id,
-        JSON.stringify({
+        // Pass object, not stringified — see trackingMode.ts note.
+        {
           previous: previousState,
           next: input.state,
           unchanged,
           sessions_queued: queued,
-        }),
+        },
       ],
     );
   } catch (err) {

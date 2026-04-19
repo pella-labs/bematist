@@ -73,12 +73,15 @@ export async function patchTrackingMode(
         "github.tracking_mode_updated",
         "org",
         ctx.tenant_id,
-        JSON.stringify({
+        // IMPORTANT: pass the object directly — postgres.js auto-serializes
+        // jsonb params. Passing `JSON.stringify(...)` with `::jsonb` yields a
+        // JSON *string* scalar, not an object (see web/lib/db.ts repro).
+        {
           previous: existingMode,
           next: input.mode,
           unchanged,
           sessions_queued: queued,
-        }),
+        },
       ],
     );
   } catch (err) {
