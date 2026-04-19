@@ -56,12 +56,6 @@ export default async function JoinInvitePage({ params }: { params: Promise<{ tok
             <span aria-hidden className="inline-block h-6 w-6 rounded-md bg-primary" />
             bematist
           </Link>
-          <Link
-            href="/privacy"
-            className="cursor-pointer text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-          >
-            Bill of Rights
-          </Link>
         </header>
 
         <main className="flex flex-1 flex-col items-center justify-center gap-8">
@@ -71,17 +65,6 @@ export default async function JoinInvitePage({ params }: { params: Promise<{ tok
             <InactiveInvite error={preview.error} />
           )}
         </main>
-
-        <footer className="pt-10 text-center text-[11px] text-muted-foreground">
-          Bematist observes agents, not editors. What you see in{" "}
-          <Link
-            href="/privacy"
-            className="cursor-pointer underline underline-offset-2 hover:text-foreground"
-          >
-            the Bill of Rights
-          </Link>{" "}
-          is what leaves your machine — nothing more.
-        </footer>
       </div>
     </div>
   );

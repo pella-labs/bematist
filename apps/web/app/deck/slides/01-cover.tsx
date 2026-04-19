@@ -8,7 +8,7 @@ import { BMonogram } from "../../(marketing)/_components/Monogram";
  * 3D rotating B-mark inside an orbiting wordring on the right. Reuses the
  * landing-page BMonogram component (three.js).
  */
-export function Slide01Cover({ totalPages }: { totalPages: number }) {
+export function Slide01Cover(_props: { totalPages: number }) {
   return (
     <div className="cover">
       <div className="cover-top">
@@ -93,7 +93,9 @@ export function Slide01Cover({ totalPages }: { totalPages: number }) {
         <div>
           <div className="label">Presented by</div>
           <div className="val">
-            Walid Khori · David Alhe · Sebastian Garces · Jorge Alejandro Diaz · Sandesh Pathak
+            Walid Khori · David Aihe · Sebastian Garces
+            <br />
+            Jorge Alejandro Diez · Sandesh Pathak
           </div>
         </div>
         <div>
@@ -102,13 +104,10 @@ export function Slide01Cover({ totalPages }: { totalPages: number }) {
         </div>
         <div>
           <div className="label">Contact</div>
-          <div className="val">hello@bematist.dev</div>
+          <div className="val">@bematist_dev on X</div>
         </div>
       </div>
       <div className="pagenum-left">bematist.dev</div>
-      <div className="pagenum">
-        01 <span className="total">/ {String(totalPages).padStart(2, "0")}</span>
-      </div>
     </div>
   );
 }

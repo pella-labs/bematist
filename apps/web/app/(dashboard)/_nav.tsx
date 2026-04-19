@@ -13,12 +13,18 @@ const NAV = [
   { href: "/me/digest", label: "My digest" },
 ];
 
+const ADMIN_NAV = [
+  { href: "/admin/ingest-keys", label: "Ingest keys" },
+  { href: "/admin/github", label: "GitHub" },
+  { href: "/admin/invites", label: "Invites" },
+];
+
 function isActive(pathname: string, href: string, match?: "exact"): boolean {
   if (match === "exact") return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function DashboardNav() {
+export function DashboardNav({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname() ?? "/";
   return (
     <nav className="dash-nav">
@@ -35,6 +41,24 @@ export function DashboardNav() {
           </Link>
         );
       })}
+      {isAdmin ? (
+        <>
+          <div className="dash-nav-section">Admin</div>
+          {ADMIN_NAV.map((item) => {
+            const active = isActive(pathname, item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="dash-nav-link"
+                aria-current={active ? "page" : undefined}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </>
+      ) : null}
     </nav>
   );
 }
