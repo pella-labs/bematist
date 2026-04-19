@@ -104,9 +104,17 @@ beforeAll(async () => {
     await superDb
       .insert(developers)
       .values({ org_id: org.id, user_id: u.id, team_id: team.id, stable_hash: `eng_${tag}` });
-    await superDb
-      .insert(repos)
-      .values({ org_id: org.id, repo_id_hash: `rh_${tag}`, provider: "github" });
+    // G1: repos.provider_repo_id is required for provider='github' via the
+    // NOT VALID constraint `repos_github_provider_id_required`. The constraint
+    // does enforce on new inserts even when NOT VALID (NOT VALID only skips
+    // the existing-row scan). Supply a deterministic provider_repo_id so the
+    // seed round-trips cleanly.
+    await superDb.insert(repos).values({
+      org_id: org.id,
+      repo_id_hash: `rh_${tag}`,
+      provider: "github",
+      provider_repo_id: `prid_${tag}`,
+    });
     await superDb.insert(policies).values({ org_id: org.id });
     await superDb.insert(gitEvents).values({
       org_id: org.id,
