@@ -52,7 +52,7 @@ to a distinct PR with its own contract tests:
 |---|---|---|
 | B1 | `installation.created` parser + admin claim flow | **Pending follow-up** — requires pre-claim `github_pending_installations` surface + admin UI claim path |
 | B2 | Shared ingest↔worker installation-token resolver | **Pending follow-up** — unblocks admin sync |
-| B4 | Recompute pipeline wiring (Redis stream producer in worker + real `loadInputs`) | **Partial** — Redis producer wired (webhooks now reach the stream); ACK semantics refactor + real `loadInputs` against PG+ClickHouse session enrichment remain as follow-up |
+| B4 | Recompute pipeline wiring (Redis stream producer in worker + ACK-after-flush semantics + real `loadInputs`) | **Mostly landed** — Redis producer wired; **B4a** ACK-after-flush refactor landed (coalescer tracks entry ids; `tick()` ACKs only after `processWindow` succeeds; `retryPendingDepth` gauge exported; windowMs default no longer loses triggers on crash). **B4b** real `loadInputs` against PG+ClickHouse session enrichment remains as follow-up — the worker's `startLinkerConsumerLoop` still constructs `loadInputs: async () => null`, so end-to-end webhook → `session_repo_links` writes await the PG/CH query code |
 | B5 | Partial unique index on `session_repo_links (stale_at IS NULL)` | **Landed** (migration 0008) |
 | B9 | Redis token-bucket for `redeliverWebhooks` (D59) | **Landed** — `packages/api/src/github/tokenBucket.ts` (shared) + redeliver pacer wired + Redis-backed in `apps/web/lib/github/redeliveryDeps.ts` |
 | B10 | Recursive allowlist for `assertEvidenceSafe` | **Landed** |
