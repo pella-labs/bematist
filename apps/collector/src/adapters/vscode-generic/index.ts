@@ -16,6 +16,19 @@ interface Identity {
   deviceId: string;
 }
 
+const DEFAULT_REDISCOVERY_MS = 60_000;
+
+export interface VSCodeGenericAdapterOptions {
+  /**
+   * How long (ms) the cached profile list is trusted before `poll()` re-runs
+   * `discoverProfiles()`. Defaults to 60s. Can also be overridden via
+   * `BEMATIST_VSCODE_REDISCOVERY_MS`.
+   */
+  rediscoveryIntervalMs?: number;
+  /** Test seam; defaults to `Date.now()`. */
+  now?: () => number;
+}
+
 /**
  * VSCodeGenericAdapter — the +1 VS Code slot in the M2 adapter count
  * (CLAUDE.md §Adapter Matrix). This adapter doesn't pin a single extension;
@@ -37,9 +50,22 @@ export class VSCodeGenericAdapter implements Adapter {
 
   private readonly handlers: VSCodeExtensionHandler[];
   private profiles: VSCodeProfile[] = [];
+  private lastDiscoveryAt = 0;
+  private readonly rediscoveryIntervalMs: number;
+  private readonly now: () => number;
 
-  constructor(identity: Identity, extra?: VSCodeExtensionHandler[]) {
+  constructor(
+    identity: Identity,
+    extra?: VSCodeExtensionHandler[],
+    opts?: VSCodeGenericAdapterOptions,
+  ) {
     this.handlers = [...defaultHandlers({ ...identity, tier: "B" }), ...(extra ?? [])];
+    const envOverride = Number.parseInt(process.env.BEMATIST_VSCODE_REDISCOVERY_MS ?? "", 10);
+    const ttl =
+      opts?.rediscoveryIntervalMs ??
+      (Number.isFinite(envOverride) && envOverride > 0 ? envOverride : DEFAULT_REDISCOVERY_MS);
+    this.rediscoveryIntervalMs = ttl;
+    this.now = opts?.now ?? (() => Date.now());
   }
 
   /**
@@ -57,8 +83,14 @@ export class VSCodeGenericAdapter implements Adapter {
     return this.handlers;
   }
 
+  /** Inspection API for `bematist status` + tests — returns cached profiles. */
+  listProfiles(): ReadonlyArray<VSCodeProfile> {
+    return this.profiles;
+  }
+
   async init(ctx: AdapterContext): Promise<void> {
     this.profiles = discoverProfiles();
+    this.lastDiscoveryAt = this.now();
     ctx.log.info("vscode-generic: init", {
       profiles: this.profiles.map((p) => p.distro),
       handlers: this.handlers.map((h) => h.extensionId),
@@ -66,7 +98,7 @@ export class VSCodeGenericAdapter implements Adapter {
   }
 
   async poll(ctx: AdapterContext, signal: AbortSignal): Promise<Event[]> {
-    if (this.profiles.length === 0) this.profiles = discoverProfiles();
+    this.maybeRediscover(ctx);
     if (this.profiles.length === 0) return [];
 
     const all: Event[] = [];
@@ -109,6 +141,9 @@ export class VSCodeGenericAdapter implements Adapter {
   }
 
   async health(_ctx: AdapterContext): Promise<AdapterHealth> {
+    // Health is called by `bematist status` on demand; don't rerun discovery
+    // on a short TTL here (poll is the authoritative driver), but DO fall
+    // back to a fresh scan when we have nothing cached.
     const profiles = this.profiles.length > 0 ? this.profiles : discoverProfiles();
     if (profiles.length === 0) {
       return {
@@ -129,6 +164,37 @@ export class VSCodeGenericAdapter implements Adapter {
     const base: AdapterHealth = { status: "ok", fidelity };
     if (caveats.length > 0) base.caveats = caveats;
     return base;
+  }
+
+  /**
+   * Re-run `discoverProfiles()` if the cache is older than the TTL OR if
+   * the cache is empty (fast-path first-poll case, e.g. when init() was
+   * called before any distro dir existed). Logs at INFO when new profiles
+   * appear, WARN when previously-seen profiles vanish. Existing cursors
+   * for vanished distros are NOT wiped — a user who closes a VS Code window
+   * mid-poll should see their session resume, not restart, on reopen.
+   */
+  private maybeRediscover(ctx: AdapterContext): void {
+    const now = this.now();
+    const stale = now - this.lastDiscoveryAt > this.rediscoveryIntervalMs;
+    if (!stale && this.profiles.length > 0) return;
+
+    const before = new Set(this.profiles.map((p) => p.distro));
+    const next = discoverProfiles();
+    this.profiles = next;
+    this.lastDiscoveryAt = now;
+
+    const after = new Set(next.map((p) => p.distro));
+    const added = [...after].filter((d) => !before.has(d));
+    const removed = [...before].filter((d) => !after.has(d));
+    if (added.length > 0) {
+      ctx.log.info("vscode-generic: new profile(s) discovered", { added });
+    }
+    if (removed.length > 0) {
+      ctx.log.warn("vscode-generic: profile(s) vanished since last poll", {
+        removed,
+      });
+    }
   }
 }
 

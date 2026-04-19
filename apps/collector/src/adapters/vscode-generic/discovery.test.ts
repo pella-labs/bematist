@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { discoverProfiles, vscodeUserRoot } from "./discovery";
@@ -57,6 +57,45 @@ test("discoverProfiles silently skips distros that don't exist", () => {
       const profs = discoverProfiles();
       expect(profs.length).toBe(1);
       expect(profs[0]?.distro).toBe("vscodium");
+    });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("discoverProfiles treats non-directory User entries as absent (ENOTDIR hardening)", () => {
+  const root = mkdtempSync(join(tmpdir(), "bematist-vsc-bad-"));
+  try {
+    // Code has a valid User/ dir.
+    mkdirSync(join(root, "Code", "User"), { recursive: true });
+    // VSCodium has `User` as a plain file (ENOTDIR on traversal). The walk
+    // must swallow it and still return the Code profile.
+    mkdirSync(join(root, "VSCodium"), { recursive: true });
+    writeFileSync(join(root, "VSCodium", "User"), "not a dir");
+    withEnv({ BEMATIST_VSCODE_USER_ROOT: root }, () => {
+      const profs = discoverProfiles();
+      const distros = profs.map((p) => p.distro);
+      expect(distros).toContain("code");
+      expect(distros).not.toContain("vscodium");
+    });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("discoverProfiles does not abort on one broken distro — other distros still returned", () => {
+  const root = mkdtempSync(join(tmpdir(), "bematist-vsc-partial-"));
+  try {
+    // Two valid distros + one that will look broken (file instead of dir).
+    mkdirSync(join(root, "Code", "User"), { recursive: true });
+    mkdirSync(join(root, "Code - Insiders", "User"), { recursive: true });
+    mkdirSync(join(root, "VSCodium"), { recursive: true });
+    writeFileSync(join(root, "VSCodium", "User"), "not a dir");
+    withEnv({ BEMATIST_VSCODE_USER_ROOT: root }, () => {
+      const distros = discoverProfiles()
+        .map((p) => p.distro)
+        .sort();
+      expect(distros).toEqual(["code", "code-insiders"]);
     });
   } finally {
     rmSync(root, { recursive: true, force: true });

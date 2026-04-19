@@ -297,6 +297,231 @@ test("poll() honors aborted signal", async () => {
   }
 });
 
+// ────────────────────────────────────────────────────────────────────────────
+// Bug #11 — runtime rediscovery
+// ────────────────────────────────────────────────────────────────────────────
+
+test("rediscovery picks up a newly-added profile dir after TTL expires", async () => {
+  const root = mkdtempSync(join(tmpdir(), "bematist-vsc-rediscover-"));
+  try {
+    // Start with Code already installed.
+    mkdirSync(join(root, "Code", "User"), { recursive: true });
+    const prev = process.env.BEMATIST_VSCODE_USER_ROOT;
+    try {
+      process.env.BEMATIST_VSCODE_USER_ROOT = root;
+      let clock = 1_000;
+      const a = new VSCodeGenericAdapter(identity, [], {
+        rediscoveryIntervalMs: 100,
+        now: () => clock,
+      });
+      const ctx = mkCtx();
+      await a.init(ctx);
+      expect(a.listProfiles().map((p) => p.distro)).toEqual(["code"]);
+
+      // User installs Code Insiders after the daemon is already running.
+      mkdirSync(join(root, "Code - Insiders", "User"), { recursive: true });
+
+      // Within the TTL — cache honored, no rediscovery yet.
+      clock += 50;
+      await a.poll(ctx, new AbortController().signal);
+      expect(a.listProfiles().map((p) => p.distro)).toEqual(["code"]);
+
+      // Past the TTL — rediscovery runs and picks up Code - Insiders.
+      clock += 200;
+      await a.poll(ctx, new AbortController().signal);
+      const distros = a
+        .listProfiles()
+        .map((p) => p.distro)
+        .sort();
+      expect(distros).toContain("code");
+      expect(distros).toContain("code-insiders");
+    } finally {
+      if (prev === undefined) delete process.env.BEMATIST_VSCODE_USER_ROOT;
+      else process.env.BEMATIST_VSCODE_USER_ROOT = prev;
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("empty-cache poll still rediscovers immediately (first-VS-Code-install fast-path)", async () => {
+  const root = mkdtempSync(join(tmpdir(), "bematist-vsc-empty-fast-"));
+  try {
+    // No profiles at startup.
+    const prev = process.env.BEMATIST_VSCODE_USER_ROOT;
+    try {
+      process.env.BEMATIST_VSCODE_USER_ROOT = root;
+      let clock = 1_000;
+      const a = new VSCodeGenericAdapter(identity, [], {
+        rediscoveryIntervalMs: 10_000, // long TTL
+        now: () => clock,
+      });
+      const ctx = mkCtx();
+      await a.init(ctx);
+      expect(a.listProfiles().length).toBe(0);
+
+      // User installs Code right after init, well inside the TTL.
+      mkdirSync(join(root, "Code", "User"), { recursive: true });
+      clock += 100;
+      await a.poll(ctx, new AbortController().signal);
+      // Empty cache triggers a fresh scan regardless of TTL — the user
+      // shouldn't have to wait a whole TTL after a brand-new install.
+      expect(a.listProfiles().map((p) => p.distro)).toContain("code");
+    } finally {
+      if (prev === undefined) delete process.env.BEMATIST_VSCODE_USER_ROOT;
+      else process.env.BEMATIST_VSCODE_USER_ROOT = prev;
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("rediscovery logs WARN when a previously-seen profile vanishes but preserves cursors", async () => {
+  const root = mkdtempSync(join(tmpdir(), "bematist-vsc-vanish-"));
+  try {
+    mkdirSync(join(root, "Code", "User"), { recursive: true });
+    const prev = process.env.BEMATIST_VSCODE_USER_ROOT;
+    try {
+      process.env.BEMATIST_VSCODE_USER_ROOT = root;
+
+      // Spy logger — capture warn calls.
+      const warnCalls: Array<{ msg: string; args: unknown[] }> = [];
+      const infoCalls: Array<{ msg: string; args: unknown[] }> = [];
+      const spyLog: import("@bematist/sdk").Logger = {
+        trace: () => {},
+        debug: () => {},
+        info: (msg: string, ...args: unknown[]) => {
+          infoCalls.push({ msg, args });
+        },
+        warn: (msg: string, ...args: unknown[]) => {
+          warnCalls.push({ msg, args });
+        },
+        error: () => {},
+        fatal: () => {},
+        child: () => spyLog,
+      };
+
+      // Shared cursor store so we can assert preservation.
+      const cursorStore = new Map<string, string>();
+      const ctx: AdapterContext = {
+        dataDir: "/tmp/bematist-test",
+        policy: { enabled: true, tier: "B", pollIntervalMs: 5000 },
+        log: spyLog,
+        tier: "B",
+        cursor: {
+          get: async (k: string) => cursorStore.get(k) ?? null,
+          set: async (k: string, v: string) => {
+            cursorStore.set(k, v);
+          },
+        },
+      };
+
+      let clock = 1_000;
+      const a = new VSCodeGenericAdapter(identity, [], {
+        rediscoveryIntervalMs: 100,
+        now: () => clock,
+      });
+      await a.init(ctx);
+      expect(a.listProfiles().map((p) => p.distro)).toEqual(["code"]);
+
+      // Simulate a handler having written a cursor for this profile.
+      cursorStore.set("vscode:code:fake.ext:lastOffset", "42");
+
+      // User removes VS Code (or closes its window and the dir is
+      // temporarily gone — we must NOT wipe cursors).
+      rmSync(join(root, "Code"), { recursive: true, force: true });
+      clock += 500;
+
+      await a.poll(ctx, new AbortController().signal);
+      expect(a.listProfiles().length).toBe(0);
+
+      // Warn was logged about the vanished profile.
+      expect(warnCalls.some((c) => c.msg.includes("vanished"))).toBe(true);
+
+      // Cursor value is still present — the adapter didn't erase it.
+      expect(cursorStore.get("vscode:code:fake.ext:lastOffset")).toBe("42");
+    } finally {
+      if (prev === undefined) delete process.env.BEMATIST_VSCODE_USER_ROOT;
+      else process.env.BEMATIST_VSCODE_USER_ROOT = prev;
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("rediscovery does not re-run within the TTL window (cache is honored)", async () => {
+  const root = mkdtempSync(join(tmpdir(), "bematist-vsc-ttl-"));
+  try {
+    mkdirSync(join(root, "Code", "User"), { recursive: true });
+    const prev = process.env.BEMATIST_VSCODE_USER_ROOT;
+    try {
+      process.env.BEMATIST_VSCODE_USER_ROOT = root;
+      let clock = 1_000;
+      const a = new VSCodeGenericAdapter(identity, [], {
+        rediscoveryIntervalMs: 10_000,
+        now: () => clock,
+      });
+      const ctx = mkCtx();
+      await a.init(ctx);
+      expect(a.listProfiles().length).toBe(1);
+
+      // Add a new distro but keep clock well inside the TTL window.
+      mkdirSync(join(root, "Code - Insiders", "User"), { recursive: true });
+      clock += 1_000; // much less than 10s TTL
+      await a.poll(ctx, new AbortController().signal);
+      // Still only the profile from init — no rescan yet.
+      expect(a.listProfiles().length).toBe(1);
+
+      // Once we cross the TTL, rescan runs.
+      clock += 20_000;
+      await a.poll(ctx, new AbortController().signal);
+      expect(a.listProfiles().length).toBe(2);
+    } finally {
+      if (prev === undefined) delete process.env.BEMATIST_VSCODE_USER_ROOT;
+      else process.env.BEMATIST_VSCODE_USER_ROOT = prev;
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("BEMATIST_VSCODE_REDISCOVERY_MS env var overrides the default TTL", async () => {
+  const prevEnv = process.env.BEMATIST_VSCODE_REDISCOVERY_MS;
+  try {
+    process.env.BEMATIST_VSCODE_REDISCOVERY_MS = "12345";
+    // Dummy identity + no profile dir — we just want to verify the env is
+    // read at construction. The TTL is internal so we confirm via behavior:
+    // with a 12345ms TTL, a 10s clock jump does NOT rediscover.
+    const root = mkdtempSync(join(tmpdir(), "bematist-vsc-env-"));
+    try {
+      mkdirSync(join(root, "Code", "User"), { recursive: true });
+      const prev = process.env.BEMATIST_VSCODE_USER_ROOT;
+      try {
+        process.env.BEMATIST_VSCODE_USER_ROOT = root;
+        let clock = 1_000;
+        const a = new VSCodeGenericAdapter(identity, [], {
+          now: () => clock,
+        });
+        const ctx = mkCtx();
+        await a.init(ctx);
+        mkdirSync(join(root, "VSCodium", "User"), { recursive: true });
+        clock += 10_000; // < 12345ms TTL
+        await a.poll(ctx, new AbortController().signal);
+        const distros = a.listProfiles().map((p) => p.distro);
+        expect(distros).not.toContain("vscodium");
+      } finally {
+        if (prev === undefined) delete process.env.BEMATIST_VSCODE_USER_ROOT;
+        else process.env.BEMATIST_VSCODE_USER_ROOT = prev;
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  } finally {
+    if (prevEnv === undefined) delete process.env.BEMATIST_VSCODE_REDISCOVERY_MS;
+    else process.env.BEMATIST_VSCODE_REDISCOVERY_MS = prevEnv;
+  }
+});
+
 test("golden vscode-generic fixture loads via @bematist/fixtures and validates", () => {
   const events = loadFixture("vscode-generic");
   expect(events.length).toBeGreaterThanOrEqual(10);

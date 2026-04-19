@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { homedir, platform } from "node:os";
 import { join } from "node:path";
 import type { VSCodeDistro } from "@bematist/sdk";
@@ -43,13 +43,27 @@ export function vscodeUserRoot(): string {
  * Enumerate every discovered VS Code profile. Missing distros are skipped
  * silently — no warning, since the common case is that most users only run
  * one fork.
+ *
+ * Filesystem errors on individual distro probes (EACCES from a sandboxed
+ * user dir, transient ENOTDIR during rename, etc.) are caught per-distro so
+ * one bad profile can never abort the full walk. Only `userDir` entries
+ * that (a) exist and (b) are directories are returned.
  */
 export function discoverProfiles(): VSCodeProfile[] {
   const root = vscodeUserRoot();
   const out: VSCodeProfile[] = [];
   for (const [distro, dir] of Object.entries(DISTRO_DIRS) as Array<[VSCodeDistro, string]>) {
     const userDir = join(root, dir, "User");
-    if (existsSync(userDir)) out.push({ distro, userDir });
+    try {
+      if (!existsSync(userDir)) continue;
+      const st = statSync(userDir);
+      if (!st.isDirectory()) continue;
+      out.push({ distro, userDir });
+    } catch {
+      // Swallow EACCES / ENOENT / ENOTDIR for this one distro — the goal
+      // is best-effort discovery, not surfaceable errors. A sandboxed
+      // profile dir we can't stat simply doesn't appear in the result.
+    }
   }
   return out;
 }

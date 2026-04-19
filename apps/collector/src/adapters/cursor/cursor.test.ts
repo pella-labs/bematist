@@ -89,6 +89,61 @@ test("poll() returns [] without crashing on a corrupt state.vscdb", async () => 
   }
 });
 
+test("health() reports 'degraded' with a lastError caveat after copy-read failure", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "bematist-cursor-degraded-"));
+  try {
+    const bad = join(dir, "state.vscdb");
+    writeFileSync(bad, "not a sqlite database");
+    const prev = process.env.CURSOR_STATE_DB;
+    try {
+      process.env.CURSOR_STATE_DB = bad;
+      const a = new CursorAdapter({ tenantId: "o", engineerId: "e", deviceId: "d" });
+      const ctx = mkCtx();
+      await a.init(ctx);
+      await a.poll(ctx, new AbortController().signal);
+      const h = await a.health(ctx);
+      expect(h.status).toBe("degraded");
+      expect(h.lastError).toBeDefined();
+      expect(h.caveats?.some((c) => c.includes("copy-read failed"))).toBe(true);
+    } finally {
+      if (prev === undefined) delete process.env.CURSOR_STATE_DB;
+      else process.env.CURSOR_STATE_DB = prev;
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("health() clears copy-failure caveat after a subsequent successful poll", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "bematist-cursor-recover-"));
+  try {
+    const target = join(dir, "state.vscdb");
+    writeFileSync(target, "not a sqlite database");
+    const prev = process.env.CURSOR_STATE_DB;
+    try {
+      process.env.CURSOR_STATE_DB = target;
+      const a = new CursorAdapter({ tenantId: "o", engineerId: "e", deviceId: "d" });
+      const ctx = mkCtx();
+      await a.init(ctx);
+      await a.poll(ctx, new AbortController().signal);
+      expect((await a.health(ctx)).status).toBe("degraded");
+
+      // Swap the file with the golden fixture in place — simulates Cursor
+      // finishing its writer transaction and the next copy-read succeeding.
+      copyFileSync(fixtureDb(), target);
+      await a.poll(ctx, new AbortController().signal);
+      const h = await a.health(ctx);
+      expect(h.status).toBe("ok");
+      expect(h.caveats?.some((c) => c.includes("copy-read failed"))).toBeFalsy();
+    } finally {
+      if (prev === undefined) delete process.env.CURSOR_STATE_DB;
+      else process.env.CURSOR_STATE_DB = prev;
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("poll() against the golden state.vscdb emits canonical events", async () => {
   const dir = mkdtempSync(join(tmpdir(), "bematist-cursor-poll-"));
   try {

@@ -1,6 +1,6 @@
 import type { Event } from "@bematist/schema";
 import type { Adapter, AdapterContext, AdapterHealth } from "@bematist/sdk";
-import { openReadOnlyCopy } from "./copyRead";
+import { tryOpenReadOnlyCopy } from "./copyRead";
 import { type DiscoverySources, discoverSources } from "./discovery";
 import { normalizeGenerations } from "./normalize";
 import { parseCursorState } from "./parse";
@@ -22,6 +22,10 @@ export class CursorAdapter implements Adapter {
 
   private sources: DiscoverySources | null = null;
   private lastAutoSeen = false;
+  // When copy-and-read fails after all retries the adapter keeps emitting []
+  // but `health()` must tell the operator. This caveat is cleared the next
+  // time a poll succeeds.
+  private lastCopyFailure: string | null = null;
 
   constructor(private readonly identity: Identity) {}
 
@@ -37,16 +41,19 @@ export class CursorAdapter implements Adapter {
     const s = this.sources ?? discoverSources();
     if (!s.dbExists) return [];
 
-    let opened: ReturnType<typeof openReadOnlyCopy>;
-    try {
-      opened = openReadOnlyCopy(s.dbPath);
-    } catch (e) {
-      ctx.log.warn("cursor: copy-read failed", { err: errStr(e), path: s.dbPath });
+    const result = await tryOpenReadOnlyCopy(s.dbPath);
+    if (!result.ok) {
+      ctx.log.warn("cursor: copy-read failed after retries", {
+        attempts: result.attempts,
+        lastError: result.lastError,
+        path: s.dbPath,
+      });
+      this.lastCopyFailure = result.lastError;
       return [];
     }
 
     try {
-      const { generations, warnings } = parseCursorState(opened.db);
+      const { generations, warnings } = parseCursorState(result.db);
       for (const w of warnings) ctx.log.warn(w);
 
       const cursorMaxStr = await ctx.cursor.get(CURSOR_MAX_UNIX_KEY);
@@ -65,12 +72,14 @@ export class CursorAdapter implements Adapter {
         const newMax = Math.max(...fresh.map((g) => g.unixMs), cursorMax);
         await ctx.cursor.set(CURSOR_MAX_UNIX_KEY, String(newMax));
       }
+      // Success — clear any stale copy-failure caveat.
+      this.lastCopyFailure = null;
       return events;
     } catch (e) {
       ctx.log.warn("cursor: parse failed", { err: errStr(e) });
       return [];
     } finally {
-      opened.cleanup();
+      result.cleanup();
     }
   }
 
@@ -86,6 +95,15 @@ export class CursorAdapter implements Adapter {
     }
     if (this.lastAutoSeen) {
       caveats.push("Cursor Auto-mode events ship with cost_estimated=true");
+    }
+    if (this.lastCopyFailure) {
+      caveats.push(`Last copy-read failed after retries: ${this.lastCopyFailure}`);
+      return {
+        status: "degraded",
+        fidelity: this.lastAutoSeen ? "estimated" : "full",
+        caveats,
+        lastError: this.lastCopyFailure,
+      };
     }
     return {
       status: "ok",
