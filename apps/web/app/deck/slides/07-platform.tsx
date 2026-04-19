@@ -58,7 +58,7 @@ export function Slide07Platform({ totalPages }: { totalPages: number }) {
           <div className="sys" style={{ marginBottom: 8 }}>
             Surfaces
           </div>
-          {["Cost visibility", "Outcome tracking", "Efficiency signals", "Team leaderboards"].map(
+          {["Cost visibility", "Outcome tracking", "Efficiency signals", "Twin finder"].map(
             (name) => (
               <div key={name} className="diagram-node">
                 <span className="dot" />

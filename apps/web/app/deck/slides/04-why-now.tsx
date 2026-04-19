@@ -21,8 +21,11 @@ export function Slide04WhyNow({ totalPages }: { totalPages: number }) {
         </div>
         <div className="timeline-col">
           <div className="timeline-year">§</div>
-          <h4>Regulators arrived</h4>
-          <p>EU AI Act, SOC 2 for AI, and customer trust reviews demand intuition-proof supply.</p>
+          <h4>Boards are asking</h4>
+          <p>
+            Engineering AI ROI is now a quarterly review topic. Intuition-only answers don't hold
+            up.
+          </p>
         </div>
       </div>
 

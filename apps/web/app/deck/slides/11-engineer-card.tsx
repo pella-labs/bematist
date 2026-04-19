@@ -32,11 +32,11 @@ export function Slide11EngineerCard({
       >
         <div>
           <h2 className="title" style={{ fontSize: 76 }}>
-            Proof of <em>craft</em>, not surveillance.
+            A shareable <em>proof of craft</em>.
           </h2>
           <p className="body-text" style={{ marginTop: 32, fontSize: 26 }}>
-            Every engineer gets a private, shareable card — a personal artifact of how they work
-            with AI. The data was always theirs. We made it legible, and portable.
+            Every engineer gets a personal card — a portable artifact of how they work with AI.
+            Tokens, streak, level, badges. Show it on LinkedIn, keep it in your bio, or both.
           </p>
 
           <ul className="reader-list" style={{ marginTop: 40 }}>
@@ -44,7 +44,7 @@ export function Slide11EngineerCard({
               <span className="ink" style={{ fontWeight: 500 }}>
                 Tokens generated.
               </span>{" "}
-              <span className="muted">Self-reference, not a leaderboard.</span>
+              <span className="muted">A growing counter of your own AI usage.</span>
             </li>
             <li>
               <span className="ink" style={{ fontWeight: 500 }}>

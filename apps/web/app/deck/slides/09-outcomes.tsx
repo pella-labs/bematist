@@ -75,8 +75,8 @@ export function Slide09Outcomes({ totalPages }: { totalPages: number }) {
               },
               {
                 n: "03",
-                h: "Zero leaderboards",
-                p: "Privacy-first by design. The data was always yours.",
+                h: "Multi-tool out of the box",
+                p: "Claude Code, Cursor, Codex, Continue, OpenCode, VS Code — auto-detected on first run.",
               },
               {
                 n: "04",
