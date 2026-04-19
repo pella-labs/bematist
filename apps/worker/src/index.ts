@@ -2,6 +2,11 @@
 // PgBoss is for crons only (CLAUDE.md Architecture Rule #4). Per-event work goes
 // to ClickHouse MVs or Redis Streams.
 
+import {
+  createInMemoryInstallationTokenCache,
+  createRedisInstallationTokenCache,
+  getInstallationToken as resolveInstallationToken,
+} from "@bematist/api/github/installationToken";
 import { prompt_clusters } from "@bematist/schema/postgres";
 import type { ClickHouseClient } from "@clickhouse/client";
 import PgBoss from "pg-boss";
@@ -11,6 +16,7 @@ import { startKafkaGithubConsumer } from "./github/kafkaConsumer";
 import {
   createLocalSemaphore,
   createNoopRecomputeEmitter,
+  createRecomputeEmitter,
   createTokenBucket,
 } from "./github-initial-sync";
 import { dispatcherTick } from "./github-initial-sync/dispatcher";
@@ -556,18 +562,83 @@ async function runGithubInitialSyncDispatcher(): Promise<
     burst: 10,
   });
 
-  const emitRecompute = createNoopRecomputeEmitter();
+  // B2 — real Redis recompute emitter + shared installation-token cache.
+  // When REDIS_URL is unreachable OR we're in a LINKER_CONSUMER_ENABLED=0
+  // test path, fall back to a noop emitter + in-memory token cache so the
+  // PgBoss cron still makes incremental progress; producers that would have
+  // pushed to Redis instead short-circuit cleanly.
+  const appId = process.env.GITHUB_APP_ID;
+  const privateKeyPem = process.env.GITHUB_APP_PRIVATE_KEY_PEM;
+  const redisDisabled =
+    process.env.LINKER_CONSUMER_ENABLED === "0" || process.env.NODE_ENV === "test";
 
-  // Installation-token resolver — wired to the ingest-side cache in a
-  // follow-up when the ingest + worker share a Redis-backed cache. Until
-  // then, missing GITHUB_APP_ID / private key short-circuits with a clear
-  // error logged from inside runInitialSync (which surfaces as
-  // status='failed' + last_error on the progress row).
+  let emitRecompute: ReturnType<typeof createNoopRecomputeEmitter> = createNoopRecomputeEmitter();
+  let tokenCacheRedisConnected = false;
+  let redisClient: unknown = null;
+  if (!redisDisabled) {
+    try {
+      const mod = await import("redis");
+      const url = process.env.REDIS_URL ?? "redis://localhost:6379";
+      // biome-ignore lint/suspicious/noExplicitAny: node-redis v4 types are large
+      const client = (mod as any).createClient({ url });
+      client.on("error", (err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(
+          JSON.stringify({
+            level: "error",
+            app: "worker-github-dispatcher",
+            msg: "redis-error",
+            err: msg,
+          }),
+        );
+      });
+      await client.connect();
+      redisClient = client;
+      tokenCacheRedisConnected = true;
+      emitRecompute = createRecomputeEmitter({
+        async xadd(stream, fields) {
+          return (await client.xAdd(stream, "*", fields)) as string;
+        },
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(
+        JSON.stringify({
+          level: "warn",
+          app: "worker-github-dispatcher",
+          msg: "redis-unavailable-falling-back",
+          err: msg,
+        }),
+      );
+    }
+  }
+
+  const tokenCache = tokenCacheRedisConnected
+    ? createRedisInstallationTokenCache({
+        // biome-ignore lint/suspicious/noExplicitAny: node-redis v4 client
+        get: (k: string) => (redisClient as any).get(k),
+        // biome-ignore lint/suspicious/noExplicitAny: node-redis v4 client
+        set: (k: string, v: string, opts?: { PX?: number; EX?: number }) =>
+          // biome-ignore lint/suspicious/noExplicitAny: node-redis v4 client
+          (redisClient as any).set(k, v, opts),
+        // biome-ignore lint/suspicious/noExplicitAny: node-redis v4 client
+        del: (k: string) => (redisClient as any).del(k),
+      })
+    : createInMemoryInstallationTokenCache();
+
   const getInstallationToken = async (installationId: bigint): Promise<string> => {
-    throw new Error(
-      `github-initial-sync: getInstallationToken unwired on worker (installationId=${installationId.toString()}). ` +
-        "Deploy the ingest→worker shared token cache (tracked in follow-up) before enqueuing a sync.",
-    );
+    if (!appId || !privateKeyPem) {
+      throw new Error(
+        "github-initial-sync: GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY_PEM not configured — " +
+          `cannot mint installation token for ${installationId.toString()}`,
+      );
+    }
+    return resolveInstallationToken({
+      installationId: installationId.toString(),
+      appId,
+      privateKeyPem,
+      cache: tokenCache,
+    });
   };
 
   return await dispatcherTick({
