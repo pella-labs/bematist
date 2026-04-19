@@ -95,7 +95,16 @@ function launchdStart(): DaemonResult {
   // loaded, bootstrap returns 37 ("Input/output error" — "Load failed:
   // already loaded"). Treat that as success.
   const boot = run("launchctl", ["bootstrap", launchdDomain(), unitPath]);
-  if (boot.status !== 0 && !/already loaded/i.test(boot.stderr + boot.stdout)) {
+  // launchctl reports "already loaded" with several surface strings on
+  // macOS 14+: sometimes literal text, sometimes just errno 5 ("Input/
+  // output error") when bootstrap is re-run on an already-loaded unit.
+  // Treat both as benign — kickstart below will still force a refresh.
+  const bootOutput = `${boot.stderr}\n${boot.stdout}`;
+  const alreadyLoaded =
+    /already loaded/i.test(bootOutput) ||
+    /input\/output error/i.test(bootOutput) ||
+    /\b5:\s*Input\/output/i.test(bootOutput);
+  if (boot.status !== 0 && !alreadyLoaded) {
     return {
       state: "stopped",
       platform: "darwin",

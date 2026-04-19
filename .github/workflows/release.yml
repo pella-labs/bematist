@@ -106,10 +106,17 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           out="dist/${{ env.BINARY_NAME }}-${{ needs.meta.outputs.tag }}-${{ matrix.target }}${{ matrix.ext }}"
+          # --no-compile-autoload-dotenv is critical: without it, the
+          # compiled binary auto-loads any `.env` file from the user's
+          # CWD at runtime, shadowing config.env / process.env lookups.
+          # Caused Sebastian's + Walid's v0.1.5 `endpoint=localhost:8000`
+          # surprise — they both had a stale `.env` in their working
+          # directory.
           bun build \
             --compile \
             --minify \
             --sourcemap \
+            --no-compile-autoload-dotenv \
             --target="${{ matrix.bun_target }}" \
             apps/collector/src/cli.ts \
             --outfile "$out"
