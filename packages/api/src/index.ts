@@ -31,6 +31,22 @@ export {
   recordEngineerViewAttempt,
 } from "./mutations/engineer_view";
 export { enqueueGithubSync } from "./mutations/github/sync";
+export {
+  patchRepoTracking,
+  type PatchRepoTrackingDeps,
+  type RecomputeScopedEmitter,
+} from "./mutations/github/repoTracking";
+export {
+  patchTrackingMode,
+  type PatchTrackingModeDeps,
+  type RecomputeEmitter,
+} from "./mutations/github/trackingMode";
+export { rotateWebhookSecret } from "./mutations/github/rotateWebhookSecret";
+export {
+  redeliverWebhooks,
+  type RedeliveryDeps,
+  type RedeliveryHttpClient,
+} from "./mutations/github/redeliver";
 export { setNotificationPref } from "./mutations/policy";
 // Mutations
 export { revealSession } from "./mutations/session";
@@ -46,6 +62,7 @@ export {
 export { getSummary } from "./queries/dashboard";
 export { getGithubConnection } from "./queries/github/connection";
 export { listGithubRepos } from "./queries/github/repos";
+export { getTrackingPreview } from "./queries/github/trackingPreview";
 export {
   createIngestKey,
   listIngestKeys,
