@@ -34,6 +34,11 @@ export const CreateInviteInput = z.object({
   /** Expiry in days. Default 14 (matches the PG default). Max 90 to keep
    *  an unused token from lingering indefinitely. */
   expires_in_days: z.number().int().min(1).max(90).default(14),
+  /** Max acceptances before the invite is spent. `null` = unlimited — the
+   *  default for team-scale onboarding (manager generates one link, all
+   *  devs use it). Positive integers cap per-link use (e.g. 1 = classic
+   *  single-use). */
+  max_uses: z.number().int().min(1).max(10000).nullable().default(null),
 });
 export type CreateInviteInput = z.input<typeof CreateInviteInput>;
 
@@ -46,6 +51,7 @@ export const CreateInviteOutput = z.object({
   role: InviteRole,
   expires_at: z.string().datetime(),
   created_at: z.string().datetime(),
+  max_uses: z.number().int().nullable(),
 });
 export type CreateInviteOutput = z.infer<typeof CreateInviteOutput>;
 
@@ -66,11 +72,17 @@ export const InviteListItem = z.object({
   created_at: z.string().datetime(),
   expires_at: z.string().datetime(),
   accepted_at: z.string().datetime().nullable(),
-  /** Email of the accepting user, if any (for audit readability). */
+  /** Email of the first accepting user, if any (for audit readability).
+   *  Multi-use invites track only the first accept here — the audit_log
+   *  has the full list. */
   accepted_by_email: z.string().nullable(),
   revoked_at: z.string().datetime().nullable(),
   /** Derived convenience field: "active" | "accepted" | "revoked" | "expired". */
   status: z.enum(["active", "accepted", "revoked", "expired"]),
+  /** Number of times this invite has been accepted. */
+  uses: z.number().int(),
+  /** Usage cap; null = unlimited. */
+  max_uses: z.number().int().nullable(),
 });
 export type InviteListItem = z.infer<typeof InviteListItem>;
 
