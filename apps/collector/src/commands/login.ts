@@ -120,7 +120,12 @@ function openInBrowser(url: string): boolean {
   return r.status === 0;
 }
 
-async function postJson<T>(url: string, body: unknown): Promise<T> {
+async function postJson<T>(url: string, body: unknown, timeoutMs = 10_000): Promise<T> {
+  // Timeout guard — a silent fetch hang is worse than a loud error. 10s is
+  // long enough for a cold start + DB round-trip on any reasonable deploy;
+  // anything beyond that is almost certainly a misconfigured backend (e.g.
+  // DATABASE_URL not set on the web service, which we observed on a stale
+  // `bematist.dev` Vercel deploy).
   const res = await fetch(url, {
     method: "POST",
     headers: {
@@ -128,6 +133,7 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
       "User-Agent": `bematist-cli/${COLLECTOR_VERSION}`,
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
