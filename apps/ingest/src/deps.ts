@@ -18,6 +18,16 @@ import { LRUCache } from "./auth/verifyIngestKey";
 import { type ClickHouseWriter, createInMemoryClickHouseWriter } from "./clickhouse";
 import { type DedupStore, InMemoryDedupStore } from "./dedup/checkDedup";
 import { type Flags, parseFlags } from "./flags";
+import {
+  createInMemoryInstallationResolver,
+  type InstallationResolver,
+} from "./github-app/installationResolver";
+import {
+  createInMemoryWebhookSecretResolver,
+  type WebhookSecretResolver,
+} from "./github-app/secretsResolver";
+import { createInMemoryWebhookBus, type WebhookBusProducer } from "./github-app/webhookBus";
+import type { AuditLogSink } from "./github-app/webhookRoute";
 import type { PolicyFlipDeps } from "./policy-flip/handler";
 import { noopAuditSink } from "./redact/auditSink";
 import type { RedactionAuditSink } from "./redact/hotpath";
@@ -72,6 +82,14 @@ export interface Deps {
    * audit trail.
    */
   policyFlip: PolicyFlipDeps | null;
+  /** G1: github_installations → tenant/webhook-secret lookup (PRD §7.1). */
+  installationResolver: InstallationResolver;
+  /** G1: webhook_secret_*_ref → Buffer lookup (PRD §11.5). */
+  webhookSecretsResolver: WebhookSecretResolver;
+  /** G1: Redpanda producer for `github.webhooks` (PRD §7.1). */
+  githubWebhookBus: WebhookBusProducer;
+  /** G1: audit log sink — receives BAD_SIGNATURE rejections + policy writes. */
+  githubAuditSink: AuditLogSink;
 }
 
 function makeDefaultDeps(): Deps {
@@ -103,6 +121,14 @@ function makeDefaultDeps(): Deps {
     gitEventsStore: createInMemoryGitEventsStore(),
     orgResolver: createInMemoryOrgResolver(),
     policyFlip: null,
+    installationResolver: createInMemoryInstallationResolver(),
+    webhookSecretsResolver: createInMemoryWebhookSecretResolver(),
+    githubWebhookBus: createInMemoryWebhookBus(),
+    // Default audit sink is a no-op — tests swap for in-memory recorder; boot
+    // swaps for a Drizzle `audit_log` writer.
+    githubAuditSink: async () => {
+      /* no-op */
+    },
   };
 }
 

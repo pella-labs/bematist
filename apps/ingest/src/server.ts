@@ -2,6 +2,8 @@ import { type Event, EventSchema, FORBIDDEN_FIELDS } from "@bematist/schema";
 import { type AuthContext, verifyBearer } from "./auth";
 import { checkDedup } from "./dedup/checkDedup";
 import { getDeps } from "./deps";
+import { renderPrometheus } from "./github-app/metrics";
+import { handleGithubWebhookByInstallation } from "./github-app/webhookRoute";
 import { logger } from "./logger";
 import { handlePolicyFlipRequest } from "./policy-flip/route";
 import { redactEventInPlace } from "./redact/hotpath";
@@ -525,6 +527,33 @@ export async function handle(req: Request): Promise<Response> {
     return json({ status: "ready", deps, checks });
   }
 
+  // G1 path-param route: POST /v1/webhooks/github/:installation_id
+  // (PRD §7.1). Runs IN ADDITION to the legacy ?org=<slug> route below,
+  // which is preserved for backward-compat with G0 fixture tests.
+  if (url.pathname.startsWith("/v1/webhooks/github/")) {
+    if (req.method !== "POST") {
+      return json({ error: "method not allowed" }, { status: 405 });
+    }
+    const installationId = url.pathname.slice("/v1/webhooks/github/".length);
+    if (!installationId || installationId.includes("/")) {
+      return json(
+        { error: "missing installation id", code: "MISSING_INSTALLATION_ID" },
+        { status: 400 },
+      );
+    }
+    const deps = getDeps();
+    if (!deps.flags.WEBHOOKS_ENABLED) {
+      return json({ error: "webhooks disabled", code: "WEBHOOKS_DISABLED" }, { status: 503 });
+    }
+    return handleGithubWebhookByInstallation(req, installationId, {
+      installationResolver: deps.installationResolver,
+      secretsResolver: deps.webhookSecretsResolver,
+      webhookDedup: deps.webhookDedup,
+      bus: deps.githubWebhookBus,
+      auditSink: deps.githubAuditSink,
+    });
+  }
+
   // Phase 6 webhook routes — flag-gated; raw body captured inside the router
   // before any JSON parse so HMAC verification sees exact on-the-wire bytes.
   if (url.pathname.startsWith("/v1/webhooks/")) {
@@ -536,6 +565,15 @@ export async function handle(req: Request): Promise<Response> {
       return json({ error: "unknown webhook source", code: "UNKNOWN_SOURCE" }, { status: 404 });
     }
     return handleWebhook(req, source, getDeps());
+  }
+
+  // Prometheus text-exposition endpoint (PRD §11.8). Returns the combined
+  // set of defined GitHub-integration metrics (counters / gauges / histograms).
+  if (req.method === "GET" && url.pathname === "/metrics") {
+    return new Response(renderPrometheus(), {
+      status: 200,
+      headers: { "content-type": "text/plain; version=0.0.4" },
+    });
   }
 
   if (url.pathname === "/v1/admin/policy-flip") {
