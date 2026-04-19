@@ -255,3 +255,118 @@ export async function getLocalDataFor(filter: SourceFilter): Promise<LocalData> 
     peakBlockTokens,
   };
 }
+
+export type WindowKey = "7d" | "30d" | "90d" | "all";
+
+const WINDOW_DAYS: Record<Exclude<WindowKey, "all">, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
+
+/**
+ * Returns a LocalData view filtered to a time window AND (optionally) a
+ * single source. Rebuilds mergeAll + buildAnalytics + blocks from the
+ * filtered sessions so every downstream tile reflects the window without
+ * drifting. "all" + no filter returns the base (no recomputation).
+ */
+export async function getLocalDataWindowed(
+  window: WindowKey,
+  filter: SourceFilter,
+): Promise<LocalData> {
+  const base = await getLocalData();
+  if (window === "all" && !filter) return base;
+
+  const cutoff =
+    window === "all" ? 0 : Date.now() - WINDOW_DAYS[window] * 24 * 60 * 60 * 1000;
+
+  const afterCutoff = (iso: string | undefined): boolean => {
+    if (!iso) return false;
+    const t = Date.parse(iso);
+    return Number.isFinite(t) && t >= cutoff;
+  };
+
+  const claude =
+    !filter || filter === "claude-code"
+      ? base.claude && {
+          ...base.claude,
+          sessions: base.claude.sessions.filter((s) => afterCutoff(s.firstTimestamp)),
+        }
+      : null;
+  const codex =
+    !filter || filter === "codex"
+      ? base.codex && {
+          ...base.codex,
+          sessions: base.codex.sessions.filter((s) => afterCutoff(s.createdAt)),
+        }
+      : null;
+  const cursor =
+    !filter || filter === "cursor"
+      ? base.cursor && {
+          ...base.cursor,
+          sessions: base.cursor.sessions.filter((s) => afterCutoff(s.createdAt)),
+        }
+      : null;
+  const goose =
+    !filter || filter === "goose"
+      ? base.goose && {
+          ...base.goose,
+          sessions: base.goose.sessions.filter((s) => afterCutoff(s.createdAt)),
+        }
+      : null;
+
+  const merged = mergeAll(claude, codex, cursor, goose);
+  const analytics = buildAnalytics(merged);
+
+  const sources: SourceRollup[] = base.sources.map((s) => {
+    const picked =
+      s.key === "claude-code"
+        ? claude
+        : s.key === "codex"
+          ? codex
+          : s.key === "cursor"
+            ? cursor
+            : s.key === "goose"
+              ? goose
+              : null;
+    if (!picked) return { ...s, sessions: 0, tokens: 0, cost: 0, activeDays: 0 };
+    const sess = picked.sessions;
+    const tss =
+      s.key === "claude-code"
+        ? sess.map((x) => (x as { firstTimestamp: string }).firstTimestamp)
+        : sess.map((x) => (x as { createdAt: string }).createdAt);
+    return {
+      ...s,
+      sessions: sess.length,
+      tokens:
+        s.key === "cursor"
+          ? 0
+          : sess.reduce(
+              (acc, x) =>
+                acc +
+                ((x as { inputTokens?: number }).inputTokens ?? 0) +
+                ((x as { outputTokens?: number }).outputTokens ?? 0),
+              0,
+            ),
+      cost: sess.reduce((acc, x) => acc + ((x as { costUsd?: number }).costUsd ?? 0), 0),
+      activeDays: activeDaysFromTimestamps(tss),
+    };
+  });
+
+  const entries = entriesFromSources(claude, codex, cursor);
+  const blocks = buildBlocks(entries, Date.now());
+  const activeBlock = snapshotActive(blocks, Date.now());
+  const peakBlockTokens = historicalPeakTokens(blocks);
+
+  return {
+    claude,
+    codex,
+    cursor,
+    goose,
+    analytics,
+    sources,
+    blocks,
+    activeBlock,
+    peakBlockTokens,
+  };
+}
