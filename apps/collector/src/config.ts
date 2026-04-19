@@ -268,5 +268,8 @@ export function loadConfigWithSources(
   return { config, sources };
 }
 
-/** Collector version — surfaced by `bematist --version` / `status`. */
-export const COLLECTOR_VERSION = "0.1.0";
+/** Collector version — surfaced by `bematist --version` / `status`.
+ *  Keep in sync with apps/collector/package.json at release time. A future
+ *  improvement is to inject this from package.json via a build step; for
+ *  now it's manually bumped per tag. */
+export const COLLECTOR_VERSION = "0.1.5";

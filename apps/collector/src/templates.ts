@@ -26,7 +26,11 @@ export const LAUNCHD_PLIST_TMPL = `<?xml version="1.0" encoding="UTF-8"?>
   <array>
     <string>/bin/sh</string>
     <string>-c</string>
-    <string>[ -f "@HOME@/.bematist/config.env" ] &amp;&amp; . "@HOME@/.bematist/config.env"; exec "@BIN@" serve</string>
+    <!-- set -a auto-exports assignments so sourcing config.env makes
+         the values visible to the exec-d binary. Without auto-export,
+         POSIX "." only sets shell-locals, which is how BEMATIST_TOKEN
+         went missing and crashed the daemon 37 times. -->
+    <string>set -a; [ -f "@HOME@/.bematist/config.env" ] &amp;&amp; . "@HOME@/.bematist/config.env"; set +a; exec "@BIN@" serve</string>
   </array>
 
   <key>RunAtLoad</key>
