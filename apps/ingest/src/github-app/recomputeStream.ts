@@ -97,3 +97,39 @@ export class InMemoryRecomputeStream implements RecomputeStreamProducer {
 export function createInMemoryRecomputeStream(): InMemoryRecomputeStream {
   return new InMemoryRecomputeStream();
 }
+
+/**
+ * Minimal node-redis v4 XADD surface. `LinkerConsumer` in
+ * apps/worker/src/github-linker already wraps node-redis with `any`; we
+ * mirror that here so the worker can hand the same client to both.
+ */
+// biome-ignore lint/suspicious/noExplicitAny: node-redis types are large & version-dependent
+export type RedisXAddClient = { xAdd: (...args: any[]) => Promise<string> };
+
+/**
+ * Redis-backed producer for `session_repo_recompute:<tenant>`. The consumer
+ * in `apps/worker/src/github-linker/messageShape.ts` already decodes the
+ * shape produced here — the full message JSON is written under a single
+ * `body` field for parity with `encodeWebhookMessage`.
+ */
+export class RedisRecomputeStream implements RecomputeStreamProducer {
+  private closed = false;
+  constructor(private readonly redis: RedisXAddClient) {}
+
+  async publish(msg: RecomputeMessage): Promise<string> {
+    if (this.closed) throw new Error("recompute-stream:closed");
+    const stream = `session_repo_recompute:${msg.tenant_id}`;
+    // xAdd writes a Record<string,string>. We stringify the whole message
+    // into `body` — the decoder tolerates both this shape and flat fields.
+    const id = await this.redis.xAdd(stream, "*", { body: JSON.stringify(msg) });
+    return id;
+  }
+
+  async close(): Promise<void> {
+    this.closed = true;
+  }
+}
+
+export function createRedisRecomputeStream(redis: RedisXAddClient): RedisRecomputeStream {
+  return new RedisRecomputeStream(redis);
+}

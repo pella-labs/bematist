@@ -178,14 +178,38 @@ async function startKafkaGithubConsumerLoop(): Promise<void> {
     .filter((s) => s.length > 0);
   const finalBrokers = brokers.length > 0 ? brokers : ["localhost:9092"];
 
-  // Recompute producer — the in-memory test double is fine here because the
-  // linker already consumes from session_repo_recompute:* via its own node-
-  // redis client. This emitter is kept for future wiring symmetry; for G2
-  // it's a no-op so the consumer's UPSERT path is exercised end-to-end
-  // without double-publishing recompute events.
-  const { createInMemoryRecomputeStream } = await import(
+  // B4 — real Redis recompute producer. Previously wired to the in-memory
+  // test double, which meant webhook UPSERTs never produced stream entries
+  // for the linker consumer to pick up, so `session_repo_links` +
+  // `session_repo_eligibility` never materialised. The consumer in this
+  // same process reads via its own node-redis client — using a shared
+  // client here gets published entries straight onto the stream the
+  // consumer is already watching.
+  const { createRedisRecomputeStream, createInMemoryRecomputeStream } = await import(
     "../../ingest/src/github-app/recomputeStream"
   );
+  const recompute = await (async () => {
+    if (process.env.LINKER_CONSUMER_ENABLED === "0" || process.env.NODE_ENV === "test") {
+      return createInMemoryRecomputeStream();
+    }
+    const mod = await import("redis");
+    const url = process.env.REDIS_URL ?? "redis://localhost:6379";
+    // biome-ignore lint/suspicious/noExplicitAny: node-redis types
+    const redis = (mod as any).createClient({ url });
+    redis.on("error", (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(
+        JSON.stringify({
+          level: "error",
+          app: "worker-github",
+          msg: "recompute-producer-redis-error",
+          err: msg,
+        }),
+      );
+    });
+    await redis.connect();
+    return createRedisRecomputeStream(redis);
+  })();
 
   await startKafkaGithubConsumer(
     {
@@ -195,7 +219,7 @@ async function startKafkaGithubConsumerLoop(): Promise<void> {
     },
     {
       sql: pgClient,
-      recompute: createInMemoryRecomputeStream(),
+      recompute,
     },
   );
   console.log("[worker] kafka github consumer started", {
