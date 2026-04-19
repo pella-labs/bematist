@@ -44,10 +44,15 @@ interface LoginOptions {
 }
 
 function parseArgs(args: string[]): LoginOptions {
-  let webUrl =
-    process.env.BEMATIST_WEB_URL ??
-    process.env.BEMATIST_ENDPOINT?.replace(/(^|\.)ingest(\.|$)/, "$1web$2") ??
-    DEFAULT_WEB_URL;
+  // webUrl is the web backend (Next.js); BEMATIST_ENDPOINT is the ingest
+  // backend (OTLP + /v1/events). They are architecturally separate
+  // services, so don't try to derive one from the other — a previous
+  // regex-based ingest→web substitution silently fell through for
+  // hyphen-delimited hostnames (e.g. Railway's
+  // `ingest-development.up.railway.app`) and the CLI hit a 404 because
+  // the derived URL stayed on the ingest host. Callers that run their
+  // own web backend set BEMATIST_WEB_URL or pass --web-url.
+  let webUrl = process.env.BEMATIST_WEB_URL ?? DEFAULT_WEB_URL;
   let printOnly = false;
   let force = false;
 
