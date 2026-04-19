@@ -261,6 +261,86 @@ suite("LinkerConsumer — Redis + Postgres integration", () => {
     await redis.del(stream);
   });
 
+  test("B4a — windowMs=30_000: ids remain in XPENDING until window flushes", async () => {
+    const stream = `${STREAM_PREFIX}${tenantId}`;
+    await preCreateGroup(stream);
+    for (let i = 0; i < 3; i++) {
+      await redis.xAdd(stream, "*", {
+        schema_version: "1",
+        tenant_id: tenantId,
+        installation_id: "i1",
+        trigger: "webhook_pr_upsert",
+        session_id: sessionId,
+        payload: "{}",
+      });
+    }
+
+    let clock = 1_000;
+    const consumer = createLinkerConsumer(
+      {
+        redis,
+        sql,
+        loadInputs: async () => baseInputs(),
+      },
+      { blockMs: 50, windowMs: 30_000, now: () => clock },
+    );
+
+    // First tick reads all 3 messages; window not yet due → no flush, no ACK.
+    const t1 = await consumer.tick();
+    expect(t1.messagesRead).toBe(3);
+    expect(t1.emissions).toBe(0);
+    expect(t1.ackIds).toBe(0);
+    const pending1 = await redis.xPending(stream, "linker");
+    expect(pending1.pending).toBe(3);
+
+    // Advance clock past windowMs; next tick flushes + ACKs all 3.
+    clock += 30_000;
+    const t2 = await consumer.tick();
+    expect(t2.emissions).toBe(1);
+    expect(t2.ackIds).toBe(3);
+    const pending2 = await redis.xPending(stream, "linker");
+    expect(pending2.pending).toBe(0);
+
+    await cleanupTenant(tenantId);
+    await redis.del(stream);
+  });
+
+  test("B4a — loadInputs throws: ids stay in XPENDING, no ACK", async () => {
+    const stream = `${STREAM_PREFIX}${tenantId}`;
+    await preCreateGroup(stream);
+    await redis.xAdd(stream, "*", {
+      schema_version: "1",
+      tenant_id: tenantId,
+      installation_id: "i1",
+      trigger: "webhook_pr_upsert",
+      session_id: sessionId,
+      payload: "{}",
+    });
+
+    const consumer = createLinkerConsumer(
+      {
+        redis,
+        sql,
+        loadInputs: async () => {
+          throw new Error("downstream unavailable");
+        },
+      },
+      { blockMs: 50, windowMs: 0 /* fire immediately */ },
+    );
+
+    await expect(consumer.tick()).rejects.toThrow("downstream unavailable");
+
+    const pending = await redis.xPending(stream, "linker");
+    expect(pending.pending).toBe(1);
+
+    // Retry-pending gauge surfaces the backlog depth.
+    const depth = await consumer.retryPendingDepth(stream);
+    expect(depth).toBeGreaterThanOrEqual(1);
+
+    await cleanupTenant(tenantId);
+    await redis.del(stream);
+  });
+
   test("encodes webhook message via helper → decoder roundtrips", async () => {
     const fields = encodeWebhookMessage({
       schema_version: 1,
