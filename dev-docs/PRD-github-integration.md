@@ -22,7 +22,7 @@ GitHub becomes Bematist's first authoritative repo-attribution backend AND the p
 
 **Size target:** GitHub Integration v1 = **L** in aggregate (webhook receiver + schema + scoring + manager surfaces), composed of phases that each size **S / M / L** — no **XL** phase.
 
-**What ships at MVP:** GitHub App install/webhook pipeline, HMAC-validated ingest, Postgres persistence for 6 GitHub-domain tables, `session_repo_links` derived linkage surface, `session_repo_eligibility` physical table, and CORE scoring signals (first-push-green, PR size, CODEOWNERS, author_association, review-churn-inverse, security-clean). STRETCH = deploy-per-dollar (Sprint 3 if F15 soak is clean). Issue-cycle-time + Copilot Metrics + GHES → Phase 2.
+**What ships at MVP:** GitHub App install/webhook pipeline, HMAC-validated ingest, Postgres persistence for 5 GitHub-domain tables, `session_repo_links` derived linkage surface, `session_repo_eligibility` physical table, and CORE scoring signals (first-push-green, PR size, CODEOWNERS, author_association). STRETCH = deploy-per-dollar (Sprint 3 if F15 soak is clean). Review-churn + security-alert correlation + issue-cycle-time + Copilot Metrics + GHES → Phase 2.
 
 ---
 
@@ -61,7 +61,7 @@ All open questions from `docs/github.md §Open questions` are closed. No open qu
 | 5 | ~~Works-council default profile?~~ | **Dropped.** US-market focus; EU compliance owned by a separate workstream via env flags. | — |
 | 6 | CODEOWNERS multi-owner resolution? | **Non-exclusive set attribution** — all matching teams credited; session deduped by `session_id` at org rollup. | D47 |
 | 7 | Deployment provider diversity? | `HAS_DEPLOYMENT_SIGNAL(repo) := COUNT(deployment webhooks in 30d) ≥ 3 AND distinct environments ≥ 1`. When false, deploy tiles render `insufficient data` (never zero-fill). | D60 |
-| 8 | Secret-scanning cost on high-volume orgs? | 30-day retention; IC-private drill + manager aggregate-only at team grain (k≥10). No per-repo throttle at v1 scale (~500 alerts/day at 10k devs). | D38 |
+| 8 | Secret-scanning cost on high-volume orgs? | **Deferred to Phase 2.** Security-alert correlation is not in v1; question revisits when the Phase-2 module ships with its own decision (slot reserved for D38). | — |
 | 9 | `session_repo_links` storage at scale? | **Postgres confirmed.** Monthly RANGE partition on `computed_at`, 180-day retention, DROP PARTITION GC. Plan B (ClickHouse dictionary) triggered on measured p95 IN-list join >500ms for 3 consecutive days OR >100M rows. | D52 |
 | 10 | Alias map retirement SLO? | **180d active + 365d cold archive + hard delete.** | D55 |
 
@@ -76,14 +76,14 @@ Effort bands per the PRD size rubric. Manager value scored against moving Bemati
 | 1 | **first-push-green** | outcome_quality_v1.1 (0.25) | **M** | **High** — cleanest "did AI ship green" proxy | **CORE** | MAE≤3 on 650-case fixture |
 | 2 | **deployment-as-outcome** | outcome_quality_v1.1 (0.15) | **L** | **High** — closest to business value / $ without 2nd-order LLM | **STRETCH** (Sprint 3 if F15 clean) | Prod-env allowlist per repo |
 | 3 | **PR size denominator** | efficiency_v1 (secondary) | **S** | **Med** — normalizes backend vs frontend cohorts | **CORE** | `linguist-generated` stripper tested |
-| 4 | **review churn inverse** | outcome_quality_v1.1 (0.10) | **M** | **Med** — rework signal; time-to-approval never ranked (D49) | **CORE** | Bot-reviewer exclusion test |
+| 4 | **review churn inverse** | outcome_quality_v1.1 | **M** | **Med** — noisy across team cultures | **PHASE 2** | Needs cohort-of-teams fixture work |
 | 5 | **issue-to-merge cycle** | insight tile only | **M** | **Med** — narrative tile; too noisy for subscore at v1 | **PHASE 2** | `closes #N` regex + link resolution tests |
 | 6 | **CODEOWNERS ownership** | cohort stratifier (step-2) | **M** | **High** — kills backend-vs-frontend Goodhart | **CORE** | Multi-owner set rule (D47) |
-| 7 | **security-clean (penalty)** | outcome_quality_v1.1 (−0.05, penalty-only) | **M** | **High** — trust/safety signal; IC-private drill | **CORE** | Never per-IC manager view (D38) |
+| 7 | **security-alert correlation** | (Phase 2) | **L** | **Med (v1)** — penalty-only, needs API denylist | **PHASE 2** | IC-private drill + composite-exclusion CI fixture |
 | 8 | **Copilot Metrics API** | adoption_depth_v1 (org-level) | **S** | **Low (v1)** — baseline, not per-IC | **PHASE 2** | `copilot` scope granted |
 | 9 | **author_association** | cohort stratifier (step-2) | **S** | **High** — junior/senior apples-to-apples | **CORE** | A4 tier mapping locked |
 
-**CORE = signals 1, 3, 4, 6, 7, 9.** All either cohort-normalization inputs or single additive terms in `outcome_quality_v1.1`. STRETCH = deploy-per-dollar (introduces a new outcome event type that shifts MAE, require fixture expansion to 650 cases). PHASE-2 = issue-cycle + Copilot Metrics (each needs NLP or enterprise-only scope).
+**CORE = signals 1, 3, 6, 9.** All either cohort-normalization inputs or single additive terms in `outcome_quality_v1.1`. STRETCH = deploy-per-dollar (introduces a new outcome event type that shifts MAE, require fixture expansion to 650 cases). PHASE-2 = review-churn, issue-cycle, security-alert, Copilot Metrics (each adds engineering surface — denylist work, NLP, or enterprise-only scope — for marginal v1 manager value).
 
 ---
 
@@ -98,7 +98,7 @@ Effort bands per the PRD size rubric. Manager value scored against moving Bemati
 - `packages/fixtures/` holds per-IDE contract fixtures.
 - Existing GitHub scaffolding on main: `apps/ingest/src/github-app/{jwt,token-cache,reconcile}.ts`, `apps/ingest/src/webhooks/{verify,router,github,gitEventsStore}.ts`. Pick up from there; do not rebuild.
 
-This PRD adds: 9 new Postgres tables + derived linkage surface + 6 CORE scoring modules + fixture capture tool + admin UI for GitHub connection.
+This PRD adds: 8 new Postgres tables + derived linkage surface + 4 CORE scoring modules + fixture capture tool + admin UI for GitHub connection. (Security-alerts table + 2 scoring modules deferred to Phase 2.)
 
 ---
 
@@ -177,7 +177,6 @@ Bun worker (apps/worker/github) consumer group:
 - `github_check_suites` — CI state keyed on `(tenant_id, provider_repo_id, head_sha, suite_id)`
 - `github_deployments` — keyed on `(tenant_id, provider_repo_id, deployment_id)`
 - `github_code_owners` — parsed CODEOWNERS, content-hash invalidation
-- `github_security_alerts` — secret_scanning + code_scanning + dependabot union (IC-private drill — D38)
 - `session_repo_links` — derived linkage, monthly RANGE partition, 180-d retention
 - `session_repo_eligibility` — physical table (not MV), same-txn co-write
 - `repo_id_hash_aliases` — `migrated_at + 180d + 365d cold archive + delete` SLO
@@ -200,8 +199,6 @@ Not compliance. Product correctness — these are the Goodhart-defense and trust
 | k≥5 team cohort floor | Manager-facing team tiles render "insufficient cohort" below k=5 | CLAUDE.md §6.4 already locked; prevents re-identification in small teams |
 | Manager-view audit (D30) | Every manager drill into an IC page writes `audit_events`; IC gets daily digest by default | Already locked in main PRD; not renegotiated here |
 | `/me?user=<other>` backdoor | Manager hitting another IC's `/me` returns 403 + `audit_events` row | Explicit authz check + E2E merge-blocker test |
-| Security-alert drill (D38) | IC-private by default. Manager aggregate-only at team grain with k≥10 (tighter than general k≥5). NEVER feeds `ai_leverage_v1` — hard exclusion in `packages/scoring` with a CI fixture that fails if a future commit wires it in. | Prevents "who caused CVE-2026-X" becoming a disciplinary-proxy surface. Simple product rule; no ritual, no cooldown. |
-| Review timing | `changes_requested / total_reviews` is the only visible metric (D49). Time-to-approval never ranked, never per-IC. | Non-goal in CLAUDE.md §2.3 (no review-speed ranking) |
 | No per-engineer leaderboard | Non-goal reaffirmed. 2×2 manager view shows cohort scatter with identity hidden unless IC opts in. | Main PRD non-goal unchanged |
 
 ### 8.2 Tenant erasure
@@ -273,9 +270,6 @@ CREATE TABLE github_pull_requests (
   deletions                 integer     NOT NULL DEFAULT 0,
   changed_files             integer     NOT NULL DEFAULT 0,
   commits_count             integer     NOT NULL DEFAULT 0,
-  first_review_at           timestamptz NULL,
-  first_approval_at         timestamptz NULL,
-  changes_requested_count   integer     NOT NULL DEFAULT 0,
   opened_at                 timestamptz NOT NULL,
   closed_at                 timestamptz NULL,
   merged_at                 timestamptz NULL,
@@ -350,32 +344,7 @@ CREATE INDEX gh_co_active_idx
   WHERE superseded_at IS NULL;
 ```
 
-### 9.6 `github_security_alerts`
-
-```sql
-CREATE TABLE github_security_alerts (
-  tenant_id            uuid        NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
-  provider_repo_id     varchar(32) NOT NULL,
-  alert_id             bigint      NOT NULL,
-  kind                 text        NOT NULL CHECK (kind IN ('code_scanning','secret_scanning','dependabot')),
-  rule_id              text        NOT NULL,
-  severity             text        NULL,
-  state                text        NOT NULL
-                         CHECK (state IN ('open','dismissed','fixed','resolved','auto_dismissed')),
-  linked_commit_sha    char(40)    NULL,
-  linked_pr_number     integer     NULL,
-  opened_at            timestamptz NOT NULL,
-  resolved_at          timestamptz NULL,
-  updated_at           timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (tenant_id, provider_repo_id, kind, alert_id)
-);
-CREATE INDEX gh_sec_linked_sha_idx ON github_security_alerts(tenant_id, linked_commit_sha)
-  WHERE linked_commit_sha IS NOT NULL;
-CREATE INDEX gh_sec_linked_pr_idx  ON github_security_alerts(tenant_id, provider_repo_id, linked_pr_number)
-  WHERE linked_pr_number IS NOT NULL;
-```
-
-### 9.7 `session_repo_links` (partitioned, critical path)
+### 9.6 `session_repo_links` (partitioned, critical path)
 
 ```sql
 CREATE TABLE session_repo_links (
@@ -406,7 +375,7 @@ CREATE INDEX        ON session_repo_links_2026_04 (tenant_id, stale_at) WHERE st
 
 **Retention:** 180 days, DROP PARTITION (not DELETE, not TTL).
 
-### 9.8 `session_repo_eligibility` (physical table, D54)
+### 9.7 `session_repo_eligibility` (physical table, D54)
 
 ```sql
 CREATE TABLE session_repo_eligibility (
@@ -422,7 +391,7 @@ CREATE TABLE session_repo_eligibility (
 CREATE INDEX sre_tenant_eligible_idx ON session_repo_eligibility(tenant_id, eligible, effective_at DESC);
 ```
 
-### 9.9 `repo_id_hash_aliases`
+### 9.8 `repo_id_hash_aliases`
 
 ```sql
 CREATE TABLE repo_id_hash_aliases (
@@ -442,7 +411,7 @@ CREATE INDEX rha_new_idx     ON repo_id_hash_aliases(tenant_id, new_hash);
 
 **Retirement worker** (daily): after `retires_at`, export row to S3-equivalent (HMAC'd parquet), set `archived_at`. After `retires_at + 365d`, hard delete. **D55.**
 
-### 9.10 Extensions to existing tables
+### 9.9 Extensions to existing tables
 
 ```sql
 ALTER TABLE repos
@@ -481,7 +450,7 @@ ALTER TABLE orgs
 3. `VALIDATE CONSTRAINT` once scan completes.
 4. Rollback rehearsed in `db:migrate:pg -- --rollback 20260418_github_schema`.
 
-### 9.11 RLS policy template
+### 9.10 RLS policy template
 
 Applied to every new table:
 
@@ -674,22 +643,18 @@ If false: "Deploy frequency" and "MTTR" tiles render `insufficient data`. Never 
 | `github_first_push_green_v1.ts` | outcome_quality_v1.1 (0.25) | `count(push where matching check_suite.conclusion='success' within 30min) / count(push with ≥1 check_suite)` | k≥5 team; ≥3 pushes with CI in window; suppress repo <2 check_suites/7d; **exclude commit_sha's that pass on re-run within 24h** (flaky-CI filter, D45); require ≥1 non-config file changed per push |
 | `github_deploy_per_dollar_v1.ts` | outcome_quality_v1.1 (0.15) | `count(deployment_status.state='success' joined to merged PR within 24h) / sum(cost_usd of sessions joined to that PR)` | k≥5; suppress repo <1 deploy/week; prod-env allowlist (`^(prod\|production\|live\|main)$` or repo-admin allowlist); 24h revert penalty |
 | `github_pr_size_v1.ts` | efficiency_v1 (secondary) | `accepted_and_retained_edits_per_dollar` unchanged; denominator PR (additions+deletions) | Strip `.gitattributes linguist-generated`; PRs <10 LOC excluded; winsorize p5/p95; test_loc/prod_loc companion (D46) |
-| `github_review_churn_inverse_v1.ts` | outcome_quality_v1.1 (0.10) | `1 - (changes_requested_count / total_reviews)` per PR | k≥5; exclude self-review; exclude `type=Bot`; min 3 reviewed PRs per IC tile; time-to-approval **never ranked, never per-IC** (D49) |
 | `github_codeowners_v1.ts` | cohort stratifier (step-2) | Set-valued: teams touched in session's commits | Contribution-earned override: owner if ≥30% of last-90d commits to path (D47) |
 | `github_author_association_v1.ts` | cohort stratifier (step-2) | Enum → tier (A4) | Never standalone label (D43) |
-| `github_security_clean_v1.ts` | outcome_quality_v1.1 (−0.05, **penalty-only negative**) | `−count(alerts introduced) / count(sessions)` | IC-private drill; manager aggregate k≥10; never positive; never per-IC view (D38) |
 
-**Phase 2 modules:** `github_issue_cycle_v1.ts` (insight tile only until 800-case fixture), `github_copilot_metrics_v1.ts` (org-level, scope-gated).
+**Phase 2 modules:** `github_review_churn_inverse_v1.ts` (needs cross-team-culture fixture work), `github_security_clean_v1.ts` (penalty-only, IC-private, requires API denylist), `github_issue_cycle_v1.ts` (insight tile only until 800-case fixture), `github_copilot_metrics_v1.ts` (org-level, scope-gated).
 
 ### 12.2 `outcome_quality_v1.1` composition (D41)
 
 ```
 outcome_quality_v1.1 =
-    0.40 · useful_output_retained_v1        // unchanged anchor (D12)
+    0.60 · useful_output_retained_v1        // unchanged anchor (D12)
   + 0.25 · first_push_green_rate_v1         // CORE
   + 0.15 · deploy_success_per_dollar_v1     // STRETCH; suppressed if HAS_DEPLOYMENT_SIGNAL=false
-  + 0.10 · review_churn_inverse_v1          // CORE; suppressed if <3 reviewed PRs
-  − 0.05 · security_clean_v1                // CORE; penalty-only negative term
 
 Per-term normalization: raw → winsorize p5/p95 → percentile-rank within cohort.
 ```
@@ -721,7 +686,7 @@ Fallback ladder when k<5: drop `org_tenure_bucket` → drop `codeowner_domain` �
 
 ### 12.4 Eval fixture expansion (D44)
 
-500-case fixture → **650 cases** before `v1.1` merges. Add 150 GitHub-signal cases. Held-out 100 → **150** cases (50 new GitHub-specific). MAE ≤ 3 gate unchanged. 12 new adversarial personas:
+500-case fixture → **650 cases** before `v1.1` merges. Add 150 GitHub-signal cases. Held-out 100 → **150** cases (50 new GitHub-specific). MAE ≤ 3 gate unchanged. 8 new adversarial personas (v1 CORE signals only; 4 personas for Phase-2 signals land with those modules):
 
 1. LOC-padding gamer (×10)
 2. CI-off repo (×10)
@@ -730,11 +695,7 @@ Fallback ladder when k<5: drop `org_tenure_bucket` → drop `codeowner_domain` �
 5. Backend vs frontend apples-to-oranges (×15)
 6. Deploy-spam staging gamer (×10)
 7. CI-flakiness-blamed-on-dev (×15)
-8. Approval-stamping team (×10)
-9. Revert-heavy high-LOC (×15)
-10. Security-alert injector (×10)
-11. No-CODEOWNERS generalist (×10)
-12. Cross-boundary 3-domain contributor (×10)
+8. Revert-heavy high-LOC (×15)
 
 Merge-blocking on any scoring-math change.
 
@@ -787,10 +748,10 @@ No surface merges without all nine steps green. No fixture-less tests. No mocked
 
 **Prerequisites:** G0 done. Drizzle migration runner healthy. Redpanda broker up.
 
-- Drizzle migrations for all 9 new tables + 3 existing-table extensions (§9).
+- Drizzle migrations for all 8 new tables + 3 existing-table extensions (§9).
 - Backfill worker for `repos.provider_repo_id`, `git_events.repo_id_hash`, `repo_id_hash_aliases` seeding.
 - Webhook secret rotation (D55) with 1-min eviction cron.
-- `apps/worker/github` consumer: parse → UPSERT 6 domain tables.
+- `apps/worker/github` consumer: parse → UPSERT 5 domain tables (PRs, check_suites, deployments, code_owners, plus git_events extension write).
 - Linker worker: Redis Streams consumer, 30-s coalescer, pure-function state (D53), same-txn write to `session_repo_links` + `session_repo_eligibility`.
 - PgBoss cron: monthly partition creator (T-7d), alias retirement worker (daily), hourly reconciliation scaffold.
 - Initial repo sync: paginated `GET /installation/repositories`, rate-limit-aware, progress surfaced in admin UI.
@@ -807,7 +768,7 @@ No surface merges without all nine steps green. No fixture-less tests. No mocked
 6. 1 initial sync pagination + rate-limit test.
 7. 1 initial-sync-concurrency-cap test (≤5 tenants per worker).
 8. 1 installation-suspend-mid-session `stale_at` test.
-9. 9 RLS cross-tenant probes (one per new table).
+9. 8 RLS cross-tenant probes (one per new table).
 10. 1 repo-rename-preserves-hash test (captured rename fixture).
 11. 1 manager-backdoor authz E2E test (`/me?user=<other>` → 403 + `audit_events`).
 
@@ -819,20 +780,18 @@ No surface merges without all nine steps green. No fixture-less tests. No mocked
 
 **Prerequisites:** G1 done. `session_repo_eligibility` populated with at least one week of production traffic for fixture calibration.
 
-- `github_first_push_green_v1`, `github_pr_size_v1`, `github_codeowners_v1`, `github_author_association_v1`, `github_review_churn_inverse_v1`, `github_security_clean_v1` modules in `packages/scoring/`.
+- `github_first_push_green_v1`, `github_pr_size_v1`, `github_codeowners_v1`, `github_author_association_v1` modules in `packages/scoring/`.
 - `outcome_quality_v1.1` composition with suppression re-normalization and confidence formula update.
 - Cohort key (D42) wired into step-2 of `ai_leverage_v1` locked math — additive, not a math change.
-- Fixture expansion: 500 → 650 cases; held-out 100 → 150; 12 adversarial personas.
+- Fixture expansion: 500 → 650 cases; held-out 100 → 150; 8 adversarial personas (the 4 specific to dropped signals deferred to Phase 2).
 - `bun run test:scoring` MAE ≤ 3 gate runs against the expanded fixture; merge-blocking.
-- Admin APIs per contract 07 additions (§14): 7 new endpoints.
+- Admin APIs per contract 07 additions (§14): 8 new endpoints.
 
 **Tests (red first, in order):**
-1. 6 scoring-module tests (1 per CORE signal, red against the 650-case fixture, green after implementation).
-2. 12 adversarial persona fixture cases (specifically stress each signal's gameability guard).
+1. 4 scoring-module tests (1 per CORE signal, red against the 650-case fixture, green after implementation).
+2. 8 adversarial persona fixture cases (stressing each CORE signal's gameability guard).
 3. 1 suppression-renormalization test (no-deploy repo is not penalized to zero).
-4. 1 `security_clean_v1` never-positive-weight test (hard exclusion from positive composite).
-5. 1 `security_clean_v1` never-per-IC-manager-view test (API denylist + `audit_events`).
-6. Existing 500-case regression holds (MAE ≤ 3 on old fixture AND new 650-case).
+4. Existing 500-case regression holds (MAE ≤ 3 on old fixture AND new 650-case).
 
 **Done when:** all G2 tests green; MAE ≤ 3 on 650-case fixture; per-signal gameability tests green.
 
@@ -864,9 +823,9 @@ No surface merges without all nine steps green. No fixture-less tests. No mocked
 - 23 webhook parser contract tests
 - 4 linker commutativity (golden-replay)
 - 3 eligibility resolution
-- 6 CORE + 1 STRETCH scoring module tests
-- 12 adversarial persona fixture tests
-- 9 RLS cross-tenant probes
+- 4 CORE + 1 STRETCH scoring module tests
+- 8 adversarial persona fixture tests
+- 8 RLS cross-tenant probes (one per new table)
 - 4 boot-fail-closed
 - 1 webhook HMAC 401 + audit_log test
 - 1 manager-backdoor authz E2E
@@ -874,11 +833,13 @@ No surface merges without all nine steps green. No fixture-less tests. No mocked
 - 1 fixture-redaction privacy test
 - 1 erase-org-github E2E
 
-Total: **~66 new tests**, well above CLAUDE.md §10 minimum for Workstream I (≥5).
+Total: **~55 new tests**, well above CLAUDE.md §10 minimum for Workstream I (≥5).
 
 ### Phase G4 — Phase 2 (post-MVP)
 
 **Size: L aggregate**, split into sub-phases of M each:
+- Review-churn-inverse scoring + cross-team-culture fixture work.
+- Security-alert correlation: `github_security_alerts` table, IC-private drill in `/me`, manager aggregate-only at team grain k≥10, hard exclusion from positive composite, API denylist.
 - Issue-cycle-time (`closes #` / `fixes #` regex + link resolver → insight tile; subscore gated on fixture expansion to 800 cases).
 - Copilot Metrics daily cron (org-level only, `copilot` scope gated).
 - GHES Server full code path (schema additions, `api_base_url` switching, delivery-log parser, rate-limit table).
@@ -918,8 +879,8 @@ All return types + inputs live as Zod schemas in `packages/api/src/schemas/githu
 | 5 | **Architecture Rule #9** — Partition by `(tenant_id, engineer_id, day)` in ClickHouse events. | `session_repo_links` partitioned by `computed_at` monthly in Postgres. | **No conflict — different DB.** Rule #9 is a ClickHouse constraint; `session_repo_links` is Postgres control-plane. |
 | 6 | **D14** — Idempotency via Redis SETNX on `(tenant_id, session_id, event_seq)` for ingest events. | Webhook idempotency via Redis SETNX on `X-GitHub-Delivery`. | **Same pattern, different key.** D34 parallels D14 without overriding it. |
 | 7 | **Rule #7** — Single-writer pattern for ClickHouse from Bun; Plan B = Go side-car on flake. | `session_repo_links` is Postgres-only, no CH writes from linker. | **No conflict.** Linker does not write ClickHouse; only daily Postgres → CH dictionary sync path writes. |
-| 8 | **CLAUDE.md §Non-goals** — no per-engineer leaderboards, no real-time per-engineer feed, no second-order LLM coaching. | Review-timing / security-alert signals are sensitive. | **D38 + D49 collectively enforce:** no per-IC leaderboard surface; review-timing never ranked per-IC; security-alert correlation IC-private by default with denylist at API layer; cohort stratification hides identity at team tile. |
-| 9 | **INT9** — RLS cross-tenant probe is merge-blocker. | 9 new tables. | **Extended:** §9.11 + Phase G1 adds all 9 to the probe. Merge-blocker maintained. |
+| 8 | **CLAUDE.md §Non-goals** — no per-engineer leaderboards, no real-time per-engineer feed, no second-order LLM coaching. | None of the v1 CORE signals are individually sensitive: first-push-green is team-aggregate, PR-size is a denominator, CODEOWNERS is cohort, author_association is GitHub-canonical. | **No conflict.** Sensitive signals (review-timing, security-alert) are deferred to Phase 2 specifically so the guard-rail engineering can land alongside the signal, not retrofitted under deadline pressure. |
+| 9 | **INT9** — RLS cross-tenant probe is merge-blocker. | 8 new tables. | **Extended:** §9.10 + Phase G1 adds all 8 to the probe. Merge-blocker maintained. |
 
 **No silent override.** Every D-number additive and every rule additive.
 
@@ -931,7 +892,6 @@ All return types + inputs live as Zod schemas in `packages/api/src/schemas/githu
 |---|---|---|---|
 | **D33** | `provider_repo_id` (VARCHAR, GitHub's stable numeric ID) is the cross-provider key. `repo_id_hash = hmac(tenant_salt, provider \|\| ':' \|\| provider_repo_id)`. | Data | Survives repo rename + transfer; portable to GitLab/Bitbucket. |
 | **D34** | Webhook idempotency: Redis SETNX on `X-GitHub-Delivery`, 7-day TTL. | Infra | Parallels D14; authoritative over any CH/PG dedup. |
-| **D38** | Security-alert correlation: IC-private by default; manager aggregate-only at team grain k≥10; NEVER feeds `ai_leverage_v1` positively (penalty-only); 30-d retention (below Tier-B). No disciplinary-use clause in customer contract. Hard exclusion in `packages/scoring` with a CI fixture that fails if a future commit wires it in positively. | Product | Prevents "who caused CVE-2026-X" becoming a disciplinary-proxy surface. Product-correctness rule, not a jurisdictional compliance rule. |
 | **D41** | `outcome_quality_v1.1` is additive-versioned. Suppression re-normalizes weights across surviving terms; never default-to-zero. | AI/Scoring | D13/D21 compliance; no-deploy-repo penalty avoided. |
 | **D42** | Cohort key = `(task_category, author_association_tier, codeowner_domain, org_tenure_bucket)`; fallback ladder when k<5. | AI/Scoring | Fixes backend-vs-frontend + junior-vs-senior Goodhart in 2×2. |
 | **D43** | `author_association` is GitHub-canonical cohort input. Never rendered as standalone per-IC label. Mapping per A4. | AI/Scoring | GitHub-sourced, not self-report; prevents seniority gameplay. |
@@ -940,7 +900,6 @@ All return types + inputs live as Zod schemas in `packages/api/src/schemas/githu
 | **D46** | PR-size denominator strips `.gitattributes linguist-generated` paths before counting additions/deletions. | AI/Scoring | Kills lockfile/vendor/min.js LOC-padding. |
 | **D47** | CODEOWNERS ownership earned if ≥30% of last-90d commits to path are IC's (static OWNERS file alone insufficient). Multi-owner = non-exclusive set attribution; no primary-owner tiebreak; session deduped by `session_id` at org rollup. | AI/Scoring + Data | Prevents claim-easy-path game; Goodhart-safe. |
 | **D48** | `outcomeEvents` in confidence formula expands to `{accepted_hunks ∪ first_push_green ∪ deploy_success}`. `activeDays` unchanged. | AI/Scoring | More outcome types → meaningful confidence; `√(n/10)` curve unchanged. |
-| **D49** | Review-churn = `changes_requested / total_reviews` only. Time-to-approval never ranked, never displayed per-IC. | AI/Scoring | Non-goal: no review-speed ranking (CLAUDE.md §2.3). |
 | **D50** | Copilot Metrics API feeds `adoption_depth_v1` as org-level baseline only; Phase 2. | AI/Scoring | API is org-aggregated by GitHub; respects D10 (no per-session LLM judgment). |
 | **D51** | Reconciliation cadence: hourly. 15-min upgrade gated on measured webhook-miss rate >1% over 7 days. | Infra | Webhook is the freshness path; reconcile is gap-filler. |
 | **D52** | `session_repo_links` lives in Postgres at v1; monthly RANGE partition on `computed_at`; 180-day retention; DROP PARTITION only. Plan B (ClickHouse dictionary) triggered on measured p95 IN-list join >500ms for 3 consecutive days OR >100M rows. | Data + Infra | Matches recompute semantics; CH dictionary is additive, not replacing. |
@@ -953,7 +912,7 @@ All return types + inputs live as Zod schemas in `packages/api/src/schemas/githu
 | **D59** | Per-tenant API floor: 1 req/sec/installation. Envoy ext_authz token bucket. Exponential backoff on 429; honor `Retry-After` on 403 secondary. | Infra | Conservative within 5k/hr base quota; prevents 429 storms across 500 tenants. |
 | **D60** | Deployment metrics suppress (NOT zero-fill) when `<3` GitHub Deployments webhooks in 30 days. | Infra | False absence beats false precision. |
 
-(Gaps D35–D37, D39–D40 intentional — numbers reserved for future revision if EU/compliance workstream lands decisions that need PRD-series slots.)
+(Gaps D35–D40, D49 intentional — numbers reserved for future revisions: EU/compliance workstream slots, Phase-2 review-churn / security-alert decisions.)
 
 ---
 
@@ -968,11 +927,10 @@ All return types + inputs live as Zod schemas in `packages/api/src/schemas/githu
 | 3 | `session_repo_links` bloat exceeds 100M rows faster than expected | Monthly partition DROP (D52) + Plan B ClickHouse dictionary trigger | `postgres_session_repo_links_in_list_join_seconds` p95 |
 | 4 | GitHub changes webhook payload shape (new required field, deprecation) | Fixture-versioned parsers; contract tests against pinned fixtures (CLAUDE.md Testing Rules) | CI fails on drift; fixture recorder catches diff |
 | 5 | Manager discovers backdoor via `/me?user=<other>` | Explicit authz check + `audit_events` row (D30); E2E test: "manager as IC" returns 403 | E2E test, merge-blocker |
-| 6 | Security-alert correlation accidentally surfaces to manager view via query-builder | Denylist at API layer (not just RLS); scoring-fixture test asserts `security_clean_v1` NEVER positive-weight in composite | Test fails in CI |
-| 7 | Rate-limit exhaustion for one aggressive tenant takes down reconciliation for neighbors | Per-installation quota is GitHub-side isolated; token bucket is per-tenant, not shared; Envoy back-pressure on 429 | `github_api_rate_limit_remaining{installation}` |
-| 8 | MAE regression on expanded 650-case fixture blocks `v1.1` merge | Fixture built during G2; gate enforced pre-merge; signal weights tunable to restore MAE | `bun run test:scoring` CI |
-| 9 | Force-push tombstoning misses a race with concurrent session enrichment | Commutativity test (D53) covers random orderings; `force_pushed_out_at` is additive (not delete) | Golden-replay test, merge-blocker |
-| 10 | Local-dev fixture captures accidentally include real secrets | Fixture-redaction privacy test fails build on real TLDs/PEM/@-symbols; merge-blocker on fixture PRs | CI fails in G0 gate |
+| 6 | Rate-limit exhaustion for one aggressive tenant takes down reconciliation for neighbors | Per-installation quota is GitHub-side isolated; token bucket is per-tenant, not shared; Envoy back-pressure on 429 | `github_api_rate_limit_remaining{installation}` |
+| 7 | MAE regression on expanded 650-case fixture blocks `v1.1` merge | Fixture built during G2; gate enforced pre-merge; signal weights tunable to restore MAE | `bun run test:scoring` CI |
+| 8 | Force-push tombstoning misses a race with concurrent session enrichment | Commutativity test (D53) covers random orderings; `force_pushed_out_at` is additive (not delete) | Golden-replay test, merge-blocker |
+| 9 | Local-dev fixture captures accidentally include real secrets | Fixture-redaction privacy test fails build on real TLDs/PEM/@-symbols; merge-blocker on fixture PRs | CI fails in G0 gate |
 
 ### 17.2 Non-goals (reaffirmed from CLAUDE.md §2.3)
 
@@ -999,7 +957,7 @@ Every requirement in `docs/github.md` maps to a specific phase and test:
 | §Goals 1: persist installations, repos, PRs, commits, workflow runs, check suites, deployments, reviews | G1 | Integration test per parser (12 tests) |
 | §Goals 2: stable repo identity on provider_repo_id | G1 | Rename-preserves-hash test from captured fixture |
 | §Goals 3: one derived linkage surface authoritative for manager-facing | G1 | Eligibility resolution test × 3 |
-| §Goals 4: outcome signals wired to scoring | G2 (CORE 1,3,4,6,7,9), G3 (STRETCH 2) | Scoring module tests |
+| §Goals 4: outcome signals wired to scoring | G2 (CORE 1,3,6,9), G3 (STRETCH 2) | Scoring module tests |
 | §Goals 5: branch is evidence, never eligibility | G1 | Branch-only session returns NOT eligible |
 | §Goals 6: fail closed on missing persistence | G0/G1 | Boot-fail-closed test × 4 |
 | §V1 Guardrails (all 9 bullets) | G1/G2 | Per-guardrail test |
@@ -1008,7 +966,7 @@ Every requirement in `docs/github.md` maps to a specific phase and test:
 | §Initial repo sync 5000-repo | G1 | Pagination + rate-limit test |
 | §Webhook secret rotation | G1 | Dual-accept 10-min window test (D55) |
 | §Out-of-order, force-push, squash, rebase, fork handling | G1/G3 | 6 edge-case fixture tests |
-| §Outcome signals 1–8 | G2 (CORE 1,3,4,6,7,9), G3 (STRETCH 2), G4 (PHASE-2 5,8) | Module + persona tests |
+| §Outcome signals 1–9 | G2 (CORE 1,3,6,9), G3 (STRETCH 2), G4 (PHASE-2 4,5,7,8) | Module + persona tests |
 | §Admin APIs (8) | G2 | API auth + audit tests |
 | §Boot and operational requirements | G0/G1 | Fail-closed + metric exposure test |
 | §Edge cases | G1/G3 | Per-case fixture test |
