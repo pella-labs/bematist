@@ -1,7 +1,9 @@
 import { getInvitePreview } from "@bematist/api";
 import type { GetInvitePreviewResult } from "@bematist/api/schemas/invite";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
+import { getAuth } from "@/lib/auth";
 import { getDbClients } from "@/lib/db";
 import { JoinClient } from "./JoinClient";
 
@@ -35,6 +37,14 @@ export default async function JoinInvitePage({ params }: { params: Promise<{ tok
   const db = getDbClients();
   const preview = await getInvitePreview(db.pg, { token });
 
+  // If the visitor is already signed in, they don't need another OAuth
+  // round-trip — we can send them straight to the accept route. Better
+  // Auth's signIn.social doesn't reliably honor callbackURL when the
+  // session already exists, so avoid relying on that path.
+  const hs = await headers();
+  const session = await getAuth().api.getSession({ headers: hs });
+  const alreadySignedIn = Boolean(session?.user);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen max-w-3xl flex-col px-6 py-10">
@@ -56,7 +66,11 @@ export default async function JoinInvitePage({ params }: { params: Promise<{ tok
 
         <main className="flex flex-1 flex-col items-center justify-center gap-8">
           {preview.ok ? (
-            <ActiveInvite preview={preview} token={token} />
+            <ActiveInvite
+              preview={preview}
+              token={token}
+              alreadySignedIn={alreadySignedIn}
+            />
           ) : (
             <InactiveInvite error={preview.error} />
           )}
@@ -80,9 +94,11 @@ export default async function JoinInvitePage({ params }: { params: Promise<{ tok
 function ActiveInvite({
   preview,
   token,
+  alreadySignedIn,
 }: {
   preview: Extract<GetInvitePreviewResult, { ok: true }>;
   token: string;
+  alreadySignedIn: boolean;
 }) {
   return (
     <div className="flex w-full max-w-md flex-col gap-6 rounded-xl border border-border bg-card p-8 shadow-sm">
@@ -94,15 +110,37 @@ function ActiveInvite({
           Join <span className="text-primary">{preview.org_name}</span> on Bematist
         </h1>
         <p className="text-sm text-muted-foreground">
-          You'll sign in with GitHub and land as{" "}
-          <strong className="font-medium text-foreground">
-            {preview.role === "admin" ? "admin" : "engineer"}
-          </strong>{" "}
-          in {preview.org_name}. We only read your GitHub email and handle — no repo access.
+          {alreadySignedIn ? (
+            <>
+              You'll land as{" "}
+              <strong className="font-medium text-foreground">
+                {preview.role === "admin" ? "admin" : "engineer"}
+              </strong>{" "}
+              in {preview.org_name}.
+            </>
+          ) : (
+            <>
+              You'll sign in with GitHub and land as{" "}
+              <strong className="font-medium text-foreground">
+                {preview.role === "admin" ? "admin" : "engineer"}
+              </strong>{" "}
+              in {preview.org_name}. We only read your GitHub email and handle — no repo
+              access.
+            </>
+          )}
         </p>
       </div>
 
-      <JoinClient token={token} />
+      {alreadySignedIn ? (
+        <Link
+          href={`/post-auth/accept-invite?token=${encodeURIComponent(token)}`}
+          className="inline-flex w-full cursor-pointer items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          Accept invite →
+        </Link>
+      ) : (
+        <JoinClient token={token} />
+      )}
 
       <p className="text-[11px] text-muted-foreground">
         Invite expires{" "}
