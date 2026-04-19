@@ -17,16 +17,34 @@ export interface ServerIdentity {
 }
 
 /**
- * Pricing anchored to the LiteLLM pin in @bematist/config. Values in USD per
- * million tokens. Scope is deliberately minimal — M2 focuses on parse/dedup
- * correctness; the full pricing table lands via packages/config/pricing.ts.
+ * Pricing anchored to LiteLLM and grammata's reference table. Values in USD
+ * per million tokens. Kept in sync with `packages/grammata/src/pricing.ts`
+ * `CODEX_PRICING` so our CH numbers match grammata's session view ±0.
+ *
+ * Composition (matches grammata):
+ *   uncached = input_tokens - cached_input_tokens
+ *   cost = (uncached * input + cached * cached + output * output) / 1e6
+ * `reasoning_output_tokens` is NOT billed separately — matching grammata.
  */
 const MODEL_PRICING_PER_MTOK: Record<string, { input: number; output: number; cached: number }> = {
+  // gpt-5 base (generic OpenAI, not codex-branded).
   "gpt-5": { input: 2.5, output: 10.0, cached: 0.25 },
   "gpt-5-mini": { input: 0.25, output: 2.0, cached: 0.025 },
+  // Codex-branded tunes — pricing mirrors grammata CODEX_PRICING exactly.
+  "gpt-5.1-codex": { input: 1.25, output: 10.0, cached: 0.125 },
+  "gpt-5.2-codex": { input: 1.75, output: 14.0, cached: 0.175 },
+  "gpt-5.3-codex": { input: 1.75, output: 14.0, cached: 0.175 },
+  "gpt-5.3-codex-spark": { input: 1.75, output: 14.0, cached: 0.175 },
+  "gpt-5.1-codex-mini": { input: 0.25, output: 2.0, cached: 0.025 },
+  "gpt-5.4": { input: 2.5, output: 15.0, cached: 0.25 },
+  // Non-codex fallbacks kept for forward-compat.
+  "gpt-4o": { input: 2.5, output: 10.0, cached: 1.25 },
+  "gpt-4o-mini": { input: 0.15, output: 0.6, cached: 0.075 },
   "gpt-4.1": { input: 2.0, output: 8.0, cached: 0.5 },
   "gpt-4.1-mini": { input: 0.4, output: 1.6, cached: 0.1 },
-  "o4-mini": { input: 1.1, output: 4.4, cached: 0.275 },
+  o3: { input: 10.0, output: 40.0, cached: 2.5 },
+  "o3-mini": { input: 1.1, output: 4.4, cached: 0.55 },
+  "o4-mini": { input: 1.1, output: 4.4, cached: 0.55 },
 };
 
 export function normalizeSession(
@@ -216,16 +234,41 @@ function findTurnKeyForSeq(parsed: ParsedCodexSession, line: RawCodexLine): stri
   return undefined;
 }
 
+/**
+ * Per-turn cost in USD. Matches grammata's codex cost formula exactly:
+ *
+ *   uncached_input = max(input_tokens - cached_input_tokens, 0)
+ *   cost = (uncached_input * input_rate
+ *         + cached_input_tokens * cached_rate
+ *         + output_tokens * output_rate) / 1_000_000
+ *
+ * Pricing lookup: exact match first; then longest "includes" (e.g.
+ * "openai/gpt-5.3-codex" picks up "gpt-5.3-codex"). If no row is available
+ * the turn is skipped (undefined) so downstream never shows a fake $0.
+ */
 function costForTurn(turn: CodexTurnUsage): number | undefined {
   const model = turn.model;
   if (!model) return undefined;
-  const p = MODEL_PRICING_PER_MTOK[model];
+  const p = pricingFor(model);
   if (!p) return undefined;
-  const input = turn.input_tokens / 1_000_000;
-  const output = turn.output_tokens / 1_000_000;
-  const cached = turn.cached_input_tokens / 1_000_000;
-  const cost = input * p.input + output * p.output + cached * p.cached;
+  const cached = turn.cached_input_tokens;
+  const uncached = Math.max(turn.input_tokens - cached, 0);
+  const cost =
+    (uncached * p.input + cached * p.cached + turn.output_tokens * p.output) / 1_000_000;
   return Math.round(cost * 1e6) / 1e6;
+}
+
+function pricingFor(model: string): { input: number; output: number; cached: number } | undefined {
+  const exact = MODEL_PRICING_PER_MTOK[model];
+  if (exact) return exact;
+  const normalized = model.toLowerCase();
+  let best: { key: string; row: { input: number; output: number; cached: number } } | undefined;
+  for (const [key, row] of Object.entries(MODEL_PRICING_PER_MTOK)) {
+    if (normalized.includes(key.toLowerCase())) {
+      if (!best || key.length > best.key.length) best = { key, row };
+    }
+  }
+  return best?.row;
 }
 
 function deterministicId(

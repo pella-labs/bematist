@@ -29,6 +29,29 @@ export interface RawCodexEventMsg {
 }
 
 /**
+ * Newer Codex CLI nests per-emission usage under `payload.info`:
+ *   - `total_token_usage` — cumulative session total (monotonically grows).
+ *   - `last_token_usage`  — per-turn delta for the single emission.
+ * Older/test fixtures still ship flat top-level fields. Both shapes are
+ * supported; the parser prefers `info.total_token_usage` when present.
+ *
+ * `info` is `null` on rate-limit-only token_count pings — must be skipped.
+ */
+export interface RawCodexTokenUsage {
+  input_tokens?: number;
+  output_tokens?: number;
+  cached_input_tokens?: number;
+  reasoning_output_tokens?: number;
+  total_tokens?: number;
+}
+
+export interface RawCodexTokenInfo {
+  total_token_usage?: RawCodexTokenUsage;
+  last_token_usage?: RawCodexTokenUsage;
+  model_context_window?: number;
+}
+
+/**
  * `token_count` events carry cumulative totals for the rollout so far.
  * Per-turn deltas are derived by subtracting the previous cumulative snapshot
  * (D17 firstTryRate + dollar-accuracy fix, per CLAUDE.md Adapter Matrix).
@@ -37,11 +60,15 @@ export interface RawCodexPayload {
   type?: string;
   model?: string;
 
-  // token_count cumulative fields (Codex CLI shape — snake_case).
+  // token_count cumulative fields (older Codex CLI shape — flat, snake_case).
   input_tokens?: number;
   output_tokens?: number;
   cached_input_tokens?: number;
   total_tokens?: number;
+
+  // token_count newer shape — usage nested under `info`. May be null when
+  // the CLI pings only for rate-limit state. Parser skips those.
+  info?: RawCodexTokenInfo | null;
 
   // exec_command_* payloads.
   command?: string;

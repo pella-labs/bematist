@@ -87,7 +87,12 @@ export function parseLines(lines: string[], opts: ParseOptions = {}): ParsedCode
     const payload = extractPayload(parsed);
 
     if (kind === "token_count" && payload) {
+      // Newer CLI: `payload.info` is null on rate-limit-only pings — skip,
+      // they carry no usage. Anything else either has info.total_token_usage
+      // or flat top-level fields; snapshotFromPayload handles both shapes.
+      if (payload.info === null) continue;
       const cumulative = snapshotFromPayload(payload);
+      if (!hasAnyUsage(cumulative)) continue;
       const prior = lastCumulative ?? ZERO_SNAPSHOT;
       const delta: CodexUsageSnapshot = {
         input_tokens: nonNegativeDelta(cumulative.input_tokens, prior.input_tokens),
@@ -156,13 +161,43 @@ export function extractPayload(line: RawCodexLine): RawCodexPayload | undefined 
   return line.event_msg?.payload ?? line.payload;
 }
 
+/**
+ * Build a cumulative CodexUsageSnapshot from a token_count payload, covering
+ * BOTH Codex CLI shapes:
+ *
+ *   - New (rollouts from CLI ≥ ~0.80):
+ *       payload.info.total_token_usage.{input_tokens,output_tokens,cached_input_tokens,total_tokens}
+ *
+ *   - Old / test fixtures:
+ *       payload.{input_tokens,output_tokens,cached_input_tokens,total_tokens}
+ *
+ * Preference is `info.total_token_usage` (cumulative, grammata's reference
+ * source), then flat top-level. `reasoning_output_tokens` is NOT added to
+ * `output_tokens` — grammata excludes it, and our downstream pricing matches
+ * grammata ±0 when we match their inclusion rules.
+ */
 function snapshotFromPayload(p: RawCodexPayload): CodexUsageSnapshot {
+  const total = p.info?.total_token_usage;
+  if (total) {
+    return {
+      input_tokens: total.input_tokens ?? 0,
+      output_tokens: total.output_tokens ?? 0,
+      cached_input_tokens: total.cached_input_tokens ?? 0,
+      total_tokens: total.total_tokens ?? 0,
+    };
+  }
   return {
     input_tokens: p.input_tokens ?? 0,
     output_tokens: p.output_tokens ?? 0,
     cached_input_tokens: p.cached_input_tokens ?? 0,
     total_tokens: p.total_tokens ?? 0,
   };
+}
+
+function hasAnyUsage(s: CodexUsageSnapshot): boolean {
+  return (
+    s.input_tokens > 0 || s.output_tokens > 0 || s.cached_input_tokens > 0 || s.total_tokens > 0
+  );
 }
 
 function nonNegativeDelta(curr: number, prior: number): number {
