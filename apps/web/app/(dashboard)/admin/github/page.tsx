@@ -3,6 +3,7 @@ import { Badge, Button, Card, CardHeader, CardTitle } from "@bematist/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSessionCtx } from "@/lib/session";
+import { BackfillHistoryButton } from "./_components/BackfillHistoryButton";
 import { RedeliverPanel } from "./_components/RedeliverPanel";
 import { RotateSecretPanel } from "./_components/RotateSecretPanel";
 import { SquashMergeBanner } from "./_components/SquashMergeBanner";
@@ -157,6 +158,9 @@ export default async function AdminGithubPage() {
 
             <div className="flex flex-wrap gap-3">
               <StartSyncButton disabled={connection.installation.sync?.status === "running"} />
+              <BackfillHistoryButton
+                disabled={connection.installation.sync?.status !== "completed"}
+              />
               <Link href="/admin/github/repos" className="cursor-pointer">
                 <Button type="button" variant="outline" className="cursor-pointer">
                   View repos

@@ -32,6 +32,7 @@ export {
   recordEngineerViewAttempt,
 } from "./mutations/engineer_view";
 export { dismissAdminBanner } from "./mutations/github/dismissBanner";
+export { enqueueGithubHistoryBackfill } from "./mutations/github/historyBackfill";
 export { patchRepoProdEnvRegex } from "./mutations/github/prodEnvRegex";
 export {
   type RedeliveryDeps,

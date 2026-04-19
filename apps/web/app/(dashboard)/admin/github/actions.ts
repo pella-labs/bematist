@@ -1,6 +1,7 @@
 "use server";
 import {
   dismissAdminBanner,
+  enqueueGithubHistoryBackfill,
   enqueueGithubSync,
   patchRepoProdEnvRegex,
   patchRepoTracking,
@@ -9,6 +10,7 @@ import {
   rotateWebhookSecret,
 } from "@bematist/api";
 import { DismissAdminBannerInput } from "@bematist/api/schemas/github/banners";
+import { EnqueueHistoryBackfillInput } from "@bematist/api/schemas/github/historyBackfill";
 import { PatchRepoProdEnvRegexInput } from "@bematist/api/schemas/github/prodEnvRegex";
 import { RedeliverWebhooksInput } from "@bematist/api/schemas/github/redeliver";
 import { EnqueueGithubSyncInput } from "@bematist/api/schemas/github/sync";
@@ -37,6 +39,27 @@ const _enqueueSyncAction = zodAction(EnqueueGithubSyncInput, enqueueGithubSync);
 
 export async function enqueueSyncAction(raw: { installation_id?: string; force?: boolean }) {
   const result = await _enqueueSyncAction(raw);
+  if (result.ok) {
+    revalidatePath("/admin/github");
+  }
+  return result;
+}
+
+const _enqueueHistoryBackfillAction = zodAction(
+  EnqueueHistoryBackfillInput,
+  enqueueGithubHistoryBackfill,
+);
+
+/**
+ * Admin-only. Seeds `queued` rows in `github_history_sync_progress` for the
+ * caller's installation; the worker dispatcher drains them. Audit-logged
+ * inside `enqueueGithubHistoryBackfill`.
+ */
+export async function enqueueHistoryBackfillAction(raw: {
+  installation_id?: string;
+  window_days?: number;
+}) {
+  const result = await _enqueueHistoryBackfillAction(raw);
   if (result.ok) {
     revalidatePath("/admin/github");
   }
