@@ -13,6 +13,11 @@ import {
   createTokenBucket,
 } from "./github-initial-sync";
 import { dispatcherTick } from "./github-initial-sync/dispatcher";
+import { FsAliasArchiver, runAliasRetirement } from "./github-linker/aliasRetirement";
+import { createLinkerConsumer } from "./github-linker/consumer";
+import { ensurePartitionsFor } from "./github-linker/partitionCreator";
+import { runReconcileScaffold } from "./github-linker/reconcileScaffold";
+import type { LinkerInputs } from "./github-linker/state";
 import { PostgresAnomalyNotifier } from "./jobs/anomaly/pg_notifier";
 import type { CohortP95, DailyMetricRow } from "./jobs/anomaly/types";
 import { runAnomalyDetection } from "./jobs/anomaly_detect";
@@ -36,6 +41,24 @@ const RECLUSTER_MAX_PROMPTS_PER_ORG = Number(process.env.RECLUSTER_MAX_PROMPTS_P
 // scheduler, not the per-event worker.
 const GITHUB_SYNC_DISPATCHER_SCHEDULE =
   process.env.GITHUB_SYNC_DISPATCHER_SCHEDULE ?? "*/1 * * * *";
+// G1-linker crons — all PgBoss, per CLAUDE.md Architecture Rule #4.
+//
+// `github.linker.partition_creator` runs at 01:00 UTC on the 25th of every
+// month (≈ T-7d before the 1st). Default value overrideable via env.
+const LINKER_PARTITION_CREATOR_SCHEDULE =
+  process.env.LINKER_PARTITION_CREATOR_SCHEDULE ?? "0 1 25 * *";
+// `github.linker.alias_retirement` runs once daily at 02:00 UTC.
+const LINKER_ALIAS_RETIREMENT_SCHEDULE =
+  process.env.LINKER_ALIAS_RETIREMENT_SCHEDULE ?? "0 2 * * *";
+// `github.linker.reconcile_scaffold` runs hourly.
+const LINKER_RECONCILE_SCAFFOLD_SCHEDULE =
+  process.env.LINKER_RECONCILE_SCAFFOLD_SCHEDULE ?? "15 * * * *";
+// Redis-streams consumer tick cadence (seconds). The internal XREADGROUP
+// BLOCK is 5s; the dispatcher wakes the tick every `LINKER_TICK_INTERVAL_MS`
+// ms — at scale this becomes a long-running loop (below).
+const LINKER_TICK_INTERVAL_MS = Number(process.env.LINKER_TICK_INTERVAL_MS ?? 5_000);
+const LINKER_ALIAS_ARCHIVE_DIR =
+  process.env.BEMATIST_ALIAS_ARCHIVE_DIR ?? "/tmp/bematist/alias-archive";
 // Local worker-node semaphore per PRD §11.2 = 5 concurrent initial syncs.
 const githubInitialSyncSemaphore = createLocalSemaphore(5);
 
@@ -66,6 +89,26 @@ export async function startWorker() {
   });
   await boss.schedule("github.initial_sync_dispatcher", GITHUB_SYNC_DISPATCHER_SCHEDULE);
 
+  // G1-linker crons — partition creator (monthly), alias retirement (daily),
+  // reconciliation scaffold (hourly). Per CLAUDE.md Architecture Rule #4:
+  // PgBoss for crons only. Per-event linker work runs through the Redis
+  // Streams consumer loop below, NOT through PgBoss.
+  await boss.work("github.linker.partition_creator", async () => {
+    return await ensurePartitionsFor(pgClient);
+  });
+  await boss.schedule("github.linker.partition_creator", LINKER_PARTITION_CREATOR_SCHEDULE);
+
+  await boss.work("github.linker.alias_retirement", async () => {
+    const archiver = new FsAliasArchiver(LINKER_ALIAS_ARCHIVE_DIR);
+    return await runAliasRetirement(pgClient, archiver);
+  });
+  await boss.schedule("github.linker.alias_retirement", LINKER_ALIAS_RETIREMENT_SCHEDULE);
+
+  await boss.work("github.linker.reconcile_scaffold", async () => {
+    return await runReconcileScaffold(pgClient);
+  });
+  await boss.schedule("github.linker.reconcile_scaffold", LINKER_RECONCILE_SCAFFOLD_SCHEDULE);
+
   console.log(
     "[worker] started; gdpr.partition_drop:",
     GDPR_CRON_SCHEDULE,
@@ -75,8 +118,79 @@ export async function startWorker() {
     RECLUSTER_CRON_SCHEDULE,
     "github.initial_sync_dispatcher:",
     GITHUB_SYNC_DISPATCHER_SCHEDULE,
+    "github.linker.partition_creator:",
+    LINKER_PARTITION_CREATOR_SCHEDULE,
+    "github.linker.alias_retirement:",
+    LINKER_ALIAS_RETIREMENT_SCHEDULE,
+    "github.linker.reconcile_scaffold:",
+    LINKER_RECONCILE_SCAFFOLD_SCHEDULE,
   );
+
+  // Redis Streams consumer loop for `session_repo_recompute:<tenant_id>`.
+  // Fire-and-forget — the loop self-paces via XREADGROUP BLOCK + a short
+  // interval. Surfaces errors via console.error; a production deploy
+  // supplies Sentry/pino via the log hook.
+  startLinkerConsumerLoop().catch((err) => {
+    console.error(
+      JSON.stringify({
+        level: "error",
+        app: "github-linker",
+        msg: "consumer-loop-crashed",
+        err: err instanceof Error ? err.message : String(err),
+      }),
+    );
+  });
+
   return boss;
+}
+
+/**
+ * Start the Redis-Streams consumer loop for the linker. Production wires
+ * the `loadInputs` callback against ClickHouse session enrichment + the
+ * Postgres state tables; G1 stubs this to null-inputs (no-op) until the
+ * session-index query lands in G3 with the reconciliation runner.
+ */
+async function startLinkerConsumerLoop(): Promise<void> {
+  if (process.env.LINKER_CONSUMER_ENABLED === "0") {
+    console.log("[worker] github-linker consumer disabled (LINKER_CONSUMER_ENABLED=0)");
+    return;
+  }
+  const mod = await import("redis");
+  const url = process.env.REDIS_URL ?? "redis://localhost:6379";
+  // biome-ignore lint/suspicious/noExplicitAny: node-redis types
+  const redis = (mod as any).createClient({ url });
+  redis.on("error", (err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(
+      JSON.stringify({ level: "error", app: "github-linker", msg: "redis-error", err: msg }),
+    );
+  });
+  await redis.connect();
+
+  const consumer = createLinkerConsumer({
+    redis,
+    sql: pgClient,
+    // TODO(g3): wire this to ClickHouse session enrichment + Postgres
+    //           aggregator. Until then the consumer only runs
+    //           installation-state-change broadcasts end-to-end.
+    loadInputs: async (): Promise<LinkerInputs | null> => null,
+  });
+
+  // Long-running tick loop.
+  const loop = async () => {
+    while (!consumer.isStopped()) {
+      try {
+        await consumer.tick();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(
+          JSON.stringify({ level: "error", app: "github-linker", msg: "tick-failed", err: msg }),
+        );
+      }
+      await new Promise((r) => setTimeout(r, LINKER_TICK_INTERVAL_MS));
+    }
+  };
+  loop();
 }
 
 /**
