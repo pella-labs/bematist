@@ -169,6 +169,56 @@ describe("writeLinkerState — same-txn cascade", () => {
     await cleanup();
   });
 
+  test("B5 — re-link after inputs flip back, both stale old + new active row coexist", async () => {
+    if (skip) return;
+    // Step 1: write state A with a direct_repo + commit_link
+    const inpA = baseInputs();
+    // Force direct_repo match AND pr_link so we have multiple active rows to
+    // flip later and prove commutativity across partial uniqueness.
+    inpA.session.pr_numbers = [1];
+    const s1 = computeLinkerState(inpA, CLOCK);
+    await writeLinkerState(sql, s1, tenantId);
+
+    const afterFirst = await sql<
+      Array<{ match_reason: string; stale_at: Date | null; inputs_sha256: Buffer }>
+    >`SELECT match_reason, stale_at, inputs_sha256 FROM session_repo_links
+         WHERE tenant_id = ${tenantId}`;
+    const firstHash = s1.inputs_sha256.toString("hex");
+    expect(afterFirst.length).toBeGreaterThanOrEqual(2);
+    expect(afterFirst.every((r) => r.stale_at === null)).toBe(true);
+
+    // Step 2: flip inputs — drop the PR, which removes commit_link + pr_link
+    // but keeps direct_repo. New state has a DIFFERENT inputs_sha256 AND the
+    // same (tenant, session, repo_hash, match_reason='direct_repo') tuple.
+    const inpB = baseInputs();
+    inpB.pull_requests = [];
+    inpB.session.commit_shas = [];
+    inpB.session.pr_numbers = [];
+    // Force a minor change so sha flips even when only direct_repo remains.
+    inpB.repos = [{ provider_repo_id: "101", tracking_state: "included" }];
+    const s2 = computeLinkerState(inpB, CLOCK);
+    expect(s2.inputs_sha256.toString("hex")).not.toBe(firstHash);
+    await writeLinkerState(sql, s2, tenantId);
+
+    // Assert: the old direct_repo row MUST be stale, AND a fresh direct_repo
+    // row with the new inputs_sha256 MUST exist (stale_at IS NULL).
+    const rows = await sql<
+      Array<{ match_reason: string; stale_at: Date | null; inputs_sha256: Buffer }>
+    >`SELECT match_reason, stale_at, inputs_sha256 FROM session_repo_links
+         WHERE tenant_id = ${tenantId} AND match_reason = 'direct_repo'
+         ORDER BY inputs_sha256`;
+    expect(rows.length).toBeGreaterThanOrEqual(2);
+    const byHash = new Map<string, { stale_at: Date | null }>();
+    for (const r of rows) byHash.set(r.inputs_sha256.toString("hex"), { stale_at: r.stale_at });
+    const firstRow = byHash.get(firstHash);
+    const secondRow = byHash.get(s2.inputs_sha256.toString("hex"));
+    expect(firstRow).toBeDefined();
+    expect(firstRow?.stale_at).not.toBeNull();
+    expect(secondRow).toBeDefined();
+    expect(secondRow?.stale_at).toBeNull();
+    await cleanup();
+  });
+
   test("installation.suspend → stale_at set; unsuspend (unchanged inputs) → cleared", async () => {
     if (skip) return;
     const state = computeLinkerState(baseInputs(), CLOCK);
