@@ -1,0 +1,5 @@
+{
+  "X-GitHub-Event": "pull_request",
+  "X-GitHub-Delivery": "fixture-pull_request-edited-with-closes-keyword",
+  "X-Hub-Signature-256": "sha256=1ebdbae5bb1207ea102b5aac62df84530adfc5d20301fd34049e4a8c109cec0e"
+}

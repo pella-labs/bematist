@@ -35,6 +35,7 @@ interface DevicePollResponse {
 
 import { atomicWrite, configEnvPath, dataDir } from "@bematist/config";
 import { COLLECTOR_VERSION, parseEnvFile } from "../config";
+import { daemonStart } from "../daemon";
 
 const DEFAULT_WEB_URL = "https://bematist.dev";
 const POLL_MAX_ATTEMPTS = 180; // 10 min @ 5s interval = 120, +buffer
@@ -43,15 +44,22 @@ interface LoginOptions {
   webUrl: string;
   printOnly: boolean;
   force: boolean;
+  autoStart: boolean;
 }
 
 function parseArgs(args: string[]): LoginOptions {
-  let webUrl =
-    process.env.BEMATIST_WEB_URL ??
-    process.env.BEMATIST_ENDPOINT?.replace(/(^|\.)ingest(\.|$)/, "$1web$2") ??
-    DEFAULT_WEB_URL;
+  // webUrl is the web backend (Next.js); BEMATIST_ENDPOINT is the ingest
+  // backend (OTLP + /v1/events). They are architecturally separate
+  // services, so don't try to derive one from the other — a previous
+  // regex-based ingest→web substitution silently fell through for
+  // hyphen-delimited hostnames (e.g. Railway's
+  // `ingest-development.up.railway.app`) and the CLI hit a 404 because
+  // the derived URL stayed on the ingest host. Callers that run their
+  // own web backend set BEMATIST_WEB_URL or pass --web-url.
+  let webUrl = process.env.BEMATIST_WEB_URL ?? DEFAULT_WEB_URL;
   let printOnly = false;
   let force = false;
+  let autoStart = true;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -68,6 +76,8 @@ function parseArgs(args: string[]): LoginOptions {
       printOnly = true;
     } else if (arg === "--force" || arg === "-f") {
       force = true;
+    } else if (arg === "--no-start") {
+      autoStart = false;
     } else if (arg === "--help" || arg === "-h") {
       console.log(usage());
       process.exit(0);
@@ -78,7 +88,7 @@ function parseArgs(args: string[]): LoginOptions {
     }
   }
 
-  return { webUrl: webUrl.replace(/\/$/, ""), printOnly, force };
+  return { webUrl: webUrl.replace(/\/$/, ""), printOnly, force, autoStart };
 }
 
 function usage(): string {
@@ -86,7 +96,7 @@ function usage(): string {
     "bematist login — authorize this machine to ship events to your org.",
     "",
     "Usage:",
-    "  bematist login [--web-url <url>] [--print-only] [--force]",
+    "  bematist login [--web-url <url>] [--print-only] [--force] [--no-start]",
     "",
     "Flags:",
     "  --web-url <url>  Web backend to authorize against (default: https://bematist.dev).",
@@ -94,6 +104,7 @@ function usage(): string {
     "  --print-only     Print the URL + code without attempting to open a browser",
     "                   (for SSH / headless / Docker).",
     "  --force, -f      Replace an existing token without prompting.",
+    "  --no-start       Skip the auto-start that follows a successful login.",
   ].join("\n");
 }
 
@@ -121,20 +132,36 @@ function openInBrowser(url: string): boolean {
   return r.status === 0;
 }
 
-async function postJson<T>(url: string, body: unknown): Promise<T> {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "User-Agent": `bematist-cli/${COLLECTOR_VERSION}`,
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`POST ${url} → HTTP ${res.status}: ${text}`);
+async function postJson<T>(url: string, body: unknown, timeoutMs = 10_000): Promise<T> {
+  // Timeout guard — a silent fetch hang is worse than a loud error. 10s is
+  // long enough for a cold start + DB round-trip on any reasonable deploy;
+  // anything beyond that is almost certainly a misconfigured backend.
+  //
+  // Using manual AbortController + clearTimeout so the timer is cleaned up
+  // on success. `AbortSignal.timeout()` leaks a pending timer into the
+  // event loop that, in Bun, prevents the process from exiting until the
+  // full timeout has elapsed — reported as "bematist login hangs 10s
+  // before `&& bematist start` runs in the one-liner chain."
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": `bematist-cli/${COLLECTOR_VERSION}`,
+      },
+      body: JSON.stringify(body),
+      signal: ac.signal,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`POST ${url} → HTTP ${res.status}: ${text}`);
+    }
+    return (await res.json()) as T;
+  } finally {
+    clearTimeout(timer);
   }
-  return (await res.json()) as T;
 }
 
 function formatCode(code: string): string {
@@ -241,7 +268,22 @@ export async function runLogin(args: string[]): Promise<void> {
         const org = poll.org_name ?? poll.org_slug ?? "your org";
         console.log(`bematist: approved. logged in as ${who}${org}.`);
         console.log(`bematist: config saved to ${path}`);
-        console.log("bematist: next: `bematist start` to launch the background collector.");
+
+        if (opts.autoStart) {
+          // Auto-start the OS daemon so the one-liner lands the user with
+          // a running collector. Pass `--no-start` to opt out (e.g. when
+          // scripting, or when the caller wants to stage config and start
+          // under its own lifecycle).
+          const start = daemonStart();
+          console.log(`bematist: ${start.summary}`);
+          if (start.state !== "running") {
+            console.log(
+              "bematist: run `bematist status` to inspect, or `bematist logs` for errors.",
+            );
+          }
+        } else {
+          console.log("bematist: next: `bematist start` to launch the background collector.");
+        }
         return;
       }
     }

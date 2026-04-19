@@ -11,6 +11,11 @@ import { createRealClickHouseWriter } from "./clickhouse/realWriter";
 import { createBunRedisDedupStore } from "./dedup/bunRedisDedupStore";
 import { getDeps, setDeps } from "./deps";
 import { assertFlagCoherence, FlagIncoherentError, parseFlags } from "./flags";
+import { createKafkaWebhookBus, parseBrokersEnv } from "./github-app/kafkaWebhookBus";
+import {
+  InMemoryWebhookSecretResolver,
+  type WebhookSecretResolver,
+} from "./github-app/secretsResolver";
 import { logger } from "./logger";
 import { startOtlpServer } from "./otlp/server";
 import { createPolicyFlipDbHandle } from "./policy-flip/dbClient";
@@ -43,6 +48,32 @@ try {
   process.exit(2);
 }
 
+// H3 — fail-closed GitHub-integration boot check. GITHUB_APP_ID is the
+// one env var required before installation-token minting + webhook
+// HMAC-verify paths can function. Without it the process must refuse to
+// serve — silently accepting webhooks on a misconfigured node would drop
+// production installs on the floor (PRD §10 non-negotiable).
+//
+// BEMATIST_INGEST_FAILCLOSED_FATAL_ONLY short-circuits the rest of the
+// boot after this gate for the child-process regression test in
+// github-app/failClosedBoot.test.ts — it lets the test hit the gate
+// without requiring a live Redis/PG/Kafka under the test harness.
+if (process.env.NODE_ENV !== "test" && !process.env.GITHUB_APP_ID) {
+  logger.error(
+    {
+      code: "BOOT_FAILED_GITHUB_APP_ID_MISSING",
+      severity: "FATAL",
+    },
+    "GITHUB_APP_ID env var is required — refusing to serve webhooks",
+  );
+  process.exit(1);
+}
+if (process.env.BEMATIST_INGEST_FAILCLOSED_FATAL_ONLY === "1") {
+  // The gate above is the only one the test cares about. If GITHUB_APP_ID
+  // *is* set but the flag is on, we still exit 0 — any non-1 is fine.
+  process.exit(0);
+}
+
 // Sprint-1 follow-up A: wire real runtime adapters (node-redis for Lua +
 // streams, Bun.redis for dedup, @clickhouse/client for writes) when not
 // running under bun test. Test boots keep the in-memory test doubles from
@@ -69,6 +100,66 @@ if (process.env.NODE_ENV !== "test") {
     const clickhouseWriter = createRealClickHouseWriter();
 
     setDeps({ dedupStore, rateLimiter, wal, clickhouseWriter });
+
+    // G2 — swap the in-memory webhook bus for a real Kafka producer unless
+    // the operator opts out via KAFKA_TRANSPORT=memory (solo / embedded
+    // mode). The in-memory default stays authoritative for unit tests so
+    // bun test boots never hit the network.
+    const transport = (process.env.KAFKA_TRANSPORT ?? "kafkajs").toLowerCase();
+    if (transport === "kafkajs") {
+      try {
+        const brokers = parseBrokersEnv(process.env);
+        const kafkaBus = createKafkaWebhookBus({
+          brokers,
+          clientId: process.env.KAFKA_CLIENT_ID ?? "bematist-ingest",
+        });
+        // Ensure topic exists with 32 partitions (PRD §7.1).
+        await kafkaBus.ensureTopic("github.webhooks", 32);
+        setDeps({ githubWebhookBus: kafkaBus });
+        logger.info({ brokers }, "kafka webhook bus wired (kafkajs → github.webhooks)");
+      } catch (err) {
+        // H3 — fail closed. Previously fell back to in-memory, which
+        // silently accepted webhooks on a bus that would drop them on
+        // process exit. In production a Kafka wiring failure is a
+        // refuse-to-serve condition.
+        logger.error(
+          {
+            err: err instanceof Error ? err.message : String(err),
+            code: "KAFKA_BUS_WIRING_FAILED",
+            severity: "FATAL",
+          },
+          "kafka webhook bus wiring failed — refusing to serve",
+        );
+        process.exit(1);
+      }
+    } else {
+      logger.info(
+        { transport },
+        "KAFKA_TRANSPORT=memory — in-memory webhook bus retained (solo mode)",
+      );
+    }
+
+    // Dev-mode seed for the webhook-secret resolver. The in-memory resolver
+    // ships empty; in prod it's swapped for a KMS-backed impl via setDeps()
+    // from the secrets-manager adapter. For dev-Railway + self-host we read
+    // the secret bytes from GITHUB_WEBHOOK_SECRET_DEV and seed under the ref
+    // "dev-default". When the admin claims a pending installation, they pass
+    // `webhook_secret_ref=dev-default` so HMAC verification resolves.
+    if (process.env.GITHUB_WEBHOOK_SECRET_DEV) {
+      const resolver: WebhookSecretResolver = getDeps().webhookSecretsResolver;
+      if (resolver instanceof InMemoryWebhookSecretResolver) {
+        resolver.seed("dev-default", process.env.GITHUB_WEBHOOK_SECRET_DEV);
+        logger.info(
+          { ref: "dev-default", bytes: process.env.GITHUB_WEBHOOK_SECRET_DEV.length },
+          "seeded webhook secret from GITHUB_WEBHOOK_SECRET_DEV (dev mode)",
+        );
+      } else {
+        logger.warn(
+          { resolver: resolver.constructor.name },
+          "GITHUB_WEBHOOK_SECRET_DEV set but resolver is not in-memory — ignoring",
+        );
+      }
+    }
     logger.info(
       { bun_version: Bun.version, redis_url: process.env.REDIS_URL ?? "default" },
       "runtime adapters wired (bun.redis dedup, node-redis lua+streams, @clickhouse/client)",
@@ -118,19 +209,32 @@ if (process.env.NODE_ENV !== "test") {
         );
       }
     } catch (err) {
+      // H3 — fail closed. Without pg-backed stores, /v1/events would
+      // 401/500 on every request and tier enforcement would fall back
+      // to permissive defaults. Both are production-broken states.
       logger.error(
         {
           err: err instanceof Error ? err.message : String(err),
           code: "PG_STORE_WIRING_FAILED",
+          severity: "FATAL",
         },
-        "pg-backed store wiring failed; ingest will 401/500 on /v1/events until fixed",
+        "pg-backed store wiring failed — refusing to serve",
       );
+      process.exit(1);
     }
   } catch (err) {
+    // H3 — fail closed. Outer wrapper failure means Redis or the
+    // ClickHouse writer or one of the shared adapters couldn't come up.
+    // We can't serve webhooks without them.
     logger.error(
-      { err: err instanceof Error ? err.message : String(err), code: "ADAPTER_WIRING_FAILED" },
-      "runtime adapter wiring failed; falling back to in-memory defaults",
+      {
+        err: err instanceof Error ? err.message : String(err),
+        code: "ADAPTER_WIRING_FAILED",
+        severity: "FATAL",
+      },
+      "runtime adapter wiring failed — refusing to serve",
     );
+    process.exit(1);
   }
 }
 

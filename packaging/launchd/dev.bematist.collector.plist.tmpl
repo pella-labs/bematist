@@ -27,7 +27,13 @@
   <array>
     <string>/bin/sh</string>
     <string>-c</string>
-    <string>[ -f "@HOME@/.bematist/config.env" ] &amp;&amp; . "@HOME@/.bematist/config.env"; exec "@BIN@" serve</string>
+    <!--
+      `set -a` auto-exports assignments so sourcing config.env makes the
+      values visible to the exec'd binary. Without it, `. config.env`
+      sets shell-locals only and BEMATIST_TOKEN never reaches `bematist
+      serve`.
+    -->
+    <string>set -a; [ -f "@HOME@/.bematist/config.env" ] &amp;&amp; . "@HOME@/.bematist/config.env"; set +a; exec "@BIN@" serve</string>
   </array>
 
   <key>RunAtLoad</key>

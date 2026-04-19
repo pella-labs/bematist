@@ -6,10 +6,16 @@
 // not running) — only for genuinely unexpected errors.
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { homedir, platform, userInfo } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import { dataDir } from "@bematist/config";
+import {
+  LAUNCHD_PLIST_TMPL,
+  renderTemplate,
+  SYSTEMD_SERVICE_TMPL,
+  WINDOWS_TASK_XML_TMPL,
+} from "./templates";
 
 export type DaemonState = "running" | "stopped" | "not-installed";
 
@@ -27,25 +33,6 @@ const LAUNCHD_LABEL = "dev.bematist.collector";
 const SYSTEMD_UNIT = "bematist.service";
 const WINDOWS_TASK = "\\Bematist\\Collector";
 
-function here(): string {
-  // On a compiled Bun binary, import.meta.dir resolves to the embedded
-  // module path (not the binary location). We want the path to the
-  // templates directory that ships alongside source + in the build tree.
-  // At runtime the templates are read from packaging/ relative to the
-  // repo root during dev; in a shipped binary they're bundled as assets.
-  // For now we resolve relative to import.meta.dir; builds that embed
-  // templates override via BEMATIST_TEMPLATES_DIR.
-  return import.meta.dir;
-}
-
-function templatesDir(): string {
-  if (process.env.BEMATIST_TEMPLATES_DIR) {
-    return process.env.BEMATIST_TEMPLATES_DIR;
-  }
-  // apps/collector/src → repo-root/packaging
-  return resolve(here(), "..", "..", "..", "packaging");
-}
-
 function resolveBinary(): string {
   // `bematist` binary path. argv[1] points at the CLI entry; argv[0] is
   // the bun runtime when running under `bun run`. On a compiled binary,
@@ -59,14 +46,6 @@ function resolveBinary(): string {
   // Caller can override via BEMATIST_BIN_PATH.
   if (process.env.BEMATIST_BIN_PATH) return process.env.BEMATIST_BIN_PATH;
   return "bematist";
-}
-
-function renderTemplate(tmplPath: string, vars: Record<string, string>): string {
-  let content = readFileSync(tmplPath, "utf8");
-  for (const [k, v] of Object.entries(vars)) {
-    content = content.replace(new RegExp(`@${k}@`, "g"), v);
-  }
-  return content;
 }
 
 function run(cmd: string, args: string[]): { status: number; stdout: string; stderr: string } {
@@ -90,8 +69,7 @@ function launchdDomain(): string {
 
 function launchdInstall(bin: string): string {
   const path = launchdUnitPath();
-  const tmpl = join(templatesDir(), "launchd", `${LAUNCHD_LABEL}.plist.tmpl`);
-  const content = renderTemplate(tmpl, { HOME: homedir(), BIN: bin });
+  const content = renderTemplate(LAUNCHD_PLIST_TMPL, { HOME: homedir(), BIN: bin });
   mkdirSync(dirname(path), { recursive: true });
   mkdirSync(join(dataDir(), "logs"), { recursive: true });
   writeFileSync(path, content, { mode: 0o644 });
@@ -117,7 +95,16 @@ function launchdStart(): DaemonResult {
   // loaded, bootstrap returns 37 ("Input/output error" — "Load failed:
   // already loaded"). Treat that as success.
   const boot = run("launchctl", ["bootstrap", launchdDomain(), unitPath]);
-  if (boot.status !== 0 && !/already loaded/i.test(boot.stderr + boot.stdout)) {
+  // launchctl reports "already loaded" with several surface strings on
+  // macOS 14+: sometimes literal text, sometimes just errno 5 ("Input/
+  // output error") when bootstrap is re-run on an already-loaded unit.
+  // Treat both as benign — kickstart below will still force a refresh.
+  const bootOutput = `${boot.stderr}\n${boot.stdout}`;
+  const alreadyLoaded =
+    /already loaded/i.test(bootOutput) ||
+    /input\/output error/i.test(bootOutput) ||
+    /\b5:\s*Input\/output/i.test(bootOutput);
+  if (boot.status !== 0 && !alreadyLoaded) {
     return {
       state: "stopped",
       platform: "darwin",
@@ -126,16 +113,28 @@ function launchdStart(): DaemonResult {
       detail: boot.stderr,
     };
   }
-  // Kickstart forces a restart — picks up config.env edits.
-  run("launchctl", ["kickstart", "-k", `${launchdDomain()}/${LAUNCHD_LABEL}`]);
-  const running = launchdIsRunning();
+  // Kickstart forces a restart — picks up config.env edits. `-s` makes
+  // kickstart synchronous (wait for the service to respond before
+  // returning) — otherwise `launchctl print` below can race the agent's
+  // startup and report `state=stopped` for a process that's about to be
+  // running.
+  run("launchctl", ["kickstart", "-k", "-s", `${launchdDomain()}/${LAUNCHD_LABEL}`]);
+  // Belt-and-suspenders: poll briefly for running state (max ~1s) to
+  // absorb the remaining kickstart→print race window on slower machines.
+  let running = false;
+  for (let i = 0; i < 5; i++) {
+    running = launchdIsRunning();
+    if (running) break;
+    const until = Date.now() + 200;
+    while (Date.now() < until) {} // brief busy-wait; spawnSync is blocking so no event loop to await
+  }
   return {
     state: running ? "running" : "stopped",
     platform: "darwin",
     unitPath,
     summary: running
       ? `bematist started (launchd: ${LAUNCHD_LABEL})`
-      : "launchd loaded the unit but the process isn't running yet — check `bematist logs`",
+      : "launchd loaded the unit but the process isn't confirmed running — check `bematist logs` / `bematist status`",
   };
 }
 
@@ -203,8 +202,7 @@ function systemdUnitPath(): string {
 
 function systemdInstall(bin: string): string {
   const path = systemdUnitPath();
-  const tmpl = join(templatesDir(), "systemd", `${SYSTEMD_UNIT}.tmpl`);
-  const content = renderTemplate(tmpl, { BIN: bin });
+  const content = renderTemplate(SYSTEMD_SERVICE_TMPL, { BIN: bin });
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, content, { mode: 0o644 });
   return path;
@@ -292,9 +290,8 @@ function windowsTaskXmlPath(): string {
 
 function windowsInstall(bin: string): string {
   const path = windowsTaskXmlPath();
-  const tmpl = join(templatesDir(), "windows", "bematist-task.xml.tmpl");
   const user = `${userInfo().username}`;
-  const content = renderTemplate(tmpl, { USER: user, BIN: bin });
+  const content = renderTemplate(WINDOWS_TASK_XML_TMPL, { USER: user, BIN: bin });
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, content);
   run("schtasks", ["/Create", "/TN", WINDOWS_TASK, "/XML", path, "/F"]);

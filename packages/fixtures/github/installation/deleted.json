@@ -1,0 +1,35 @@
+{
+  "action": "deleted",
+  "installation": {
+    "id": 42424242,
+    "node_id": "MDIzOkZJWFRVUkUwMDE=",
+    "account": {
+      "login": "fixture-org",
+      "id": 123456,
+      "node_id": "O_kgDOFIXTUREORG",
+      "type": "Organization",
+      "site_admin": false
+    },
+    "repository_selection": "selected",
+    "app_id": 909090,
+    "app_slug": "bematist-fixture-app",
+    "target_id": 123456,
+    "target_type": "Organization"
+  },
+  "repositories": [
+    {
+      "id": 987654321,
+      "node_id": "R_kgDOFIXTURE001",
+      "name": "fixture-repo",
+      "full_name": "fixture-org/fixture-repo",
+      "private": false
+    }
+  ],
+  "sender": {
+    "login": "fixture-engineer",
+    "id": 555111,
+    "node_id": "U_kgDOFIXTURE_SENDER",
+    "type": "User",
+    "site_admin": false
+  }
+}

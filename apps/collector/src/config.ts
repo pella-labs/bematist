@@ -16,7 +16,19 @@
 // scoped `export`. See dev-docs/m5-installer-plan.md §F1.
 
 import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { configEnvPath, dataDir as defaultDataDir } from "@bematist/config";
+
+/** Expand a leading `~/` to $HOME. Mirrors the helper in packages/config —
+ *  re-implemented here because the env-resolution path bypasses paths.ts's
+ *  public dataDir() for `BEMATIST_DATA_DIR` overrides and still needs to
+ *  normalize user-supplied tildes. */
+function expandTilde(p: string): string {
+  if (p === "~") return homedir();
+  if (p.startsWith("~/")) return join(homedir(), p.slice(2));
+  return p;
+}
 
 export type Tier = "A" | "B" | "C";
 export type ConfigSource = "override" | "env" | "file" | "default";
@@ -204,7 +216,12 @@ export function loadConfigWithSources(overrides: Partial<CollectorConfig> = {}):
   const ingestOnlyTo = resolveOptStr("BEMATIST_INGEST_ONLY_TO", fileVars);
   const dataDirResolved = (() => {
     const v = resolveStr("BEMATIST_DATA_DIR", fileVars, "");
-    if (v.source !== "default") return v;
+    if (v.source !== "default") {
+      // Defensive expand: env/file might carry a literal `~/…` that Node
+      // fs never resolves. Keeping the source label lets `doctor` still
+      // surface provenance accurately.
+      return { value: expandTilde(v.value), source: v.source };
+    }
     return { value: defaultDataDir(), source: "default" as const };
   })();
   const logLevel = resolveStr("BEMATIST_LOG_LEVEL", fileVars, "warn");
@@ -213,11 +230,22 @@ export function loadConfigWithSources(overrides: Partial<CollectorConfig> = {}):
   const engineerId = resolveStr("BEMATIST_ENGINEER", fileVars, "me");
   const deviceId = resolveStr("BEMATIST_DEVICE", fileVars, "localhost");
   const tier = resolveTier("BEMATIST_TIER", fileVars);
-  const batchSize = resolveInt("BEMATIST_BATCH_SIZE", fileVars, 10);
+  // Defaults match what the M5 handoff had manually exported in Sebastian's
+  // shell (BEMATIST_BATCH_SIZE=500, BEMATIST_POLL_TIMEOUT_MS=1800000).
+  // Without these, fresh installs hit the 30s-per-poll race in the
+  // orchestrator and silently dropped events on heavy first-poll backfills
+  // (Walid had 4,971 JSONL files / 2.8 GB and lost all history).
+  //
+  // The orchestrator now also honors signal.aborted so even if the timeout
+  // fires mid-backfill, adapters return what they've emitted so far instead
+  // of the old discard-everything behavior. 1 hour gives room for
+  // multi-GB first-poll scans; subsequent polls hit the signature cache
+  // and finish in milliseconds.
+  const batchSize = resolveInt("BEMATIST_BATCH_SIZE", fileVars, 500);
   const pollIntervalMs = resolveInt("BEMATIST_POLL_INTERVAL_MS", fileVars, 5_000);
   const flushIntervalMs = resolveInt("BEMATIST_FLUSH_INTERVAL_MS", fileVars, 1_000);
   const adapterConcurrency = resolveInt("BEMATIST_CONCURRENCY", fileVars, 4);
-  const perPollTimeoutMs = resolveInt("BEMATIST_POLL_TIMEOUT_MS", fileVars, 30_000);
+  const perPollTimeoutMs = resolveInt("BEMATIST_POLL_TIMEOUT_MS", fileVars, 3_600_000);
 
   const config: CollectorConfig = {
     endpoint: endpoint.value,
@@ -263,5 +291,8 @@ export function loadConfigWithSources(overrides: Partial<CollectorConfig> = {}):
   return { config, sources };
 }
 
-/** Collector version — surfaced by `bematist --version` / `status`. */
-export const COLLECTOR_VERSION = "0.1.0";
+/** Collector version — surfaced by `bematist --version` / `status`.
+ *  Keep in sync with apps/collector/package.json at release time. A future
+ *  improvement is to inject this from package.json via a build step; for
+ *  now it's manually bumped per tag. */
+export const COLLECTOR_VERSION = "0.1.7";
