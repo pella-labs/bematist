@@ -20,12 +20,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <div className="bematist-dashboard">
       <div className="dash-shell">
-        <div className="dash-chrome" aria-hidden>
-          <span className="dash-chrome-dot" style={{ background: "#ff5f57" }} />
-          <span className="dash-chrome-dot" style={{ background: "#febc2e" }} />
-          <span className="dash-chrome-dot" style={{ background: "#28c840" }} />
-          <span className="dash-chrome-url">bematist.yourteam.internal</span>
-        </div>
         <aside aria-label="Primary navigation" className="dash-side">
           <Link href="/home" className="dash-wordmark">
             <span className="dash-wordmark-dot" aria-hidden />
@@ -39,7 +33,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             ))}
             <div className="dash-nav-meta">
               {META_NAV.map((item) => (
-                <Link key={item.href} href={item.href} className="dash-nav-link">
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="dash-nav-link"
+                >
                   {item.label}
                 </Link>
               ))}

@@ -95,43 +95,6 @@
   background: var(--mk-bg);
 }
 
-/* ─── Top chrome (macOS traffic-light bar) ─────────────────────── */
-.bematist-dashboard .dash-chrome {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--mk-border);
-  background: #0d0f12;
-  position: sticky;
-  top: 0;
-  z-index: 20;
-}
-
-.bematist-dashboard .dash-chrome-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.bematist-dashboard .dash-chrome-url {
-  flex: 1;
-  height: 22px;
-  border-radius: 4px;
-  background: rgba(237, 232, 222, 0.04);
-  margin-left: 10px;
-  display: flex;
-  align-items: center;
-  padding: 0 10px;
-  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
-  font-size: 10px;
-  color: var(--mk-ink-muted);
-  letter-spacing: 0.02em;
-  min-width: 0;
-}
-
 /* ─── Sidebar ──────────────────────────────────────────────────── */
 .bematist-dashboard .dash-side {
   border-right: 1px solid var(--mk-border);
