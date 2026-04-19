@@ -16,7 +16,8 @@
     "@clickhouse/client": "^1.7.0",
     "drizzle-orm": "0.36.4",
     "pg-boss": "^9.0.3",
-    "postgres": "^3.4.5"
+    "postgres": "^3.4.5",
+    "redis": "^4.7.0"
   },
   "devDependencies": {
     "@types/bun": "latest",

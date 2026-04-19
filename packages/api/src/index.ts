@@ -25,6 +25,11 @@ export {
   MIN_OUTCOME_EVENTS,
   MIN_SESSIONS,
 } from "./gates";
+export {
+  type EngineerViewAttemptInput,
+  type EngineerViewAttemptOutput,
+  recordEngineerViewAttempt,
+} from "./mutations/engineer_view";
 export { enqueueGithubSync } from "./mutations/github/sync";
 export { setNotificationPref } from "./mutations/policy";
 // Mutations
