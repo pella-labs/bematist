@@ -52,6 +52,18 @@ function makePgClient(): { client: PgClient; raw: ReturnType<typeof postgres> } 
       const rows = (await sql.unsafe(text, (params ?? []) as any[])) as unknown as T[];
       return rows;
     },
+    async transaction<T>(fn: (tx: PgClient) => Promise<T>): Promise<T> {
+      return sql.begin(async (txSql) => {
+        const tx: PgClient = {
+          async query<R = unknown>(text: string, params?: unknown[]): Promise<R[]> {
+            // biome-ignore lint/suspicious/noExplicitAny: see query() above
+            const rows = (await txSql.unsafe(text, (params ?? []) as any[])) as unknown as R[];
+            return rows;
+          },
+        };
+        return await fn(tx);
+      }) as T;
+    },
   };
   return { client, raw: sql };
 }

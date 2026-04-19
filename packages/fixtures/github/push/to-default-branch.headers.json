@@ -1,0 +1,5 @@
+{
+  "X-GitHub-Event": "push",
+  "X-GitHub-Delivery": "fixture-push-to-default-branch",
+  "X-Hub-Signature-256": "sha256=04924405f1233fcf128e7fe655a22ca4e7c2f50358c67beb2e16f856ca9683e0"
+}

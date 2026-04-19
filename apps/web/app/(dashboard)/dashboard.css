@@ -168,6 +168,19 @@
   position: relative;
 }
 
+.bematist-dashboard .dash-nav-section {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--mk-ink-faint);
+  padding: 16px 10px 4px;
+}
+
+.bematist-dashboard .dash-nav-link-sub {
+  padding-left: 18px;
+}
+
 /* Accent bar on the left edge of the active tab, matching the wordmark dot. */
 .bematist-dashboard .dash-nav-link[aria-current="page"]::before {
   content: "";

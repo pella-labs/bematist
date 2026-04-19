@@ -98,8 +98,7 @@ export default async function OutcomesPage() {
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight">Outcomes</h1>
         <p className="text-sm text-muted-foreground">
-          Productive work on the left, retry waste on the right. Proxy metric until
-          outcome-attribution lands (accept events, merged commits); honest caveats below.
+          Cost per merged PR and per commit in the window.
         </p>
       </header>
 

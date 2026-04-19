@@ -56,7 +56,44 @@ services:
       timeout: 3s
       retries: 10
 
+  # Redpanda — single-broker dev cluster. PRD §7.1 G1: webhook ingest emits to
+  # topic `github.webhooks` (32 partitions, key = tenant_id:installation_id).
+  # Kafka API exposed on 9092; admin API on 9644; Schema Registry disabled for
+  # dev (we emit raw JSON). Single-node `--smp 1` minimizes dev footprint.
+  redpanda:
+    image: redpandadata/redpanda:v24.3.1
+    container_name: bematist-redpanda
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=512M
+      - --reserve-memory=0M
+      - --overprovisioned
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+      - --pandaproxy-addr=0.0.0.0:8082
+      - --advertise-pandaproxy-addr=localhost:8082
+      - --rpc-addr=0.0.0.0:33145
+      - --advertise-rpc-addr=redpanda:33145
+    ports:
+      - "127.0.0.1:9092:9092"
+      - "127.0.0.1:8082:8082"
+      - "127.0.0.1:9644:9644"
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    # Note: rpk v24.3+ dropped the --brokers flag on `cluster health`; the
+    # command defaults to the local broker, which is what we want here.
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 volumes:
   postgres-data:
   clickhouse-data:
   redis-data:
+  redpanda-data:

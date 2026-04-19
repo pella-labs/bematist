@@ -11,7 +11,11 @@
     "./gates": "./src/gates.ts",
     "./schemas/*": "./src/schemas/*.ts",
     "./queries/*": "./src/queries/*.ts",
-    "./mutations/*": "./src/mutations/*.ts"
+    "./mutations/*": "./src/mutations/*.ts",
+    "./schemas/github/*": "./src/schemas/github/*.ts",
+    "./queries/github/*": "./src/queries/github/*.ts",
+    "./mutations/github/*": "./src/mutations/github/*.ts",
+    "./github/*": "./src/github/*.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
@@ -26,6 +30,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "postgres": "^3.4.5",
     "typescript": "^5.6.3"
   }
 }

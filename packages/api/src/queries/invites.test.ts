@@ -137,9 +137,7 @@ function makeFakeDb() {
           .filter((i) => {
             if (includeInactive) return true;
             const underCap = i.max_uses === null || i.uses < i.max_uses;
-            return (
-              i.revoked_at === null && underCap && i.expires_at.getTime() > Date.now()
-            );
+            return i.revoked_at === null && underCap && i.expires_at.getTime() > Date.now();
           })
           .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
           .map((i) => {
@@ -495,6 +493,8 @@ describe("revokeInvite — admin-gated soft-delete", () => {
       accepted_at: null,
       revoked_at: null,
       created_at: new Date(),
+      max_uses: null,
+      uses: 0,
     });
 
     await expect(revokeInvite(attacker, { id: "invite-b-victim" })).rejects.toThrow(AuthError);

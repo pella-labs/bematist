@@ -14,8 +14,8 @@ const NAV = [
 ];
 
 const ADMIN_NAV = [
-  { href: "/admin/ingest-keys", label: "Ingest keys" },
   { href: "/admin/github", label: "GitHub" },
+  { href: "/admin/ingest-keys", label: "Ingest keys" },
   { href: "/admin/invites", label: "Invites" },
 ];
 

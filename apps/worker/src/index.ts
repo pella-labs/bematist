@@ -2,11 +2,29 @@
 // PgBoss is for crons only (CLAUDE.md Architecture Rule #4). Per-event work goes
 // to ClickHouse MVs or Redis Streams.
 
+import {
+  createInMemoryInstallationTokenCache,
+  createRedisInstallationTokenCache,
+  getInstallationToken as resolveInstallationToken,
+} from "@bematist/api/github/installationToken";
 import { prompt_clusters } from "@bematist/schema/postgres";
 import type { ClickHouseClient } from "@clickhouse/client";
 import PgBoss from "pg-boss";
 import { ch } from "./clickhouse";
-import { db } from "./db";
+import { db, pgClient } from "./db";
+import { startKafkaGithubConsumer } from "./github/kafkaConsumer";
+import {
+  createLocalSemaphore,
+  createNoopRecomputeEmitter,
+  createRecomputeEmitter,
+  createTokenBucket,
+} from "./github-initial-sync";
+import { dispatcherTick } from "./github-initial-sync/dispatcher";
+import { FsAliasArchiver, runAliasRetirement } from "./github-linker/aliasRetirement";
+import { createLinkerConsumer } from "./github-linker/consumer";
+import { loadInputs as linkerLoadInputs } from "./github-linker/loadInputs";
+import { ensurePartitionsFor } from "./github-linker/partitionCreator";
+import { runReconcileScaffold } from "./github-linker/reconcileScaffold";
 import { PostgresAnomalyNotifier } from "./jobs/anomaly/pg_notifier";
 import type { CohortP95, DailyMetricRow } from "./jobs/anomaly/types";
 import { runAnomalyDetection } from "./jobs/anomaly_detect";
@@ -24,6 +42,32 @@ const ANOMALY_CRON_SCHEDULE = process.env.ANOMALY_CRON_SCHEDULE ?? "0 * * * *";
 const RECLUSTER_CRON_SCHEDULE = process.env.RECLUSTER_CRON_SCHEDULE ?? "30 3 * * *";
 const RECLUSTER_EMBEDDING_MODEL = process.env.RECLUSTER_EMBEDDING_MODEL ?? "openai-3-small-512";
 const RECLUSTER_MAX_PROMPTS_PER_ORG = Number(process.env.RECLUSTER_MAX_PROMPTS_PER_ORG ?? 5_000);
+// Github initial-sync dispatcher — every 30s by default. Per-event work
+// (pagination + DB upserts) runs inside `runInitialSync`, gated by the
+// 5-slot local semaphore. CLAUDE.md Rule #4 compliant: this cron is the
+// scheduler, not the per-event worker.
+const GITHUB_SYNC_DISPATCHER_SCHEDULE =
+  process.env.GITHUB_SYNC_DISPATCHER_SCHEDULE ?? "*/1 * * * *";
+// G1-linker crons — all PgBoss, per CLAUDE.md Architecture Rule #4.
+//
+// `github.linker.partition_creator` runs at 01:00 UTC on the 25th of every
+// month (≈ T-7d before the 1st). Default value overrideable via env.
+const LINKER_PARTITION_CREATOR_SCHEDULE =
+  process.env.LINKER_PARTITION_CREATOR_SCHEDULE ?? "0 1 25 * *";
+// `github.linker.alias_retirement` runs once daily at 02:00 UTC.
+const LINKER_ALIAS_RETIREMENT_SCHEDULE =
+  process.env.LINKER_ALIAS_RETIREMENT_SCHEDULE ?? "0 2 * * *";
+// `github.linker.reconcile_scaffold` runs hourly.
+const LINKER_RECONCILE_SCAFFOLD_SCHEDULE =
+  process.env.LINKER_RECONCILE_SCAFFOLD_SCHEDULE ?? "15 * * * *";
+// Redis-streams consumer tick cadence (seconds). The internal XREADGROUP
+// BLOCK is 5s; the dispatcher wakes the tick every `LINKER_TICK_INTERVAL_MS`
+// ms — at scale this becomes a long-running loop (below).
+const LINKER_TICK_INTERVAL_MS = Number(process.env.LINKER_TICK_INTERVAL_MS ?? 5_000);
+const LINKER_ALIAS_ARCHIVE_DIR =
+  process.env.BEMATIST_ALIAS_ARCHIVE_DIR ?? "/tmp/bematist/alias-archive";
+// Local worker-node semaphore per PRD §11.2 = 5 concurrent initial syncs.
+const githubInitialSyncSemaphore = createLocalSemaphore(5);
 
 export async function startWorker() {
   const boss = new PgBoss(PG_BOSS_URL);
@@ -46,6 +90,32 @@ export async function startWorker() {
   });
   await boss.schedule("cluster.recluster_nightly", RECLUSTER_CRON_SCHEDULE);
 
+  await boss.work("github.initial_sync_dispatcher", async () => {
+    const report = await runGithubInitialSyncDispatcher();
+    return report;
+  });
+  await boss.schedule("github.initial_sync_dispatcher", GITHUB_SYNC_DISPATCHER_SCHEDULE);
+
+  // G1-linker crons — partition creator (monthly), alias retirement (daily),
+  // reconciliation scaffold (hourly). Per CLAUDE.md Architecture Rule #4:
+  // PgBoss for crons only. Per-event linker work runs through the Redis
+  // Streams consumer loop below, NOT through PgBoss.
+  await boss.work("github.linker.partition_creator", async () => {
+    return await ensurePartitionsFor(pgClient);
+  });
+  await boss.schedule("github.linker.partition_creator", LINKER_PARTITION_CREATOR_SCHEDULE);
+
+  await boss.work("github.linker.alias_retirement", async () => {
+    const archiver = new FsAliasArchiver(LINKER_ALIAS_ARCHIVE_DIR);
+    return await runAliasRetirement(pgClient, archiver);
+  });
+  await boss.schedule("github.linker.alias_retirement", LINKER_ALIAS_RETIREMENT_SCHEDULE);
+
+  await boss.work("github.linker.reconcile_scaffold", async () => {
+    return await runReconcileScaffold(pgClient);
+  });
+  await boss.schedule("github.linker.reconcile_scaffold", LINKER_RECONCILE_SCAFFOLD_SCHEDULE);
+
   console.log(
     "[worker] started; gdpr.partition_drop:",
     GDPR_CRON_SCHEDULE,
@@ -53,8 +123,163 @@ export async function startWorker() {
     ANOMALY_CRON_SCHEDULE,
     "cluster.recluster_nightly:",
     RECLUSTER_CRON_SCHEDULE,
+    "github.initial_sync_dispatcher:",
+    GITHUB_SYNC_DISPATCHER_SCHEDULE,
+    "github.linker.partition_creator:",
+    LINKER_PARTITION_CREATOR_SCHEDULE,
+    "github.linker.alias_retirement:",
+    LINKER_ALIAS_RETIREMENT_SCHEDULE,
+    "github.linker.reconcile_scaffold:",
+    LINKER_RECONCILE_SCAFFOLD_SCHEDULE,
   );
+
+  // G2 — Kafka consumer for `github.webhooks`. Opt-in via
+  // KAFKA_TRANSPORT=kafkajs; stays off in solo/embedded mode (no Redpanda
+  // broker). Consumer runs in the same process as the linker loop.
+  startKafkaGithubConsumerLoop().catch((err) => {
+    console.error(
+      JSON.stringify({
+        level: "error",
+        app: "worker-github-kafka",
+        msg: "consumer-crashed",
+        err: err instanceof Error ? err.message : String(err),
+      }),
+    );
+  });
+
+  // Redis Streams consumer loop for `session_repo_recompute:<tenant_id>`.
+  // Fire-and-forget — the loop self-paces via XREADGROUP BLOCK + a short
+  // interval. Surfaces errors via console.error; a production deploy
+  // supplies Sentry/pino via the log hook.
+  startLinkerConsumerLoop().catch((err) => {
+    console.error(
+      JSON.stringify({
+        level: "error",
+        app: "github-linker",
+        msg: "consumer-loop-crashed",
+        err: err instanceof Error ? err.message : String(err),
+      }),
+    );
+  });
+
   return boss;
+}
+
+/**
+ * Start the kafkajs consumer for `github.webhooks` when
+ * `KAFKA_TRANSPORT=kafkajs`. No-op when the operator left the default
+ * (solo mode / tests). Uses the same `consumeMessage` pipeline as the
+ * in-memory path.
+ */
+async function startKafkaGithubConsumerLoop(): Promise<void> {
+  const transport = (process.env.KAFKA_TRANSPORT ?? "kafkajs").toLowerCase();
+  if (transport !== "kafkajs") {
+    console.log("[worker] KAFKA_TRANSPORT=memory — skipping kafka consumer");
+    return;
+  }
+  const brokersRaw = process.env.KAFKA_BROKERS ?? process.env.REDPANDA_BROKERS ?? "";
+  const brokers = brokersRaw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  const finalBrokers = brokers.length > 0 ? brokers : ["localhost:9092"];
+
+  // B4 — real Redis recompute producer. Previously wired to the in-memory
+  // test double, which meant webhook UPSERTs never produced stream entries
+  // for the linker consumer to pick up, so `session_repo_links` +
+  // `session_repo_eligibility` never materialised. The consumer in this
+  // same process reads via its own node-redis client — using a shared
+  // client here gets published entries straight onto the stream the
+  // consumer is already watching.
+  const { createRedisRecomputeStream, createInMemoryRecomputeStream } = await import(
+    "../../ingest/src/github-app/recomputeStream"
+  );
+  const recompute = await (async () => {
+    if (process.env.LINKER_CONSUMER_ENABLED === "0" || process.env.NODE_ENV === "test") {
+      return createInMemoryRecomputeStream();
+    }
+    const mod = await import("redis");
+    const url = process.env.REDIS_URL ?? "redis://localhost:6379";
+    // biome-ignore lint/suspicious/noExplicitAny: node-redis types
+    const redis = (mod as any).createClient({ url });
+    redis.on("error", (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(
+        JSON.stringify({
+          level: "error",
+          app: "worker-github",
+          msg: "recompute-producer-redis-error",
+          err: msg,
+        }),
+      );
+    });
+    await redis.connect();
+    return createRedisRecomputeStream(redis);
+  })();
+
+  await startKafkaGithubConsumer(
+    {
+      brokers: finalBrokers,
+      topic: process.env.GITHUB_WEBHOOKS_TOPIC ?? "github.webhooks",
+      groupId: process.env.BEMATIST_WORKER_GROUP_ID ?? "bematist-github-worker",
+    },
+    {
+      sql: pgClient,
+      recompute,
+    },
+  );
+  console.log("[worker] kafka github consumer started", {
+    brokers: finalBrokers,
+    topic: "github.webhooks",
+  });
+}
+
+/**
+ * Start the Redis-Streams consumer loop for the linker. Production wires
+ * the `loadInputs` callback against ClickHouse session enrichment + the
+ * Postgres state tables; G1 stubs this to null-inputs (no-op) until the
+ * session-index query lands in G3 with the reconciliation runner.
+ */
+async function startLinkerConsumerLoop(): Promise<void> {
+  if (process.env.LINKER_CONSUMER_ENABLED === "0") {
+    console.log("[worker] github-linker consumer disabled (LINKER_CONSUMER_ENABLED=0)");
+    return;
+  }
+  const mod = await import("redis");
+  const url = process.env.REDIS_URL ?? "redis://localhost:6379";
+  // biome-ignore lint/suspicious/noExplicitAny: node-redis types
+  const redis = (mod as any).createClient({ url });
+  redis.on("error", (err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(
+      JSON.stringify({ level: "error", app: "github-linker", msg: "redis-error", err: msg }),
+    );
+  });
+  await redis.connect();
+
+  const chClient = ch();
+  const consumer = createLinkerConsumer({
+    redis,
+    sql: pgClient,
+    loadInputs: (tenantId, sessionId) =>
+      linkerLoadInputs({ sql: pgClient, ch: chClient }, tenantId, sessionId),
+  });
+
+  // Long-running tick loop.
+  const loop = async () => {
+    while (!consumer.isStopped()) {
+      try {
+        await consumer.tick();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(
+          JSON.stringify({ level: "error", app: "github-linker", msg: "tick-failed", err: msg }),
+        );
+      }
+      await new Promise((r) => setTimeout(r, LINKER_TICK_INTERVAL_MS));
+    }
+  };
+  loop();
 }
 
 /**
@@ -305,6 +530,124 @@ export async function runReclusterAllOrgs(deps: { ch: ClickHouseClient }): Promi
   }
 
   return { orgs: orgRows.length, prompts: totalPrompts, centroids: totalCentroids };
+}
+
+/**
+ * PgBoss cron body for `github.initial_sync_dispatcher`. Reads queued rows
+ * from `github_sync_progress` and runs each under the shared 5-slot
+ * semaphore. Production wiring — unit tests use a direct `dispatcherTick`
+ * call with fakes per `apps/worker/src/github-initial-sync/initialSync.test.ts`.
+ *
+ * Token-bucket state lives in Redis (production) but the token bucket we
+ * construct here owns its own lazy Redis connection — for now, we
+ * short-circuit to a process-local in-memory store until the worker has
+ * a shared Redis client (Sprint 2). The token bucket is additive
+ * back-pressure; Phase 0 / G1 tests pass without a real Redis because the
+ * GitHub rate-limit headers are the authoritative signal.
+ */
+async function runGithubInitialSyncDispatcher(): Promise<
+  import("./github-initial-sync/dispatcher").DispatcherTickReport
+> {
+  const mem = new Map<string, string>();
+  const tokenBucket = createTokenBucket({
+    store: {
+      async get(key) {
+        return mem.get(key) ?? null;
+      },
+      async set(key, value) {
+        mem.set(key, value);
+      },
+    },
+    refillPerSecond: 1,
+    burst: 10,
+  });
+
+  // B2 — real Redis recompute emitter + shared installation-token cache.
+  // When REDIS_URL is unreachable OR we're in a LINKER_CONSUMER_ENABLED=0
+  // test path, fall back to a noop emitter + in-memory token cache so the
+  // PgBoss cron still makes incremental progress; producers that would have
+  // pushed to Redis instead short-circuit cleanly.
+  const appId = process.env.GITHUB_APP_ID;
+  const privateKeyPem = process.env.GITHUB_APP_PRIVATE_KEY_PEM;
+  const redisDisabled =
+    process.env.LINKER_CONSUMER_ENABLED === "0" || process.env.NODE_ENV === "test";
+
+  let emitRecompute: ReturnType<typeof createNoopRecomputeEmitter> = createNoopRecomputeEmitter();
+  let tokenCacheRedisConnected = false;
+  let redisClient: unknown = null;
+  if (!redisDisabled) {
+    try {
+      const mod = await import("redis");
+      const url = process.env.REDIS_URL ?? "redis://localhost:6379";
+      // biome-ignore lint/suspicious/noExplicitAny: node-redis v4 types are large
+      const client = (mod as any).createClient({ url });
+      client.on("error", (err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(
+          JSON.stringify({
+            level: "error",
+            app: "worker-github-dispatcher",
+            msg: "redis-error",
+            err: msg,
+          }),
+        );
+      });
+      await client.connect();
+      redisClient = client;
+      tokenCacheRedisConnected = true;
+      emitRecompute = createRecomputeEmitter({
+        async xadd(stream, fields) {
+          return (await client.xAdd(stream, "*", fields)) as string;
+        },
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(
+        JSON.stringify({
+          level: "warn",
+          app: "worker-github-dispatcher",
+          msg: "redis-unavailable-falling-back",
+          err: msg,
+        }),
+      );
+    }
+  }
+
+  const tokenCache = tokenCacheRedisConnected
+    ? createRedisInstallationTokenCache({
+        // biome-ignore lint/suspicious/noExplicitAny: node-redis v4 client
+        get: (k: string) => (redisClient as any).get(k),
+        // biome-ignore lint/suspicious/noExplicitAny: node-redis v4 client
+        set: (k: string, v: string, opts?: { PX?: number; EX?: number }) =>
+          // biome-ignore lint/suspicious/noExplicitAny: node-redis v4 client
+          (redisClient as any).set(k, v, opts),
+        // biome-ignore lint/suspicious/noExplicitAny: node-redis v4 client
+        del: (k: string) => (redisClient as any).del(k),
+      })
+    : createInMemoryInstallationTokenCache();
+
+  const getInstallationToken = async (installationId: bigint): Promise<string> => {
+    if (!appId || !privateKeyPem) {
+      throw new Error(
+        "github-initial-sync: GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY_PEM not configured — " +
+          `cannot mint installation token for ${installationId.toString()}`,
+      );
+    }
+    return resolveInstallationToken({
+      installationId: installationId.toString(),
+      appId,
+      privateKeyPem,
+      cache: tokenCache,
+    });
+  };
+
+  return await dispatcherTick({
+    sql: pgClient,
+    semaphore: githubInitialSyncSemaphore,
+    tokenBucket,
+    getInstallationToken,
+    emitRecompute,
+  });
 }
 
 if (import.meta.main) {
