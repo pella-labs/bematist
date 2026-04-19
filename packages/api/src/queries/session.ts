@@ -1,6 +1,6 @@
 import { assertRole, type Ctx } from "../auth";
 import { useFixtures } from "../env";
-import type { Window } from "../schemas/common";
+import type { DeveloperIdentity, Window } from "../schemas/common";
 import type {
   GetSessionInput,
   GetSessionOutput,
@@ -9,6 +9,7 @@ import type {
   SessionListItem,
   SessionSummary,
 } from "../schemas/session";
+import { buildFixtureIdentity, fetchIdentitiesByDeveloperId } from "./identities";
 
 /**
  * Session detail. `prompt_text` is included ONLY if the caller holds a valid
@@ -244,7 +245,20 @@ async function listSessionsFixture(
     sessions,
     total: sessions.length,
     window: input.window,
+    ...(input.includeIdentities
+      ? { identities: buildFixtureIdentitiesForEngineers(sessions.map((s) => s.engineer_id)) }
+      : {}),
   };
+}
+
+function buildFixtureIdentitiesForEngineers(
+  engineerIds: readonly string[],
+): Record<string, DeveloperIdentity> {
+  const out: Record<string, DeveloperIdentity> = {};
+  for (const eid of engineerIds) {
+    if (!(eid in out)) out[eid] = buildFixtureIdentity(eid);
+  }
+  return out;
 }
 
 /**
@@ -334,10 +348,17 @@ async function listSessionsReal(ctx: Ctx, input: ListSessionsInput): Promise<Lis
     tier: r.tier,
   }));
 
+  let identities: Record<string, DeveloperIdentity> | undefined;
+  if (input.includeIdentities) {
+    const uniqueIds = Array.from(new Set(sessions.map((s) => s.engineer_id)));
+    identities = await fetchIdentitiesByDeveloperId(ctx, uniqueIds);
+  }
+
   return {
     sessions,
     total: sessions.length,
     window: input.window,
+    ...(identities ? { identities } : {}),
   };
 }
 

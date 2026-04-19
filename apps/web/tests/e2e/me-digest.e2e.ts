@@ -15,8 +15,13 @@ import { expect, test } from "@playwright/test";
  * the toggle and assert the server action response.
  */
 
-test.describe("/me/digest", () => {
+test.describe("/me/digest with BEMATIST_COMPLIANCE_ENABLED enabled", () => {
   test("renders with notification preference + opt-out transparency copy", async ({ page }) => {
+    const flag = process.env.BEMATIST_COMPLIANCE_ENABLED;
+    test.skip(
+      flag !== "1" && flag !== "true",
+      "Only runs when BEMATIST_COMPLIANCE_ENABLED is '1' or 'true' (compliance UX shown).",
+    );
     await page.goto("/me/digest");
 
     const main = page.getByRole("main");
@@ -37,5 +42,17 @@ test.describe("/me/digest", () => {
     // is the realistic M1 shape.
     await expect(main.getByRole("heading", { name: "Recent views" })).toBeVisible();
     await expect(main.getByText(/Nothing in the last 24 hours/i)).toBeVisible();
+  });
+});
+
+test.describe("/me/digest with BEMATIST_COMPLIANCE_ENABLED disabled", () => {
+  test("returns 404 — page is hidden when the compliance flag is off", async ({ request }) => {
+    const flag = process.env.BEMATIST_COMPLIANCE_ENABLED;
+    test.skip(
+      flag === "1" || flag === "true",
+      "Only runs when BEMATIST_COMPLIANCE_ENABLED is unset / '0' / 'false' (compliance UX hidden).",
+    );
+    const response = await request.get("/me/digest");
+    expect(response.status()).toBe(404);
   });
 });

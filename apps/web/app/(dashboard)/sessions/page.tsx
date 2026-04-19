@@ -1,4 +1,4 @@
-import { listSessions, schemas } from "@bematist/api";
+import { isComplianceEnabled, listSessions, schemas } from "@bematist/api";
 import { Badge } from "@bematist/ui";
 import type { Metadata } from "next";
 import { getSessionCtx } from "@/lib/session";
@@ -25,10 +25,12 @@ export default async function SessionsPage({
   const source = parseSource(params.source);
 
   const ctx = await getSessionCtx();
+  const showIdentities = !isComplianceEnabled();
   const result = await listSessions(ctx, {
     window,
     limit: 500,
     ...(source ? { source } : {}),
+    ...(showIdentities ? { includeIdentities: true } : {}),
   });
 
   const totalCost = result.sessions.reduce((acc, s) => acc + s.cost_usd, 0);
@@ -53,7 +55,10 @@ export default async function SessionsPage({
         ) : null}
       </div>
 
-      <SessionsTable rows={result.sessions} />
+      <SessionsTable
+        rows={result.sessions}
+        {...(result.identities ? { identities: result.identities } : {})}
+      />
     </div>
   );
 }
