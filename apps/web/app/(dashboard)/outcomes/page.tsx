@@ -48,8 +48,7 @@ export default async function OutcomesPage({
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight">Outcomes</h1>
         <p className="text-sm text-muted-foreground">
-          Cost per merged PR and per commit — joined via the code_edit_tool.accept anchor,
-          AI-Assisted trailer (D29), and denormalized pr_number / commit_sha on events.
+          Cost per merged PR and per commit in the window.
         </p>
       </header>
 
