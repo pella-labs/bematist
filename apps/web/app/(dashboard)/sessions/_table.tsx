@@ -1,7 +1,12 @@
 "use client";
 
 import type { schemas } from "@bematist/api";
-import { type ColumnDef, CostEstimatedChip, FidelityChip, VirtualTable } from "@bematist/ui";
+import {
+  type ColumnDef,
+  CostEstimatedChip,
+  FidelityChip,
+  VirtualTable,
+} from "@bematist/ui";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 
@@ -25,9 +30,12 @@ export function SessionsTable({ rows }: { rows: Row[] }) {
       {
         id: "started_at",
         header: "Started",
-        size: 200,
+        size: 180,
         cell: ({ row }) => (
-          <time dateTime={row.original.started_at} className="text-muted-foreground">
+          <time
+            dateTime={row.original.started_at}
+            className="text-muted-foreground"
+          >
             {TIME.format(new Date(row.original.started_at))}
           </time>
         ),
@@ -35,35 +43,40 @@ export function SessionsTable({ rows }: { rows: Row[] }) {
       {
         id: "source",
         header: "Source",
-        size: 220,
+        size: 170,
         cell: ({ row }) => (
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{row.original.source}</span>
-            <FidelityChip fidelity={row.original.fidelity} />
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="truncate font-medium">{row.original.source}</span>
+            <FidelityChip fidelity={row.original.fidelity} compact />
           </div>
         ),
       },
       {
         id: "engineer_id",
         header: "Engineer",
-        size: 160,
+        size: 110,
         cell: ({ row }) => (
-          <span className="font-mono text-xs text-muted-foreground">
-            {row.original.engineer_id}
+          <span
+            className="font-mono text-xs text-muted-foreground"
+            title={row.original.engineer_id}
+          >
+            {shortHash(row.original.engineer_id)}
           </span>
         ),
       },
       {
         id: "duration",
         header: "Duration",
-        size: 110,
+        size: 100,
         cell: ({ row }) =>
-          row.original.duration_s === null ? "—" : formatDuration(row.original.duration_s),
+          row.original.duration_s === null
+            ? "—"
+            : formatDuration(row.original.duration_s),
       },
       {
         id: "cost",
         header: "Cost",
-        size: 160,
+        size: 130,
         cell: ({ row }) => (
           <span className="flex items-center gap-2 tabular-nums">
             {row.original.cost_estimated && row.original.cost_usd === 0
@@ -76,7 +89,7 @@ export function SessionsTable({ rows }: { rows: Row[] }) {
       {
         id: "tokens",
         header: "Tokens (in / out)",
-        size: 220,
+        size: 170,
         cell: ({ row }) => (
           <span className="tabular-nums text-muted-foreground">
             {row.original.input_tokens.toLocaleString()} /{" "}
@@ -87,8 +100,10 @@ export function SessionsTable({ rows }: { rows: Row[] }) {
       {
         id: "accepted_edits",
         header: "Accepts",
-        size: 90,
-        cell: ({ row }) => <span className="tabular-nums">{row.original.accepted_edits}</span>,
+        size: 80,
+        cell: ({ row }) => (
+          <span className="tabular-nums">{row.original.accepted_edits}</span>
+        ),
       },
     ],
     [],
@@ -102,9 +117,20 @@ export function SessionsTable({ rows }: { rows: Row[] }) {
       getRowId={(row) => row.session_id}
       onRowClick={(row) => router.push(`/sessions/${row.session_id}`)}
       height="70vh"
-      empty={<p className="text-sm text-muted-foreground">No sessions in this window.</p>}
+      empty={
+        <p className="text-sm text-muted-foreground">
+          No sessions in this window.
+        </p>
+      }
     />
   );
+}
+
+function shortHash(id: string): string {
+  if (!id) return "—";
+  const stripped = id.replace(/^[^_]+_/, "");
+  const head = stripped.split("-")[0] ?? stripped;
+  return head.length > 8 ? `${head.slice(0, 8)}…` : head;
 }
 
 function formatDuration(seconds: number): string {

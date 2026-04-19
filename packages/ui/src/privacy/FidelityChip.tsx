@@ -11,13 +11,24 @@ import { cn } from "../lib/cn";
  * - `post-migration`: adapter requires a specific app version; pre-migration
  *   data is skipped.
  */
-export type Fidelity = "full" | "estimated" | "aggregate-only" | "post-migration";
+export type Fidelity =
+  | "full"
+  | "estimated"
+  | "aggregate-only"
+  | "post-migration";
 
 const LABELS: Record<Fidelity, string> = {
   full: "Full fidelity",
   estimated: "Estimated",
   "aggregate-only": "Aggregate only",
   "post-migration": "Post-migration",
+};
+
+const COMPACT_LABELS: Record<Fidelity, string> = {
+  full: "Full",
+  estimated: "Est.",
+  "aggregate-only": "Agg.",
+  "post-migration": "Post",
 };
 
 const DESCRIPTIONS: Record<Fidelity, string> = {
@@ -38,20 +49,27 @@ const TONE_CLASSES: Record<Fidelity, string> = {
 export interface FidelityChipProps {
   fidelity: Fidelity;
   className?: string;
+  /** Short label (4 chars max) for dense surfaces like table cells. */
+  compact?: boolean;
 }
 
-export function FidelityChip({ fidelity, className }: FidelityChipProps) {
+export function FidelityChip({
+  fidelity,
+  className,
+  compact = false,
+}: FidelityChipProps) {
+  const visible = compact ? COMPACT_LABELS[fidelity] : LABELS[fidelity];
   return (
     <Tooltip content={DESCRIPTIONS[fidelity]}>
       <span
         className={cn(
-          "inline-flex items-center rounded-sm border px-1.5 py-0 font-mono text-[0.65rem] uppercase tracking-wide",
+          "inline-flex shrink-0 items-center whitespace-nowrap rounded-sm border px-1.5 py-0 font-mono text-[0.65rem] uppercase tracking-wide",
           TONE_CLASSES[fidelity],
           className,
         )}
         aria-label={LABELS[fidelity]}
       >
-        {LABELS[fidelity]}
+        {visible}
       </span>
     </Tooltip>
   );
