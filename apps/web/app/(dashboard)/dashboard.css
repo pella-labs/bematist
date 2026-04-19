@@ -177,8 +177,8 @@
   background: var(--mk-bg);
 }
 
-/* ─── Responsive: stack sidebar above main under ~900px ─────────── */
-@media (max-width: 900px) {
+/* ─── Responsive: stack sidebar above main under ~640px (true mobile) ─── */
+@media (max-width: 640px) {
   .bematist-dashboard .dash-shell {
     grid-template-columns: 1fr;
   }
