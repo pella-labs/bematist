@@ -163,7 +163,7 @@ async function codeDeliveryReal(ctx: Ctx, input: CodeDeliveryInput): Promise<Cod
        coalesce(r.full_name, '?') AS full_name,
        encode(pr.author_login_hash, 'hex') AS author_login_hash
      FROM github_pull_requests pr
-     LEFT JOIN repos r ON r.id = pr.repo_id
+     LEFT JOIN repos r ON r.provider = 'github' AND r.provider_repo_id = pr.provider_repo_id
      WHERE pr.tenant_id = $1
        AND pr.opened_at >= now() - ($2 || ' days')::interval`,
     [ctx.tenant_id, String(days)],
@@ -300,9 +300,9 @@ async function codeDeliveryReal(ctx: Ctx, input: CodeDeliveryInput): Promise<Cod
     .query<{ n: number | string }>(
       `SELECT count(*) AS n
        FROM git_events
-      WHERE tenant_id = $1
-        AND kind = 'push'
-        AND ts >= now() - ($2 || ' days')::interval`,
+      WHERE org_id = $1
+        AND event_kind = 'push'
+        AND received_at >= now() - ($2 || ' days')::interval`,
       [ctx.tenant_id, String(days)],
     )
     .catch(() => [{ n: 0 }]);

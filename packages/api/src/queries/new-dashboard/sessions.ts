@@ -148,7 +148,7 @@ async function sessionsFeedReal(ctx: Ctx, input: SessionsFeedInput): Promise<Ses
       }>(
         `SELECT pr.head_sha, pr.merge_commit_sha, pr.pr_number, r.full_name
            FROM github_pull_requests pr
-           LEFT JOIN repos r ON r.id = pr.repo_id
+           LEFT JOIN repos r ON r.provider = 'github' AND r.provider_repo_id = pr.provider_repo_id
           WHERE pr.tenant_id = $1
             AND (pr.head_sha = ANY($2::text[]) OR pr.merge_commit_sha = ANY($2::text[]))`,
         [ctx.tenant_id, shas],
@@ -384,7 +384,7 @@ async function sessionDetailReal(
                 encode(pr.title_hash, 'hex') AS title_hash,
                 r.full_name
            FROM github_pull_requests pr
-           LEFT JOIN repos r ON r.id = pr.repo_id
+           LEFT JOIN repos r ON r.provider = 'github' AND r.provider_repo_id = pr.provider_repo_id
           WHERE pr.tenant_id = $1
             AND (pr.head_sha = $2 OR pr.merge_commit_sha = $2)`,
         [ctx.tenant_id, h.commit_sha],
