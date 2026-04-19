@@ -1,6 +1,7 @@
 import "server-only";
 import { createSign } from "node:crypto";
 import type { RedeliveryDeps } from "@bematist/api";
+import { createTokenBucket, redisTokenBucketStore } from "@bematist/api/github/tokenBucket";
 
 // Inlined mirror of `apps/ingest/src/github-app/jwt.ts` — the ingest
 // workspace doesn't declare "exports" so we can't import it across apps.
@@ -65,6 +66,30 @@ export async function getGithubRedeliveryDeps(): Promise<RedeliveryDeps> {
     );
   }
 
+  // B9 — per-installation Redis-backed token bucket (PRD D59). Concurrent
+  // admin redeliveries for the same installation share state via
+  // `rl:<installation_id>` so the combined rate is rate-limited at 1 req/s
+  // with burst 10, not the per-call rate. Falls through to the in-memory
+  // fallback when REDIS_URL is unreachable (dev without Redis, tests) so
+  // the admin UI still functions.
+  const tokenBucket = await (async () => {
+    const url = process.env.REDIS_URL;
+    if (!url) return inMemoryBucket();
+    try {
+      const { createClient } = await import("redis");
+      const redis = createClient({ url });
+      redis.on("error", () => {});
+      await redis.connect();
+      return createTokenBucket({
+        store: redisTokenBucketStore(redis),
+        refillPerSecond: 1,
+        burst: 10,
+      });
+    } catch {
+      return inMemoryBucket();
+    }
+  })();
+
   return {
     http: {
       async get(url, headers) {
@@ -89,7 +114,25 @@ export async function getGithubRedeliveryDeps(): Promise<RedeliveryDeps> {
         appId,
         privateKeyPem,
       }),
+    tokenBucket,
   };
+}
+
+/** Process-local fallback when Redis is unreachable. */
+function inMemoryBucket() {
+  const map = new Map<string, string>();
+  return createTokenBucket({
+    store: {
+      async get(k) {
+        return map.get(k) ?? null;
+      },
+      async set(k, v) {
+        map.set(k, v);
+      },
+    },
+    refillPerSecond: 1,
+    burst: 10,
+  });
 }
 
 /** TODO(g3): wire real secrets-store resolver; v1 keeps it env-driven. */

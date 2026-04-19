@@ -54,7 +54,7 @@ to a distinct PR with its own contract tests:
 | B2 | Shared ingest↔worker installation-token resolver | **Pending follow-up** — unblocks admin sync |
 | B4 | Recompute pipeline wiring (Redis stream producer in worker + real `loadInputs`) | **Partial** — Redis producer wired (webhooks now reach the stream); ACK semantics refactor + real `loadInputs` against PG+ClickHouse session enrichment remain as follow-up |
 | B5 | Partial unique index on `session_repo_links (stale_at IS NULL)` | **Landed** (migration 0008) |
-| B9 | Redis token-bucket for `redeliverWebhooks` (D59) | **Pending follow-up** |
+| B9 | Redis token-bucket for `redeliverWebhooks` (D59) | **Landed** — `packages/api/src/github/tokenBucket.ts` (shared) + redeliver pacer wired + Redis-backed in `apps/web/lib/github/redeliveryDeps.ts` |
 | B10 | Recursive allowlist for `assertEvidenceSafe` | **Landed** |
 | B11 | Honest commutativity count + per-scenario D53 witness | **Landed** |
 | H2 | Playwright `admin-github` storageState fixture | **Pending follow-up** — 4 tests currently red under default harness invocation |

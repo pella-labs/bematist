@@ -153,7 +153,7 @@ describe("B9 — redeliverWebhooks per-installation token bucket", () => {
     expect(sleeps.filter((n) => n === 1000).length).toBeGreaterThanOrEqual(3);
     // Bucket state was written to the shared store — key must match
     // installationBucketKey for the tenant's single installation.
-    expect(store._map.has(installationBucketKey(INSTALLATION_ID))).toBe(true);
+    expect(store._map.has(installationBucketKey(String(INSTALLATION_ID)))).toBe(true);
   });
 
   test("two concurrent redelivery calls share a bucket through a shared store", async () => {

@@ -1,4 +1,5 @@
 import { AuthError, assertRole, type Ctx } from "../../auth";
+import { installationBucketKey, type TokenBucket } from "../../github/tokenBucket";
 import type {
   RedeliverWebhooksInput,
   RedeliverWebhooksOutput,
@@ -47,8 +48,25 @@ export interface RedeliveryDeps {
   appJwtProvider: () => Promise<string>;
   /** Clock for tests + elapsed measurement. Defaults to Date.now. */
   now?: () => number;
-  /** Sleep for the rate-limit pacer (overridable in tests). */
+  /**
+   * Sleep — used for (a) the per-acquire back-off when the shared
+   * token bucket returns `waitMs > 0`, and (b) exponential backoff in
+   * `executeWithBackoff` on 429 / secondary-rate-limit 403. Tests stub
+   * this to record durations rather than actually block.
+   */
   sleep?: (ms: number) => Promise<void>;
+  /**
+   * Per-installation token bucket (PRD §11.2 / D59). Keyed via
+   * `installationBucketKey(installationId)`; callers are expected to
+   * supply a Redis-backed bucket in production so concurrent admin
+   * redeliveries share state across nodes.
+   *
+   * Optional: when absent, pacer falls back to the historical fixed
+   * `sleep(1000)` before every HTTP call so legacy test harnesses
+   * continue to pass. Production wiring
+   * (`apps/web/lib/github/redeliveryDeps.ts`) always supplies one.
+   */
+  tokenBucket?: TokenBucket;
   /** Override GitHub API origin for tests. */
   apiBase?: string;
 }
@@ -72,6 +90,7 @@ export async function redeliverWebhooks(
   const sleep = deps.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   const apiBase = deps.apiBase ?? "https://api.github.com";
   const startedAt = nowFn();
+  const bucket = deps.tokenBucket;
 
   // Resolve target installation — default = single installation for tenant.
   const installRows = await ctx.db.pg.query<{ installation_id: string | bigint }>(
@@ -113,7 +132,7 @@ export async function redeliverWebhooks(
   const MAX_PAGES = 50; // safety fuse — 5000 deliveries max per call
 
   while (pagesRead < MAX_PAGES) {
-    await pacerSleep(sleep);
+    await pacerAcquire(bucket, installationId, sleep);
     const url = `${apiBase}/app/hook/deliveries?per_page=100` + (cursor ? `&cursor=${cursor}` : "");
     const res = await executeWithBackoff(() => deps.http.get(url, hdrs()), sleep);
     pagesRead++;
@@ -147,7 +166,7 @@ export async function redeliverWebhooks(
   let queuedAttempts = 0;
   let failedAttempts = 0;
   for (const d of deliveries) {
-    await pacerSleep(sleep);
+    await pacerAcquire(bucket, installationId, sleep);
     const url = `${apiBase}/app/hook/deliveries/${encodeURIComponent(String(d.id))}/attempts`;
     try {
       const res = await executeWithBackoff(() => deps.http.post(url, hdrs()), sleep);
@@ -204,9 +223,39 @@ export async function redeliverWebhooks(
   };
 }
 
-/** Per-installation 1 req/s floor (PRD §11.2 / D59). */
-async function pacerSleep(sleep: (ms: number) => Promise<void>): Promise<void> {
-  await sleep(1000);
+/**
+ * Per-installation 1 req/s floor (PRD §11.2 / D59). When a shared
+ * `TokenBucket` is provided, loop `acquire()` until we consume a token,
+ * sleeping the exact `waitMs` the bucket recommends between retries —
+ * this lets two concurrent redelivery invocations share the same Redis
+ * key so the COMBINED rate never exceeds 1 req/s.
+ *
+ * When no bucket is supplied (legacy test harnesses) we fall back to
+ * the historical fixed `sleep(1000)`.
+ */
+async function pacerAcquire(
+  bucket: TokenBucket | undefined,
+  installationId: string,
+  sleep: (ms: number) => Promise<void>,
+): Promise<void> {
+  if (!bucket) {
+    await sleep(1000);
+    return;
+  }
+  const key = installationBucketKey(installationId);
+  // Bounded loop — 10 attempts × 1s refill is more than enough for a
+  // single-process redelivery worker to pick up its next token. If the
+  // store is unreachable `acquire` returns `waitMs: 1000` forever and
+  // we'd loop; cap at 60s so a wedged Redis doesn't hang a request.
+  const MAX_ATTEMPTS = 60;
+  for (let i = 0; i < MAX_ATTEMPTS; i++) {
+    const { waitMs } = await bucket.acquire(key);
+    if (waitMs === 0) return;
+    await sleep(waitMs);
+  }
+  // Fall through — caller proceeds without a token rather than hanging
+  // indefinitely. The 5-retry executeWithBackoff below still catches
+  // the downstream 429 if the upstream server rejects.
 }
 
 interface HttpResponse {
