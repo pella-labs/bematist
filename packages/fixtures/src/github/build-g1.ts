@@ -461,7 +461,13 @@ const fixtures: FixtureSpec[] = [
         suspended_by: senderBlock,
       },
       repositories: [
-        { id: REPO_ID, node_id: REPO_NODE_ID, name: REPO_NAME, full_name: REPO_FULL_NAME, private: false },
+        {
+          id: REPO_ID,
+          node_id: REPO_NODE_ID,
+          name: REPO_NAME,
+          full_name: REPO_FULL_NAME,
+          private: false,
+        },
       ],
       sender: senderBlock,
     },
@@ -490,7 +496,13 @@ const fixtures: FixtureSpec[] = [
         suspended_at: null,
       },
       repositories: [
-        { id: REPO_ID, node_id: REPO_NODE_ID, name: REPO_NAME, full_name: REPO_FULL_NAME, private: false },
+        {
+          id: REPO_ID,
+          node_id: REPO_NODE_ID,
+          name: REPO_NAME,
+          full_name: REPO_FULL_NAME,
+          private: false,
+        },
       ],
       sender: senderBlock,
     },
@@ -518,7 +530,13 @@ const fixtures: FixtureSpec[] = [
         target_type: "Organization",
       },
       repositories: [
-        { id: REPO_ID, node_id: REPO_NODE_ID, name: REPO_NAME, full_name: REPO_FULL_NAME, private: false },
+        {
+          id: REPO_ID,
+          node_id: REPO_NODE_ID,
+          name: REPO_NAME,
+          full_name: REPO_FULL_NAME,
+          private: false,
+        },
       ],
       sender: senderBlock,
     },

@@ -119,8 +119,10 @@ afterEach(() => {
 describe("github webhooks — G0 fixture round-trip", () => {
   const fixtures = listFixtures();
 
-  test("found all 8 G0 fixtures", () => {
-    expect(fixtures.length).toBe(8);
+  test("found G0 + G1 fixtures (≥ 8)", () => {
+    // G0 shipped 8 fixtures; G1 adds 12 edge-case fixtures. The legacy
+    // ?org=<slug> route must keep accepting every committed fixture.
+    expect(fixtures.length).toBeGreaterThanOrEqual(8);
   });
 
   for (const fx of fixtures) {

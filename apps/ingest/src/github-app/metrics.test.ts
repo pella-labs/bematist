@@ -35,9 +35,9 @@ describe("metrics registry", () => {
   test("histogram bucket + sum + count semantics", () => {
     observeHistogram("github_webhook_lag_seconds", { tenant: "T", event_type: "push" }, 0.2);
     observeHistogram("github_webhook_lag_seconds", { tenant: "T", event_type: "push" }, 1.5);
-    expect(getHistogramCount("github_webhook_lag_seconds", { tenant: "T", event_type: "push" })).toBe(
-      2,
-    );
+    expect(
+      getHistogramCount("github_webhook_lag_seconds", { tenant: "T", event_type: "push" }),
+    ).toBe(2);
     const text = renderPrometheus();
     expect(text).toContain("github_webhook_lag_seconds_bucket");
     expect(text).toContain("github_webhook_lag_seconds_sum");

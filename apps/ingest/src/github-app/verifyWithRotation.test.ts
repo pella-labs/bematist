@@ -8,10 +8,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createHmac } from "node:crypto";
 import type { WebhookDelivery } from "../webhooks/verify";
 import type { InstallationRecord } from "./installationResolver";
-import {
-  getCounterValue,
-  resetGithubMetrics,
-} from "./metrics";
+import { getCounterValue, resetGithubMetrics } from "./metrics";
 import { createInMemoryWebhookSecretResolver } from "./secretsResolver";
 import { verifyWithRotation } from "./verifyWithRotation";
 
@@ -68,9 +65,9 @@ describe("verifyWithRotation", () => {
     });
     expect(r).toEqual({ ok: true, path: "active" });
     expect(getCounterValue("github_webhook_signature_fallback_used_total")).toBe(0);
-    expect(getCounterValue("github_webhook_signature_reject_total", { reason: "both_mismatch" })).toBe(
-      0,
-    );
+    expect(
+      getCounterValue("github_webhook_signature_reject_total", { reason: "both_mismatch" }),
+    ).toBe(0);
   });
 
   test("active mismatch inside window + previous matches → ok path=fallback, fallback metric++", async () => {
@@ -163,6 +160,8 @@ describe("verifyWithRotation", () => {
     });
     expect(r.ok).toBe(false);
     if (r.ok === false) expect(r.reason).toBe("both_mismatch");
-    expect(getCounterValue("github_webhook_signature_reject_total", { reason: "both_mismatch" })).toBe(1);
+    expect(
+      getCounterValue("github_webhook_signature_reject_total", { reason: "both_mismatch" }),
+    ).toBe(1);
   });
 });
