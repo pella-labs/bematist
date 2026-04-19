@@ -1,262 +1,427 @@
-import { getTwoByTwo, isComplianceEnabled, listTeams, type schemas } from "@bematist/api";
-import {
-  Badge,
-  Card,
-  CardHeader,
-  CardTitle,
-  ChartTableToggle,
-  FidelityChip,
-  type GateReason,
-  InsufficientData,
-  ScatterChart,
-} from "@bematist/ui";
+import { AreaChart, Card, CardHeader, CardTitle, CardValue, ScatterChart } from "@bematist/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
+import {
+  type CohortRollup,
+  type EngineerRollup,
+  getCohort,
+  getEngineerDaily,
+  getEngineerModels,
+} from "@/lib/ch-teams";
 import { getSessionCtx } from "@/lib/session";
 
 export const metadata: Metadata = {
-  title: "Teams",
+  title: "Team",
 };
+
+export const dynamic = "force-dynamic";
 
 const USD = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
-  maximumFractionDigits: 0,
+  maximumFractionDigits: 2,
 });
+const INT = new Intl.NumberFormat("en-US");
+const TOK = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
+const PCT = new Intl.NumberFormat("en-US", { style: "percent", maximumFractionDigits: 1 });
+
+function percentileRank(values: number[]): number[] {
+  if (values.length === 0) return [];
+  const pairs = values.map((v, i) => ({ v, i }));
+  pairs.sort((a, b) => a.v - b.v);
+  const ranks = new Array<number>(values.length).fill(0);
+  for (let i = 0; i < pairs.length; i++) {
+    let j = i;
+    while (j + 1 < pairs.length && pairs[j + 1]?.v === pairs[i]?.v) j++;
+    const avgIdx = (i + j) / 2;
+    const pct = values.length === 1 ? 50 : Math.round((avgIdx / (values.length - 1)) * 100);
+    for (let k = i; k <= j; k++) {
+      const pr = pairs[k];
+      if (pr) ranks[pr.i] = pct;
+    }
+    i = j;
+  }
+  return ranks;
+}
+
+function EngineerChipRow({
+  engineers,
+  current,
+  viewerId,
+}: {
+  engineers: EngineerRollup[];
+  current: string;
+  viewerId: string | null;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-xs">
+      <span className="text-muted-foreground">Engineer:</span>
+      <Link
+        href="/teams"
+        className={`inline-flex items-center gap-1.5 rounded border px-2 py-0.5 ${
+          current === "__cohort"
+            ? "border-primary/40 bg-primary/15 text-foreground"
+            : "border-transparent hover:border-border text-muted-foreground"
+        }`}
+      >
+        Cohort view
+      </Link>
+      {engineers.map((e) => {
+        const isMe = viewerId === e.id;
+        return (
+          <Link
+            key={e.id}
+            href={`/teams?engineer=${encodeURIComponent(e.id)}`}
+            className={`inline-flex items-center gap-1.5 rounded border px-2 py-0.5 ${
+              current === e.id
+                ? "border-primary/40 bg-primary/15"
+                : "border-transparent hover:border-border"
+            }`}
+            title={e.id}
+          >
+            <span className="h-2 w-2 rounded-full bg-primary" />
+            <span className="font-mono">{isMe ? "you" : e.shortId}</span>
+          </Link>
+        );
+      })}
+      <span className="ml-auto text-muted-foreground">
+        cohort k={engineers.length} · k≥5 for named rankings
+      </span>
+    </div>
+  );
+}
+
+function CohortView({ cohort, viewerId }: { cohort: CohortRollup; viewerId: string | null }) {
+  if (cohort.engineers.length === 0) {
+    return (
+      <Card className="border-amber-500/30 bg-amber-500/5">
+        <p className="text-xs text-amber-400/90">
+          <strong>No events in ClickHouse yet.</strong> This team view lights up once any
+          teammate&apos;s collector posts to the shared ingest. Check{" "}
+          <code className="font-mono">CLICKHOUSE_URL</code> +{" "}
+          <code className="font-mono">org_id</code> scope.
+        </p>
+      </Card>
+    );
+  }
+
+  const scatterSrc = cohort.engineers.filter((e) => e.cost > 0 && e.sessions > 0);
+  const firstTryRanks = percentileRank(scatterSrc.map((e) => e.firstTryRate));
+  const effRanks = percentileRank(
+    scatterSrc.map((e) => (e.cost > 0 ? e.sessions / e.cost : 0)),
+  );
+  const scatter = scatterSrc.map((e, i) => ({
+    id: e.shortId,
+    x: firstTryRanks[i] ?? 50,
+    y: effRanks[i] ?? 50,
+    z: Math.max(6, Math.log10(e.cost + 1) * 25),
+  }));
+
+  const avgFirstTryRate =
+    cohort.engineers.reduce((a, e) => a + e.firstTryRate * e.toolCalls, 0) /
+    Math.max(
+      1,
+      cohort.engineers.reduce((a, e) => a + e.toolCalls, 0),
+    );
+
+  return (
+    <>
+      <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Engineers</CardTitle>
+          </CardHeader>
+          <CardValue>{INT.format(cohort.totals.engineers)}</CardValue>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {cohort.totals.engineers >= 5
+              ? "named rankings unlocked"
+              : `${5 - cohort.totals.engineers} more for named rankings`}
+          </p>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Total sessions</CardTitle>
+          </CardHeader>
+          <CardValue>{INT.format(cohort.totals.sessions)}</CardValue>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Total spend</CardTitle>
+          </CardHeader>
+          <CardValue>{USD.format(cohort.totals.cost)}</CardValue>
+          <p className="mt-1 text-xs text-muted-foreground">
+            avg {USD.format(cohort.totals.cost / Math.max(1, cohort.totals.engineers))} / engineer
+          </p>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>First-try rate</CardTitle>
+          </CardHeader>
+          <CardValue>{PCT.format(avgFirstTryRate)}</CardValue>
+          <p className="mt-1 text-xs text-muted-foreground">weighted across tool calls</p>
+        </Card>
+      </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Engineers — per-member rollup</CardTitle>
+        </CardHeader>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[36rem]">
+            <thead>
+              <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <th className="pb-2">Engineer</th>
+                <th className="pb-2 text-right">Sessions</th>
+                <th className="pb-2 text-right">First-try</th>
+                <th className="pb-2 text-right">Tokens</th>
+                <th className="pb-2 text-right">Cost</th>
+                <th className="pb-2 text-right">Active days</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cohort.engineers.map((e) => {
+                const isMe = viewerId === e.id;
+                return (
+                  <tr key={e.id} className="border-t border-border/40">
+                    <td className="py-2">
+                      <Link
+                        href={`/teams?engineer=${encodeURIComponent(e.id)}`}
+                        className="inline-flex items-center gap-1.5 hover:underline"
+                      >
+                        <span className="h-2 w-2 rounded-full bg-primary" />
+                        <span className="font-mono text-xs">{isMe ? "you" : e.shortId}</span>
+                      </Link>
+                    </td>
+                    <td className="py-2 text-right tabular-nums">{INT.format(e.sessions)}</td>
+                    <td className="py-2 text-right tabular-nums">{PCT.format(e.firstTryRate)}</td>
+                    <td className="py-2 text-right tabular-nums">
+                      {TOK.format(e.inputTokens + e.outputTokens)}
+                    </td>
+                    <td className="py-2 text-right tabular-nums">{USD.format(e.cost)}</td>
+                    <td className="py-2 text-right tabular-nums">{e.activeDays}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {scatter.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>2×2 — outcome quality × efficiency (engineers as dots)</CardTitle>
+          </CardHeader>
+          <p className="mb-2 text-xs text-muted-foreground">
+            X: first-try rate rank. Y: sessions-per-dollar rank. Bubble size ∝ log(cost).
+            Upper-right = healthy; lower-left = "why is this engineer so expensive AND broken?"
+          </p>
+          <ScatterChart
+            data={scatter}
+            xLabel="First-try rank (percentile)"
+            yLabel="Efficiency rank (percentile)"
+            threshold={{ x: 50, y: 50 }}
+            ariaLabel="Engineers plotted by first-try rank vs. efficiency rank"
+            height={320}
+          />
+        </Card>
+      ) : null}
+    </>
+  );
+}
+
+async function EngineerView({
+  engineer,
+  tenantId,
+  viewerId,
+}: {
+  engineer: EngineerRollup;
+  tenantId: string;
+  viewerId: string | null;
+}) {
+  const [daily, models] = await Promise.all([
+    getEngineerDaily(tenantId, engineer.id, 30),
+    getEngineerModels(tenantId, engineer.id, 30),
+  ]);
+  const dailyChart = daily.map((d) => ({ x: d.date, y: d.cost }));
+  const isMe = viewerId === engineer.id;
+
+  return (
+    <>
+      <Card>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="h-2 w-2 rounded-full bg-primary" />
+            <span className="font-semibold">{isMe ? "you" : engineer.shortId}</span>
+            <span className="font-mono text-xs text-muted-foreground">{engineer.id}</span>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            Tier B data — aggregates only, prompt text stays on the engineer&apos;s machine.
+          </span>
+        </div>
+      </Card>
+
+      <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Total cost</CardTitle>
+          </CardHeader>
+          <CardValue>{USD.format(engineer.cost)}</CardValue>
+          <p className="mt-1 text-xs text-muted-foreground">last 30 days</p>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Sessions</CardTitle>
+          </CardHeader>
+          <CardValue>{INT.format(engineer.sessions)}</CardValue>
+          <p className="mt-1 text-xs text-muted-foreground">
+            avg {USD.format(engineer.cost / Math.max(1, engineer.sessions))} / session
+          </p>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>First-try rate</CardTitle>
+          </CardHeader>
+          <CardValue>{PCT.format(engineer.firstTryRate)}</CardValue>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {INT.format(engineer.toolErrors)} of {INT.format(engineer.toolCalls)} tool calls
+          </p>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Active days</CardTitle>
+          </CardHeader>
+          <CardValue>{engineer.activeDays}</CardValue>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {INT.format(engineer.events)} total events
+          </p>
+        </Card>
+      </section>
+
+      {dailyChart.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Cost by day</CardTitle>
+          </CardHeader>
+          <AreaChart data={dailyChart} format="currency" ariaLabel="Cost per day" height={220} />
+        </Card>
+      ) : null}
+
+      {models.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Top models by cost</CardTitle>
+          </CardHeader>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="pb-2">Model</th>
+                  <th className="pb-2 text-right">Sessions</th>
+                  <th className="pb-2 text-right">Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {models.map((m) => (
+                  <tr key={`${m.provider}:${m.model}`} className="border-t border-border/40">
+                    <td className="py-2">
+                      <div className="font-mono">{m.model}</div>
+                      <div className="text-xs text-muted-foreground">{m.provider}</div>
+                    </td>
+                    <td className="py-2 text-right tabular-nums">{INT.format(m.sessions)}</td>
+                    <td className="py-2 text-right tabular-nums">{USD.format(m.cost)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      ) : null}
+    </>
+  );
+}
 
 export default async function TeamsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ team?: string; cat?: string }>;
+  searchParams: Promise<{ engineer?: string }>;
 }) {
+  const sp = await searchParams;
+  const selected = sp.engineer ?? "__cohort";
   const ctx = await getSessionCtx();
-  const { team: selectedParam, cat } = await searchParams;
-  const teamsList = await listTeams(ctx, { window: "30d" });
-  const showIdentities = !isComplianceEnabled();
+  const viewerId = ctx.actor_id;
 
-  const eligible = teamsList.teams.find((t) => t.cohort_size >= 5);
-  const selectedId =
-    selectedParam && teamsList.teams.some((t) => t.id === selectedParam)
-      ? selectedParam
-      : (eligible?.id ?? teamsList.teams[0]?.id ?? "team_growth");
-  const selected = teamsList.teams.find((t) => t.id === selectedId);
+  const cohort = await getCohort(ctx.tenant_id, 30);
 
-  const twoByTwo = await getTwoByTwo(ctx, {
-    window: "30d",
-    team_id: selectedId,
-    ...(cat ? { task_category: cat } : {}),
-    ...(showIdentities ? { includeIdentities: true, bypassCohortFloor: true } : {}),
-  });
-
-  return (
-    <div className="flex flex-col gap-8">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Teams</h1>
-        <p className="text-sm text-muted-foreground">
-          Cohort-stratified view. IC names are always hidden — each dot is a stable hash. Names only
-          unlock via explicit IC opt-in.
-        </p>
-      </header>
-
-      <section aria-labelledby="teams-list" className="flex flex-col gap-3">
-        <h2
-          id="teams-list"
-          className="text-sm font-medium uppercase tracking-wide text-muted-foreground"
-        >
-          {teamsList.teams.length} team{teamsList.teams.length === 1 ? "" : "s"} · 30-day window
-        </h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {teamsList.teams.map((t) => {
-            const isSelected = t.id === selectedId;
-            return (
-              <Link
-                key={t.id}
-                href={{ pathname: "/teams", query: { team: t.id, ...(cat ? { cat } : {}) } }}
-                aria-current={isSelected ? "true" : undefined}
-                className={
-                  isSelected
-                    ? "block cursor-pointer rounded-xl border border-primary bg-card p-5 outline outline-1 -outline-offset-1 outline-primary/40"
-                    : "block cursor-pointer rounded-xl border border-border bg-card p-5 transition-colors hover:border-muted-foreground"
-                }
-              >
-                <div className="mb-3 flex items-start justify-between">
-                  <div>
-                    <p className="text-base font-semibold">{t.label}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {t.engineers} engineer{t.engineers === 1 ? "" : "s"}
-                    </p>
-                  </div>
-                  <FidelityChip fidelity={t.fidelity} />
-                </div>
-                <dl className="grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <dt className="text-muted-foreground">Cost · 30d</dt>
-                    <dd className="mt-0.5 text-sm font-medium">{USD.format(t.cost_usd)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">AI Leverage</dt>
-                    <dd className="mt-0.5 text-sm font-medium">
-                      {t.ai_leverage_score.show ? (
-                        t.ai_leverage_score.value.toFixed(0)
-                      ) : (
-                        <InsufficientData
-                          reason={t.ai_leverage_score.suppression_reason as GateReason}
-                        />
-                      )}
-                    </dd>
-                  </div>
-                </dl>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
-
-      <section aria-labelledby="two-by-two" className="flex flex-col gap-3">
-        <div className="flex items-baseline justify-between">
-          <h2
-            id="two-by-two"
-            className="text-sm font-medium uppercase tracking-wide text-muted-foreground"
-          >
-            2×2 · {selected?.label ?? "Team"} · Outcome Quality × Efficiency
-          </h2>
-          <TaskCategoryFilter
-            selectedTeam={selectedId}
-            current={twoByTwo.task_category}
-            available={twoByTwo.available_task_categories}
-          />
-        </div>
-
+  let body: React.ReactNode;
+  if (selected === "__cohort") {
+    body = <CohortView cohort={cohort} viewerId={viewerId} />;
+  } else {
+    const engineer = cohort.engineers.find((e) => e.id === selected);
+    if (!engineer) {
+      body = (
         <Card>
           <CardHeader>
-            <CardTitle>Cohort-stratified scatter</CardTitle>
-            <p className="text-xs text-muted-foreground">
-              X = Outcome Quality percentile · Y = Efficiency percentile · dot size = sessions ·
-              cohort k = {twoByTwo.cohort_size}
-            </p>
+            <CardTitle>Engineer not in cohort</CardTitle>
           </CardHeader>
-          {twoByTwo.display.show ? (
-            <ChartTableToggle
-              chart={
-                <ScatterChart
-                  data={twoByTwo.points.map((p) => ({
-                    id: p.engineer_id_hash,
-                    x: p.outcome_quality,
-                    y: p.efficiency,
-                    z: p.sessions,
-                  }))}
-                  xLabel="Outcome Quality (percentile)"
-                  yLabel="Efficiency (percentile)"
-                  ariaLabel={`2×2 scatter for ${selected?.label ?? "team"}`}
-                />
-              }
-              table={
-                <ScatterTable
-                  points={twoByTwo.points}
-                  {...(twoByTwo.identities ? { identities: twoByTwo.identities } : {})}
-                />
-              }
-            />
-          ) : (
-            <div className="flex min-h-[220px] items-center justify-center py-6">
-              <InsufficientData
-                reason={
-                  twoByTwo.display.suppression_reason === "k_anonymity_floor"
-                    ? "k_anonymity_floor"
-                    : (twoByTwo.display.suppression_reason as GateReason)
-                }
-              >
-                <span>
-                  Insufficient cohort — k={twoByTwo.cohort_size} is below the 5-person floor. Names
-                  and dots are both suppressed.
-                </span>
-              </InsufficientData>
-            </div>
-          )}
+          <p className="text-sm text-muted-foreground">
+            <span className="font-mono">{selected}</span> has no events in the last 30 days.
+          </p>
         </Card>
-      </section>
-    </div>
-  );
-}
+      );
+    } else {
+      body = <EngineerView engineer={engineer} tenantId={ctx.tenant_id} viewerId={viewerId} />;
+    }
+  }
 
-function TaskCategoryFilter({
-  selectedTeam,
-  current,
-  available,
-}: {
-  selectedTeam: string;
-  current: string | null;
-  available: string[];
-}) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <Link href={{ pathname: "/teams", query: { team: selectedTeam } }} className="cursor-pointer">
-        <Badge tone={current === null ? "accent" : "neutral"}>All tasks</Badge>
-      </Link>
-      {available.map((c) => {
-        const isCurrent = c === current;
-        return (
-          <Link
-            key={c}
-            href={{ pathname: "/teams", query: { team: selectedTeam, cat: c } }}
-            className="cursor-pointer"
-          >
-            <Badge tone={isCurrent ? "accent" : "neutral"}>{formatCat(c)}</Badge>
-          </Link>
-        );
-      })}
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
+        <p className="text-sm text-muted-foreground">
+          Real cohort — every row here is a teammate whose collector has posted to this
+          deployment&apos;s ingest. Prompt text never reaches ClickHouse (Tier B at ingest
+          strips it by schema); this page can&apos;t show prompts even if it wanted to.
+        </p>
+        <EngineerChipRow
+          engineers={cohort.engineers}
+          current={selected}
+          viewerId={viewerId}
+        />
+      </header>
+
+      {body}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Privacy boundary</CardTitle>
+        </CardHeader>
+        <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-5">
+          <li>
+            <strong className="text-foreground">No prompts in ClickHouse.</strong> Ingest rejects
+            any payload carrying prompt_text, tool args, or file contents with HTTP 400.
+            Server-side redactor (TruffleHog + gitleaks + Presidio) runs on everything that gets
+            through. This page can only query what&apos;s in the schema — token counts, cost,
+            tool names, statuses — no content.
+          </li>
+          <li>
+            <strong className="text-foreground">Per-viewer personal pages.</strong> Each
+            teammate&apos;s /insights, /summary, /me/digest queries CH filtered by their own
+            engineer_id from the Better Auth session. Same URL, different filtered data per
+            viewer.
+          </li>
+          <li>
+            <strong className="text-foreground">Names vs color dots.</strong> Below k=5,
+            identity chips show the first 6 chars of the hashed engineer_id. Above k=5, names
+            only unlock via explicit IC opt-in per CLAUDE.md §7.4.
+          </li>
+          <li>
+            <strong className="text-foreground">Transcript stays local.</strong>{" "}
+            /sessions/[source]/[id] reads raw JSONL off the IC&apos;s machine — not available on
+            shared deploys, no network path exists for peers to reach it.
+          </li>
+        </ul>
+      </Card>
     </div>
-  );
-}
-
-function formatCat(c: string): string {
-  return c.replace(/_/g, " ");
-}
-
-function ScatterTable({
-  points,
-  identities,
-}: {
-  points: {
-    engineer_id_hash: string;
-    outcome_quality: number;
-    efficiency: number;
-    sessions: number;
-    cost_usd: number;
-  }[];
-  identities?: Record<string, schemas.DeveloperIdentity>;
-}) {
-  return (
-    <table className="w-full text-sm">
-      <thead className="text-left text-muted-foreground">
-        <tr className="border-b border-border">
-          <th className="py-2 font-medium">Engineer</th>
-          <th className="py-2 text-right font-medium">Outcome</th>
-          <th className="py-2 text-right font-medium">Efficiency</th>
-          <th className="py-2 text-right font-medium">Sessions</th>
-          <th className="py-2 text-right font-medium">Cost</th>
-        </tr>
-      </thead>
-      <tbody>
-        {points.map((p) => {
-          const identity = identities?.[p.engineer_id_hash];
-          const label = identity?.name ?? identity?.email ?? p.engineer_id_hash;
-          return (
-            <tr key={p.engineer_id_hash} className="border-b border-border/50">
-              <td
-                className={identity ? "py-2 text-xs" : "py-2 font-mono text-xs"}
-                title={identity?.email}
-              >
-                {label}
-              </td>
-              <td className="py-2 text-right">{p.outcome_quality.toFixed(0)}</td>
-              <td className="py-2 text-right">{p.efficiency.toFixed(0)}</td>
-              <td className="py-2 text-right">{p.sessions}</td>
-              <td className="py-2 text-right">{USD.format(p.cost_usd)}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
   );
 }
