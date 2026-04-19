@@ -47,15 +47,17 @@ export function normalizeSession(
       timestamp: parsed.firstTimestamp,
     };
     if (parsed.sessionId) synthetic.sessionId = parsed.sessionId;
-    const startEvents = mapLine(synthetic, parsed, id, sourceVersion, session_id, seq);
+    const startEvents = mapLine(synthetic, -1, parsed, id, sourceVersion, session_id, seq);
     for (const e of startEvents) {
       events.push(e);
       seq++;
     }
   }
 
-  for (const line of parsed.entries) {
-    const eventsForLine = mapLine(line, parsed, id, sourceVersion, session_id, seq);
+  for (let idx = 0; idx < parsed.entries.length; idx++) {
+    const line = parsed.entries[idx];
+    if (!line) continue;
+    const eventsForLine = mapLine(line, idx, parsed, id, sourceVersion, session_id, seq);
     for (const e of eventsForLine) {
       events.push(e);
       seq++;
@@ -66,6 +68,7 @@ export function normalizeSession(
 
 function mapLine(
   line: RawClaudeSessionLine,
+  idx: number,
   parsed: ParsedSession,
   id: ServerIdentity,
   sourceVersion: string,
@@ -132,9 +135,10 @@ function mapLine(
 
   if (line.type === "message" && line.message?.role === "assistant") {
     const model = line.message?.model;
-    const usage =
-      (line.requestId && parsed.perRequestUsage.get(line.requestId)) || line.message?.usage;
-    const cost = usage && model ? computeCostUsd(model, usage) : undefined;
+    const isOwner = parsed.usageOwnerEntryIdx.has(idx);
+    const key = usageKeyFor(line);
+    const usage = isOwner && key ? parsed.perUsageKey.get(key) : undefined;
+    const cost = isOwner && usage && model ? computeCostUsd(model, usage) : undefined;
     return [
       {
         ...base,
@@ -197,7 +201,7 @@ function mapLine(
     return mapRealUserLine(line, base, session_id, seq);
   }
   if (line.type === "assistant") {
-    return mapRealAssistantLine(line, parsed, base, session_id, seq);
+    return mapRealAssistantLine(line, idx, parsed, base, session_id, seq);
   }
   // `file-history-snapshot`, `system`, and any other unknown kinds are skipped.
   return [];
@@ -256,15 +260,17 @@ function mapRealUserLine(
  */
 function mapRealAssistantLine(
   line: RawClaudeSessionLine,
+  idx: number,
   parsed: ParsedSession,
   base: EventBase,
   session_id: string,
   seq: number,
 ): Event[] {
   const model = line.message?.model;
-  const usage =
-    (line.requestId && parsed.perRequestUsage.get(line.requestId)) || line.message?.usage;
-  const cost = usage && model ? computeCostUsd(model, usage) : undefined;
+  const isOwner = parsed.usageOwnerEntryIdx.has(idx);
+  const key = usageKeyFor(line);
+  const usage = isOwner && key ? parsed.perUsageKey.get(key) : undefined;
+  const cost = isOwner && usage && model ? computeCostUsd(model, usage) : undefined;
 
   const events: Event[] = [
     {
@@ -333,9 +339,44 @@ type EventBase = {
   event_seq: number;
 };
 
-function computeCostUsd(model: string, u: RawClaudeUsage): number | undefined {
-  const p = MODEL_PRICING_PER_MTOK[model];
-  if (!p) return undefined;
+/**
+ * Resolve a per-MTok price sheet for a Claude model slug. Matches grammata's
+ * `getClaudePricing`: exact match → longest-prefix exact match → family
+ * fallback (`claude-opus-4-*`, `claude-sonnet-4-*`, `claude-haiku-4-*`) →
+ * last-resort sonnet pricing. This keeps dated variants (`claude-opus-4-7`,
+ * `claude-opus-4-5-20251101`, etc.) priced instead of dropping to $0.
+ */
+function getClaudePricing(
+  model: string,
+): { input: number; output: number; cacheRead: number; cacheCreation: number } {
+  const exact = MODEL_PRICING_PER_MTOK[model];
+  if (exact) return exact;
+  const normalized = model.toLowerCase();
+  const prefixMatch = Object.entries(MODEL_PRICING_PER_MTOK)
+    .sort((a, b) => b[0].length - a[0].length)
+    .find(([key]) => normalized.startsWith(key.toLowerCase()));
+  if (prefixMatch) return prefixMatch[1];
+  if (normalized.startsWith("claude-opus-4")) {
+    // biome-ignore lint/style/noNonNullAssertion: key is statically present.
+    return MODEL_PRICING_PER_MTOK["claude-opus-4-6"]!;
+  }
+  if (normalized.startsWith("claude-sonnet-4")) {
+    // biome-ignore lint/style/noNonNullAssertion: key is statically present.
+    return MODEL_PRICING_PER_MTOK["claude-sonnet-4-6"]!;
+  }
+  if (normalized.startsWith("claude-haiku-4")) {
+    // biome-ignore lint/style/noNonNullAssertion: key is statically present.
+    return MODEL_PRICING_PER_MTOK["claude-haiku-4-5-20251001"]!;
+  }
+  if (normalized.startsWith("claude-haiku-3-5")) {
+    // biome-ignore lint/style/noNonNullAssertion: key is statically present.
+    return MODEL_PRICING_PER_MTOK["claude-haiku-3-5"]!;
+  }
+  return { input: 3, output: 15, cacheRead: 0.3, cacheCreation: 3.75 };
+}
+
+function computeCostUsd(model: string, u: RawClaudeUsage): number {
+  const p = getClaudePricing(model);
   const input = (u.input_tokens ?? 0) / 1_000_000;
   const output = (u.output_tokens ?? 0) / 1_000_000;
   const cacheRead = (u.cache_read_input_tokens ?? 0) / 1_000_000;
@@ -343,6 +384,10 @@ function computeCostUsd(model: string, u: RawClaudeUsage): number | undefined {
   const cost =
     input * p.input + output * p.output + cacheRead * p.cacheRead + cacheCreation * p.cacheCreation;
   return Math.round(cost * 1e6) / 1e6;
+}
+
+function usageKeyFor(line: RawClaudeSessionLine): string | undefined {
+  return line.message?.id ?? line.requestId ?? line.uuid;
 }
 
 function deterministicId(

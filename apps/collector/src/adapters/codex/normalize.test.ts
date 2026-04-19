@@ -77,9 +77,7 @@ test("newer Codex info-shape fixture: llm_response carries usage.input/output/ca
   //   output=500    output_rate=14  → 0.007
   //   total = 0.0217 USD
   const parsed = await parseSessionFile(join(FIX, "rollout-info-shape.jsonl"));
-  const events = await normalizeSession(parsed, baseIdentity, "0.1.0", {
-    clioDepsOverride: testDeps,
-  });
+  const events = normalizeSession(parsed, baseIdentity, "0.1.0");
   const responses = events.filter((e) => e.dev_metrics.event_kind === "llm_response");
   expect(responses.length).toBeGreaterThan(0);
 
