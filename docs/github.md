@@ -38,17 +38,34 @@ Scope: full v1 feature set. Demo-path scaffolding exists to prove wire-up today,
 - Webhook HMAC (`X-Hub-Signature-256`) validation is mandatory; a missing/invalid signature → 401 + audit log entry. CLAUDE.md Outcome Attribution §8.5 is load-bearing here.
 - Dollar-value surfaces remain gated on D17 (Phase 0 correctness). GitHub integration must not regress D17.
 
-## Demo Path (get a real signal flowing today)
+## Local-first → production cutover (no tunneling)
 
-Separate from v1 scope. Proves wire-up end-to-end over Tailscale for the dev team without pretending to be production.
+We are not standing up a tunnel for a one-off demo. Path is: build and validate locally against captured fixtures, then deploy the same code to the production ingest URL that already has public HTTPS.
 
-1. Register a GitHub App on the dev org with scopes: `pull_request`, `pull_request_review`, `push`, `check_suite`, `workflow_run`, `deployment`, `deployment_status`, `repository`, read-only metadata, read-only contents (CODEOWNERS), read-only workflows, read-only secret-scanning-alerts (optional). Webhook secret generated and stored in `.env`.
-2. Expose the ingest webhook endpoint publicly via `tailscale funnel` on the ingest node (terminates to tailnet; teammates reach the dashboard over private tailnet DNS). `smee.io` relay is an acceptable fallback; plain tailnet is not (GitHub webhooks require public HTTPS).
-3. Run the full v1 webhook receiver path — HMAC validation, parser, Postgres persist — but against a **single hard-coded** tracked repo. Skip the tracking-mode UI and the linkage-surface recompute for the demo; write straight to `git_events` with `repo_id_hash = HMAC(provider + ":" + provider_repo_id, tenant_salt)`.
-4. Dashboard tile filters on that one `repo_id_hash`. Teammates on tailnet hit it privately.
-5. Time budget: 2 hours. Stop at the first green integration test for `pull_request`, `push`, `check_suite` — enough to show webhook → Postgres → dashboard.
+**Existing scaffolding (already on `main`)** — pick up where this left off, do not rebuild:
 
-**Demo-path stubs never land in production:** no in-memory store fallback, no hard-coded repo hash, no HMAC bypass. Demo code is behind a `BEMATIST_DEMO_MODE=1` env guard that is rejected by the production entrypoint.
+- `apps/ingest/src/github-app/jwt.ts` + `token-cache.ts` — App JWT minting and installation token cache.
+- `apps/ingest/src/github-app/reconcile.ts` — reconciliation runner.
+- `apps/ingest/src/webhooks/verify.ts` — `X-Hub-Signature-256` HMAC validation.
+- `apps/ingest/src/webhooks/github.ts` + `router.ts` + `parse.test.ts` — webhook parser + dispatch.
+- `apps/ingest/src/webhooks/gitEventsStore.ts` — store interface; verify the Postgres-backed impl is wired in non-test boot.
+
+**Local development loop (no public URL, no tunnel):**
+
+1. Capture a real webhook payload once per event type — `gh api` or copy from a real install's "Recent Deliveries" panel — and commit to `packages/fixtures/github/<event>/<scenario>.json`.
+2. TDD per surface: red parser test against fixture → green parser → red persistence integration test against a real local Postgres → green persistence → red scoring-signal test → green signal → Playwright E2E that POSTs the fixture to `localhost:8000/v1/webhooks/github` with a correctly computed `X-Hub-Signature-256` and asserts the dashboard tile updates.
+3. Run with `bun run dev` against the local Postgres + ClickHouse + Redis from `docker-compose.dev.yml`. No GitHub network calls in the test loop — the App JWT path is exercised separately by `github-app/jwt.test.ts` and friends.
+4. For the rare case we need to exercise the live App API end-to-end locally (token minting, `GET /installation/repositories`, reconciliation pulls), use a personal-org GitHub App pointed at a sandbox repo and run those calls outbound from localhost. No inbound webhook needed — those are pulls, not pushes.
+
+**Production cutover (same code, no demo flag):**
+
+1. Deploy the branch to the production ingest URL (already has public HTTPS — that is the only "tunnel" we need).
+2. Register the production GitHub App against the real Bematist GitHub org with scopes: `pull_request`, `pull_request_review`, `push`, `check_suite`, `workflow_run`, `deployment`, `deployment_status`, `repository`, read-only metadata, read-only contents (CODEOWNERS), read-only workflows, read-only secret-scanning-alerts (optional, works-council-gated).
+3. Point the App's webhook URL at the production ingest endpoint; store webhook secret in the platform secrets store (never in `.env` for prod).
+4. Install on the dev org's repos. Fail-closed boot guarantees persistence is healthy before traffic arrives; the initial `GET /installation/repositories` sync populates the registry; webhooks start landing.
+5. Watch `bematist_github_webhook_received_total{status}` and `bematist_github_reconciliation_gap_seconds` for the first 24h. Replay any missed deliveries with `POST /api/admin/github/redeliver`.
+
+**No demo-path stubs.** No `BEMATIST_DEMO_MODE` flag, no hard-coded repo hash, no HMAC bypass, no in-memory store fallback. Local dev uses real Postgres + captured fixtures; production uses real Postgres + real webhooks. Same code, same paths, no special-casing.
 
 ## Existing Baseline To Preserve
 
