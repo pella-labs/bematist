@@ -84,6 +84,61 @@ test("malformed JSONL lines are skipped without killing the rollout", () => {
   expect(result.sessionId).toBe("s1");
 });
 
+test("newer Codex CLI shape: payload.info.total_token_usage is read as cumulative", async () => {
+  // Real-shape fixture: 2 duplicate snapshots at 10843/6656/183, then cumulative
+  // grows to 21000/14000/500. Expected:
+  //   - First non-null snapshot → delta 10843/183 (prior=0).
+  //   - Second duplicate → delta 0 (same cumulative) — max-per-field keeps 10843/183.
+  //   - Third snapshot → delta 10157/317 (21000-10843 / 500-183).
+  // usageTotals sums deltas across turns; matches the final cumulative 21000/500.
+  const result = await parseSessionFile(join(FIX_DIR, "rollout-info-shape.jsonl"));
+  expect(result.usageTotals.input_tokens).toBe(21000);
+  expect(result.usageTotals.output_tokens).toBe(500);
+  expect(result.usageTotals.cached_input_tokens).toBe(14000);
+  expect(result.lastCumulative).toEqual({
+    input_tokens: 21000,
+    output_tokens: 500,
+    cached_input_tokens: 14000,
+    total_tokens: 21500,
+  });
+});
+
+test("token_count with payload.info === null is skipped (rate-limit-only ping)", () => {
+  const lines = [
+    JSON.stringify({
+      timestamp: "2026-03-05T02:51:18.911Z",
+      type: "event_msg",
+      payload: { type: "token_count", info: null, rate_limits: { primary: { used_percent: 1.0 } } },
+    }),
+    JSON.stringify({
+      timestamp: "2026-03-05T02:51:22.006Z",
+      type: "event_msg",
+      payload: {
+        type: "token_count",
+        info: {
+          total_token_usage: {
+            input_tokens: 100,
+            cached_input_tokens: 0,
+            output_tokens: 50,
+            total_tokens: 150,
+          },
+          last_token_usage: {
+            input_tokens: 100,
+            cached_input_tokens: 0,
+            output_tokens: 50,
+            total_tokens: 150,
+          },
+        },
+      },
+    }),
+  ];
+  const result = parseLines(lines);
+  // Only ONE turn should be recorded — the info=null ping is ignored.
+  expect(result.perTurnUsage.size).toBe(1);
+  expect(result.usageTotals.input_tokens).toBe(100);
+  expect(result.usageTotals.output_tokens).toBe(50);
+});
+
 test("non-monotonic cumulative snapshots clamp to zero rather than producing negative deltas", () => {
   const lines = [
     JSON.stringify({

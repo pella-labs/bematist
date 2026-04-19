@@ -8,14 +8,34 @@
  */
 
 export interface RawClaudeSessionLine {
-  /** Anthropic API request id — the key for the max-per-field dedup (D17). */
+  /** Anthropic API request id — part of the max-per-field dedup key (D17). */
   requestId?: string;
+  /**
+   * Per-line UUID assigned by Claude Code. Used as the last-resort dedup key
+   * when neither `message.id` nor `requestId` is present (older CC versions
+   * and some fixture shapes). Grammata dedups by
+   * `message.id || requestId || uuid` and we match that ordering so our
+   * per-event numbers line up with the reference implementation.
+   */
+  uuid?: string;
   /** Event kind tag; Claude Code uses a mix of "message", "tool_use", "tool_result", etc. */
   type?: string;
   /** Session id (ULID-ish). */
   sessionId?: string;
   /** Wall-clock timestamp, ISO 8601. */
   timestamp?: string;
+  /**
+   * Git branch the session was running in. Claude Code writes this on every
+   * line as `gitBranch` (v2.1.x+). Used to populate `raw_attrs.branch` for
+   * outcome attribution (PR #8.5 layer 3 — `git log --merges` + denormalized
+   * `branch` on ClickHouse `events`). Absent on older CC versions.
+   */
+  gitBranch?: string;
+  /**
+   * Working directory the session was running in. Used as the fallback key
+   * for `git branch --show-current` when `gitBranch` isn't on the line.
+   */
+  cwd?: string;
   /**
    * Message payload.
    * - Fixture format: `type==="message"`, with `role` and a string `content`.
@@ -30,6 +50,15 @@ export interface RawClaudeSessionLine {
     usage?: RawClaudeUsage;
     model?: string;
     stop_reason?: string;
+    /**
+     * Anthropic-assigned message id. Grammata prefers this over `requestId`
+     * as the dedup key because a single HTTP request can emit multiple
+     * streaming chunks (partial + final assistant records) that share the
+     * requestId but whose usage counters reflect cumulative totals, not
+     * deltas. Keying by `message.id` groups partial+final into one logical
+     * turn. Typically `msg_01ABC...`.
+     */
+    id?: string;
   };
   /** Tool-use payload when type==="tool_use". */
   toolUse?: {

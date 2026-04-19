@@ -23,9 +23,65 @@ export interface RawCodexLine {
   payload?: RawCodexPayload;
 }
 
+/**
+ * Session-level metadata Codex writes at the top of every rollout JSONL
+ * (type = "session_meta"). We mine this for `cwd` (→ git branch resolution)
+ * and — when Codex starts emitting it — `gitBranch` directly.
+ */
+export interface RawCodexSessionMeta {
+  id?: string;
+  timestamp?: string;
+  cwd?: string;
+  originator?: string;
+  cli_version?: string;
+  source?: string;
+  model_provider?: string;
+  /** Direct branch field (not emitted by current Codex CLI but reserved). */
+  gitBranch?: string;
+  git_branch?: string;
+}
+
+/**
+ * Per-turn context Codex writes at the start of every turn
+ * (type = "turn_context"). Carries the ACTUAL active model for the turn —
+ * authoritative when token_count.payload.model is absent (newer CLI shape).
+ */
+export interface RawCodexTurnContext {
+  turn_id?: string;
+  cwd?: string;
+  model?: string;
+  collaboration_mode?: {
+    mode?: string;
+    settings?: { model?: string };
+  };
+}
+
 export interface RawCodexEventMsg {
   type?: string;
   payload?: RawCodexPayload;
+}
+
+/**
+ * Newer Codex CLI nests per-emission usage under `payload.info`:
+ *   - `total_token_usage` — cumulative session total (monotonically grows).
+ *   - `last_token_usage`  — per-turn delta for the single emission.
+ * Older/test fixtures still ship flat top-level fields. Both shapes are
+ * supported; the parser prefers `info.total_token_usage` when present.
+ *
+ * `info` is `null` on rate-limit-only token_count pings — must be skipped.
+ */
+export interface RawCodexTokenUsage {
+  input_tokens?: number;
+  output_tokens?: number;
+  cached_input_tokens?: number;
+  reasoning_output_tokens?: number;
+  total_tokens?: number;
+}
+
+export interface RawCodexTokenInfo {
+  total_token_usage?: RawCodexTokenUsage;
+  last_token_usage?: RawCodexTokenUsage;
+  model_context_window?: number;
 }
 
 /**
@@ -37,11 +93,15 @@ export interface RawCodexPayload {
   type?: string;
   model?: string;
 
-  // token_count cumulative fields (Codex CLI shape — snake_case).
+  // token_count cumulative fields (older Codex CLI shape — flat, snake_case).
   input_tokens?: number;
   output_tokens?: number;
   cached_input_tokens?: number;
   total_tokens?: number;
+
+  // token_count newer shape — usage nested under `info`. May be null when
+  // the CLI pings only for rate-limit state. Parser skips those.
+  info?: RawCodexTokenInfo | null;
 
   // exec_command_* payloads.
   command?: string;

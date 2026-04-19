@@ -50,7 +50,7 @@ export function DashboardNav({ isAdmin = false }: { isAdmin?: boolean }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className="dash-nav-link dash-nav-link-sub"
+                className="dash-nav-link"
                 aria-current={active ? "page" : undefined}
               >
                 {item.label}

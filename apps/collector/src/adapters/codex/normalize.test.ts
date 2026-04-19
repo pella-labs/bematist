@@ -68,6 +68,38 @@ test("llm_response stamps pricing_version and cost_usd derived from diffed per-t
   expect(resp?.dev_metrics.cost_usd ?? 0).toBeGreaterThan(0);
 });
 
+test("newer Codex info-shape fixture: llm_response carries usage.input/output/cache + non-zero cost", async () => {
+  // Fixture has model gpt-5.3-codex, cumulative 21000/14000/500. The parser
+  // emits per-turn deltas; the SUM across all llm_response events must equal
+  // 21000/14000/500, and the summed cost_usd must match grammata's formula:
+  //   uncached=7000 input_rate=1.75 → 0.01225
+  //   cached=14000  cached_rate=0.175 → 0.00245
+  //   output=500    output_rate=14  → 0.007
+  //   total = 0.0217 USD
+  const parsed = await parseSessionFile(join(FIX, "rollout-info-shape.jsonl"));
+  const events = normalizeSession(parsed, baseIdentity, "0.1.0");
+  const responses = events.filter((e) => e.dev_metrics.event_kind === "llm_response");
+  expect(responses.length).toBeGreaterThan(0);
+
+  let sumIn = 0;
+  let sumOut = 0;
+  let sumCache = 0;
+  let sumCost = 0;
+  for (const r of responses) {
+    const u = r.gen_ai?.usage;
+    sumIn += u?.input_tokens ?? 0;
+    sumOut += u?.output_tokens ?? 0;
+    sumCache += u?.cache_read_input_tokens ?? 0;
+    sumCost += r.dev_metrics.cost_usd ?? 0;
+    expect(r.gen_ai?.response?.model).toBe("gpt-5.3-codex");
+  }
+  expect(sumIn).toBe(21000);
+  expect(sumOut).toBe(500);
+  expect(sumCache).toBe(14000);
+  // 0.0217 expected, tolerate rounding at the 1e-6 level.
+  expect(Math.abs(sumCost - 0.0217)).toBeLessThan(1e-5);
+});
+
 test("client_event_id is deterministic — same input yields identical ids", async () => {
   const parsed = await parseSessionFile(join(FIX, "rollout-real.jsonl"));
   const a = normalizeSession(parsed, baseIdentity, "0.1.0");

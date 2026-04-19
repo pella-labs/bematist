@@ -45,8 +45,8 @@ interface Invite {
   accepted_at: Date | null;
   revoked_at: Date | null;
   created_at: Date;
-  max_uses: number | null;
   uses: number;
+  max_uses: number | null;
 }
 interface AuditRow {
   org_id: string;
@@ -119,8 +119,8 @@ function makeFakeDb() {
           accepted_at: null,
           revoked_at: null,
           created_at: now,
-          max_uses: maxUsesRaw ?? null,
           uses: 0,
+          max_uses: maxUsesRaw ?? null,
         };
         invites.push(row);
         return [{ id: row.id, created_at: row.created_at, expires_at: row.expires_at }] as T[];
@@ -129,7 +129,9 @@ function makeFakeDb() {
       // --- list invites ---
       if (q.startsWith("SELECT i.id, i.token, i.role")) {
         const [orgId] = p as [string];
-        const includeInactive = !q.includes("AND i.revoked_at IS NULL");
+        // New query filters active rows with `i.revoked_at IS NULL AND
+        // (i.max_uses IS NULL OR i.uses < i.max_uses) AND i.expires_at > now()`.
+        const includeInactive = !q.includes("i.revoked_at IS NULL");
         const list = invites
           .filter((i) => i.org_id === orgId)
           .filter((i) => {
@@ -157,7 +159,7 @@ function makeFakeDb() {
       }
 
       // --- preview lookup ----
-      if (q.startsWith("SELECT o.name")) {
+      if (q.startsWith("SELECT o.name AS org_name, i.role AS role")) {
         const [token] = p as [string];
         const i = invites.find((x) => x.token === token);
         if (!i) return [] as T[];
@@ -175,7 +177,7 @@ function makeFakeDb() {
         ] as T[];
       }
 
-      // --- accept: SELECT invite by token (multi-use schema) ----
+      // --- accept: SELECT invite by token ----
       if (
         q.startsWith(
           "SELECT id, org_id, role, expires_at, revoked_at, max_uses, uses FROM org_invites",
@@ -204,7 +206,7 @@ function makeFakeDb() {
         return (u ? [{ org_id: u.org_id, email: u.email }] : []) as T[];
       }
 
-      // --- accept: conditional consume (multi-use: atomic uses+1 with cap) ----
+      // --- accept: conditional consume (increments uses, stamps first-acceptor) ----
       if (q.startsWith("UPDATE org_invites SET uses = uses + 1")) {
         const [userId, inviteId] = p as [string, string];
         const i = invites.find((x) => x.id === inviteId);
@@ -218,7 +220,7 @@ function makeFakeDb() {
         return [{ id: i.id, uses: i.uses }] as T[];
       }
 
-      // --- accept: re-read after lost race (multi-use) ----
+      // --- accept: re-read after lost race ----
       if (
         q.startsWith("SELECT revoked_at, expires_at, max_uses, uses FROM org_invites WHERE id = $1")
       ) {
@@ -388,7 +390,9 @@ describe("listInvites — filtering", () => {
     // revoke one
     const toRevoke = await createInvite(ctx, { role: "ic", expires_in_days: 14 });
     await revokeInvite(ctx, { id: toRevoke.id });
-    // seed an "already accepted" row directly (single-use, fully consumed)
+    // seed an "already accepted" row directly — multi-use model: status is
+    // "accepted" when uses hits max_uses, so this is a capped (max_uses=1)
+    // invite that's been fully consumed.
     ctx.__db.invites.push({
       id: "invite-accepted",
       org_id: "org-a",
@@ -400,8 +404,8 @@ describe("listInvites — filtering", () => {
       accepted_at: new Date(),
       revoked_at: null,
       created_at: new Date(),
-      max_uses: 1,
       uses: 1,
+      max_uses: 1,
     });
     // seed an expired row
     ctx.__db.invites.push({
@@ -415,8 +419,8 @@ describe("listInvites — filtering", () => {
       accepted_at: null,
       revoked_at: null,
       created_at: new Date(),
-      max_uses: null,
       uses: 0,
+      max_uses: null,
     });
 
     const active = await listInvites(ctx, { include_inactive: false });
@@ -443,8 +447,8 @@ describe("listInvites — filtering", () => {
       accepted_at: null,
       revoked_at: null,
       created_at: new Date(),
-      max_uses: null,
       uses: 0,
+      max_uses: null,
     });
     const out = await listInvites(ctx, { include_inactive: true });
     expect(out.invites.every((i) => i.id !== "invite-b1")).toBe(true);
@@ -489,6 +493,8 @@ describe("revokeInvite — admin-gated soft-delete", () => {
       accepted_at: null,
       revoked_at: null,
       created_at: new Date(),
+      max_uses: null,
+      uses: 0,
     });
 
     await expect(revokeInvite(attacker, { id: "invite-b-victim" })).rejects.toThrow(AuthError);
@@ -542,11 +548,14 @@ describe("getInvitePreview — unauthenticated", () => {
 
   test("accepted invite → already_accepted", async () => {
     const ctx = makeCtx("admin");
-    const minted = await createInvite(ctx, { role: "ic", expires_in_days: 14, max_uses: 1 });
+    const minted = await createInvite(ctx, { role: "ic", expires_in_days: 14 });
+    // Multi-use model: "already_accepted" fires when uses >= max_uses. Cap
+    // the invite at 1 and mark it consumed.
     const row = ctx.__db.invites.find((i) => i.id === minted.id);
     if (row) {
       row.accepted_by_user_id = "user-new";
       row.accepted_at = new Date();
+      row.max_uses = 1;
       row.uses = 1;
     }
     const out = await getInvitePreview(ctx.db.pg, { token: minted.token });
@@ -595,11 +604,13 @@ describe("acceptInviteByToken — lifecycle gates + atomic flip", () => {
 
   test("already-accepted → already_accepted", async () => {
     const ctx = makeCtx("admin");
-    const minted = await createInvite(ctx, { role: "ic", expires_in_days: 14, max_uses: 1 });
+    const minted = await createInvite(ctx, { role: "ic", expires_in_days: 14 });
+    // Multi-use model: cap at 1, mark fully consumed.
     const row = ctx.__db.invites.find((i) => i.id === minted.id);
     if (row) {
       row.accepted_by_user_id = "user-new";
       row.accepted_at = new Date();
+      row.max_uses = 1;
       row.uses = 1;
     }
     const out = await acceptInviteByToken(
@@ -677,7 +688,12 @@ describe("acceptInviteByToken — lifecycle gates + atomic flip", () => {
 
   test("race: two acceptances — second loses with already_accepted", async () => {
     const ctx = makeCtx("admin");
-    const minted = await createInvite(ctx, { role: "ic", expires_in_days: 14, max_uses: 1 });
+    const minted = await createInvite(ctx, { role: "ic", expires_in_days: 14 });
+    // Cap the invite at 1 so the second acceptance trips the use-cap —
+    // the test's original premise (single-accept lockout) now requires
+    // an explicit cap under the multi-use model.
+    const row = ctx.__db.invites.find((i) => i.id === minted.id);
+    if (row) row.max_uses = 1;
 
     const first = await acceptInviteByToken(
       { pg: ctx.db.pg },
