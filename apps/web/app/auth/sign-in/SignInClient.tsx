@@ -29,7 +29,11 @@ import { signIn } from "@/lib/auth-client";
 export function SignInClient({ showBillOfRightsLink = false }: { showBillOfRightsLink?: boolean }) {
   const searchParams = useSearchParams();
   const intent = searchParams?.get("intent") ?? null;
-  const callbackURL = intent === "new-org" ? "/post-auth/new-org" : "/";
+  const path = intent === "new-org" ? "/post-auth/new-org" : "/";
+  // Full URL avoids a prod-only bug where Better Auth's relative-path
+  // callbackURL resolution drops the path on OAuth round-trip and the
+  // user lands at baseURL root (`/` → /me/digest) instead of post-auth.
+  const callbackURL = typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
 
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
