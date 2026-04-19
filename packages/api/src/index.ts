@@ -83,6 +83,13 @@ export {
   revokeInvite,
 } from "./queries/invites";
 export {
+  activityOverview,
+  codeDelivery,
+  cohortFilters,
+  sessionDetail,
+  sessionsFeed,
+} from "./queries/new-dashboard";
+export {
   perCommitOutcomes,
   perDevOutcomes,
   perPROutcomes,
