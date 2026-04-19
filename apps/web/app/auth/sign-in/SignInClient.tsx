@@ -16,7 +16,7 @@ import { signIn } from "@/lib/auth-client";
  * sees "OAuth not configured" style failures when `GITHUB_CLIENT_ID` is
  * unset. Reset on the next click.
  */
-export function SignInClient() {
+export function SignInClient({ complianceEnabled = true }: { complianceEnabled?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
 
@@ -72,13 +72,15 @@ export function SignInClient() {
           </p>
         ) : null}
 
-        <p className="mt-2 text-center text-[11px] text-muted-foreground">
-          By continuing you agree to the{" "}
-          <a href="/privacy" className="underline underline-offset-2 hover:text-foreground">
-            Bill of Rights
-          </a>
-          .
-        </p>
+        {complianceEnabled ? (
+          <p className="mt-2 text-center text-[11px] text-muted-foreground">
+            By continuing you agree to the{" "}
+            <a href="/privacy" className="underline underline-offset-2 hover:text-foreground">
+              Bill of Rights
+            </a>
+            .
+          </p>
+        ) : null}
       </div>
     </Card>
   );

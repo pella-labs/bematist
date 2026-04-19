@@ -72,3 +72,15 @@ test.describe("/privacy (Bill of Rights)", () => {
     await expect(items).toHaveCount(6);
   });
 });
+
+test.describe("/privacy when BEMATIST_COMPLIANCE_ENABLED=0", () => {
+  test("returns 404 — page is hidden when the compliance flag is off", async ({ request }) => {
+    const flag = process.env.BEMATIST_COMPLIANCE_ENABLED;
+    test.skip(
+      flag !== "0" && flag !== "false",
+      "Only runs when BEMATIST_COMPLIANCE_ENABLED is '0' or 'false' (compliance UX disabled).",
+    );
+    const response = await request.get("/privacy");
+    expect(response.status()).toBe(404);
+  });
+});
