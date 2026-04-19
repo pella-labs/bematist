@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseLines, parseSessionFile } from "./parseSessionFile";
+import { findLastCumulative, parseLines, parseSessionFile } from "./parseSessionFile";
 
 const FIX_DIR = join(import.meta.dir, "..", "fixtures");
 
@@ -137,6 +139,137 @@ test("token_count with payload.info === null is skipped (rate-limit-only ping)",
   expect(result.perTurnUsage.size).toBe(1);
   expect(result.usageTotals.input_tokens).toBe(100);
   expect(result.usageTotals.output_tokens).toBe(50);
+});
+
+test("findLastCumulative: returns null on empty file", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "codex-find-"));
+  try {
+    const path = join(dir, "empty.jsonl");
+    writeFileSync(path, "");
+    const result = await findLastCumulative(path);
+    expect(result).toBeNull();
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("findLastCumulative: returns latest cumulative from a multi-turn rollout", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "codex-find-"));
+  try {
+    const path = join(dir, "multi.jsonl");
+    const content = [
+      JSON.stringify({
+        type: "session_start",
+        session_id: "s",
+        timestamp: "2026-04-16T14:00:00Z",
+      }),
+      JSON.stringify({
+        session_id: "s",
+        turn_id: "t1",
+        timestamp: "2026-04-16T14:00:01Z",
+        event_msg: {
+          type: "token_count",
+          payload: { input_tokens: 100, output_tokens: 50, total_tokens: 150 },
+        },
+      }),
+      JSON.stringify({
+        session_id: "s",
+        turn_id: "t2",
+        timestamp: "2026-04-16T14:00:02Z",
+        event_msg: {
+          type: "token_count",
+          payload: { input_tokens: 300, output_tokens: 120, total_tokens: 420 },
+        },
+      }),
+      JSON.stringify({
+        session_id: "s",
+        turn_id: "t3",
+        timestamp: "2026-04-16T14:00:03Z",
+        event_msg: {
+          type: "token_count",
+          payload: {
+            input_tokens: 750,
+            output_tokens: 300,
+            cached_input_tokens: 50,
+            total_tokens: 1100,
+          },
+        },
+      }),
+      "",
+    ].join("\n");
+    writeFileSync(path, content);
+    const result = await findLastCumulative(path);
+    expect(result).toEqual({
+      input_tokens: 750,
+      output_tokens: 300,
+      cached_input_tokens: 50,
+      total_tokens: 1100,
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("findLastCumulative: respects maxScanBytes cap (partial head line is skipped)", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "codex-find-"));
+  try {
+    const path = join(dir, "capped.jsonl");
+    // Write a big filler first snapshot, then a small tail snapshot. With a
+    // tight cap we may not reach the big snapshot's line boundary — but we
+    // MUST still read the last (small) snapshot.
+    const filler = "x".repeat(2048);
+    const firstLine = JSON.stringify({
+      session_id: "s",
+      turn_id: "t1",
+      timestamp: "2026-04-16T14:00:00Z",
+      filler,
+      event_msg: {
+        type: "token_count",
+        payload: { input_tokens: 111, output_tokens: 22, total_tokens: 133 },
+      },
+    });
+    const lastLine = JSON.stringify({
+      session_id: "s",
+      turn_id: "t2",
+      timestamp: "2026-04-16T14:00:01Z",
+      event_msg: {
+        type: "token_count",
+        payload: { input_tokens: 900, output_tokens: 400, total_tokens: 1300 },
+      },
+    });
+    writeFileSync(path, `${firstLine}\n${lastLine}\n`);
+
+    // Cap smaller than the big first line — forces a partial head to be
+    // skipped by JSON.parse; the tail snapshot (900/400) must still surface.
+    const result = await findLastCumulative(path, 512);
+    expect(result).toEqual({
+      input_tokens: 900,
+      output_tokens: 400,
+      cached_input_tokens: 0,
+      total_tokens: 1300,
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("findLastCumulative: returns null when no token_count lines are present", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "codex-find-"));
+  try {
+    const path = join(dir, "no-token.jsonl");
+    writeFileSync(
+      path,
+      [
+        JSON.stringify({ type: "session_start", session_id: "s", timestamp: "2026-04-16T14:00Z" }),
+        JSON.stringify({ type: "session_end", session_id: "s", timestamp: "2026-04-16T14:01Z" }),
+        "",
+      ].join("\n"),
+    );
+    const result = await findLastCumulative(path);
+    expect(result).toBeNull();
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("non-monotonic cumulative snapshots clamp to zero rather than producing negative deltas", () => {

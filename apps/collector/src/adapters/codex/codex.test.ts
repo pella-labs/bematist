@@ -1,5 +1,13 @@
 import { expect, test } from "bun:test";
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadFixture } from "@bematist/fixtures";
@@ -162,6 +170,248 @@ test("second poll on an unchanged file returns no new events (offset cursor)", a
     const second = await a.poll(ctx, new AbortController().signal);
     expect(first.length).toBeGreaterThan(0);
     expect(second.length).toBe(0);
+  } finally {
+    if (prev === undefined) delete process.env.CODEX_HOME;
+    else process.env.CODEX_HOME = prev;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("cursor-wipe recovery: missing cumulative is re-derived from rollout tail (bug #1)", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "codex-wipe-"));
+  const sub = join(dir, "sessions", "2026", "04", "16");
+  mkdirSync(sub, { recursive: true });
+  const path = join(sub, "rollout-wiped.jsonl");
+
+  // Rollout with two turns — cumulative 1000/200 then 2500/500.
+  const initial = [
+    JSON.stringify({
+      type: "session_start",
+      session_id: "sess_wipe_01",
+      timestamp: "2026-04-16T14:00:00.000Z",
+    }),
+    JSON.stringify({
+      session_id: "sess_wipe_01",
+      turn_id: "t1",
+      timestamp: "2026-04-16T14:00:01.000Z",
+      event_msg: {
+        type: "token_count",
+        payload: {
+          model: "gpt-5",
+          input_tokens: 1000,
+          output_tokens: 200,
+          cached_input_tokens: 0,
+          total_tokens: 1200,
+        },
+      },
+    }),
+    JSON.stringify({
+      session_id: "sess_wipe_01",
+      turn_id: "t2",
+      timestamp: "2026-04-16T14:00:02.000Z",
+      event_msg: {
+        type: "token_count",
+        payload: {
+          model: "gpt-5",
+          input_tokens: 2500,
+          output_tokens: 500,
+          cached_input_tokens: 0,
+          total_tokens: 3000,
+        },
+      },
+    }),
+    "",
+  ].join("\n");
+  writeFileSync(path, initial);
+
+  const prev = process.env.CODEX_HOME;
+  try {
+    process.env.CODEX_HOME = dir;
+
+    // Simulate a cursor AFTER a wipe: offset AND inode persisted from the
+    // previous run, but the cumulative row has been lost. A correct poll
+    // must NOT re-emit the historical 2500/500 — it must recognize there
+    // is nothing new past the offset and emit zero events.
+    const fileSize = statSync(path).size;
+    const fileInode = String(statSync(path).ino);
+    const cursor = inMemoryCursor();
+    await cursor.set(`offset:${path}`, String(fileSize));
+    await cursor.set(`inode:${path}`, fileInode);
+    // Note: no cumulative key set.
+
+    const a = new CodexAdapter({ tenantId: "o", engineerId: "e", deviceId: "d" });
+    const ctx = mkCtx(cursor);
+    await a.init(ctx);
+    const firstAfterWipe = await a.poll(ctx, new AbortController().signal);
+    expect(firstAfterWipe.length).toBe(0);
+
+    // Append a single new turn — delta must diff against the tail-recovered
+    // cumulative (2500/500), NOT zero, otherwise the new llm_response would
+    // claim input_tokens=4000 / output_tokens=800.
+    const tail = `${JSON.stringify({
+      session_id: "sess_wipe_01",
+      turn_id: "t3",
+      timestamp: "2026-04-16T14:00:03.000Z",
+      event_msg: {
+        type: "token_count",
+        payload: {
+          model: "gpt-5",
+          input_tokens: 4000,
+          output_tokens: 800,
+          cached_input_tokens: 0,
+          total_tokens: 4800,
+        },
+      },
+    })}\n`;
+    appendFileSync(path, tail);
+
+    const second = await a.poll(ctx, new AbortController().signal);
+    const resp = second.find((e) => e.dev_metrics.event_kind === "llm_response");
+    expect(resp?.gen_ai?.usage?.input_tokens).toBe(1500);
+    expect(resp?.gen_ai?.usage?.output_tokens).toBe(300);
+  } finally {
+    if (prev === undefined) delete process.env.CODEX_HOME;
+    else process.env.CODEX_HOME = prev;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("rotation detection: offset > size triggers reset to first-run (bug #2)", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "codex-rotate-"));
+  const sub = join(dir, "sessions", "2026", "04", "16");
+  mkdirSync(sub, { recursive: true });
+  const path = join(sub, "rollout-rotated.jsonl");
+
+  // Fresh small rollout with a token_count — size ~300 bytes.
+  const content = [
+    JSON.stringify({
+      type: "session_start",
+      session_id: "sess_rot_01",
+      timestamp: "2026-04-16T14:00:00.000Z",
+    }),
+    JSON.stringify({
+      session_id: "sess_rot_01",
+      turn_id: "t1",
+      timestamp: "2026-04-16T14:00:01.000Z",
+      event_msg: {
+        type: "token_count",
+        payload: {
+          model: "gpt-5",
+          input_tokens: 100,
+          output_tokens: 50,
+          cached_input_tokens: 0,
+          total_tokens: 150,
+        },
+      },
+    }),
+    "",
+  ].join("\n");
+  writeFileSync(path, content);
+  const fileSize = statSync(path).size;
+  const fileInode = String(statSync(path).ino);
+
+  // Stale cursor claims an offset LARGER than the current file (as if the
+  // previous-larger file was truncated/rotated to a smaller one). Without
+  // rotation detection the reader would return zero lines forever.
+  const cursor = inMemoryCursor();
+  await cursor.set(`offset:${path}`, String(fileSize + 500));
+  await cursor.set(`inode:${path}`, fileInode);
+  // Cumulative intentionally set to a "stale" high value to prove the
+  // first-run path uses the freshly-parsed (null-priorCumulative) baseline.
+  await cursor.set(
+    `cumulative:${path}`,
+    JSON.stringify({
+      input_tokens: 999_999,
+      output_tokens: 999_999,
+      cached_input_tokens: 0,
+      total_tokens: 1_999_998,
+    }),
+  );
+
+  const prev = process.env.CODEX_HOME;
+  try {
+    process.env.CODEX_HOME = dir;
+    const a = new CodexAdapter({ tenantId: "o", engineerId: "e", deviceId: "d" });
+    const ctx = mkCtx(cursor);
+    await a.init(ctx);
+    const events = await a.poll(ctx, new AbortController().signal);
+    const resp = events.find((e) => e.dev_metrics.event_kind === "llm_response");
+    // Fresh parse from offset 0 → priorCumulative ignored → delta is the
+    // full 100/50, never the nonsensical (100 - 999999) clamp at 0.
+    expect(resp?.gen_ai?.usage?.input_tokens).toBe(100);
+    expect(resp?.gen_ai?.usage?.output_tokens).toBe(50);
+    // Cursor was rewritten to the new (smaller) offset.
+    const after = await cursor.get(`offset:${path}`);
+    expect(Number.parseInt(after ?? "0", 10)).toBe(fileSize);
+  } finally {
+    if (prev === undefined) delete process.env.CODEX_HOME;
+    else process.env.CODEX_HOME = prev;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("rotation detection: inode change triggers reset (bug #2)", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "codex-inode-"));
+  const sub = join(dir, "sessions", "2026", "04", "16");
+  mkdirSync(sub, { recursive: true });
+  const path = join(sub, "rollout-inode.jsonl");
+
+  const content = [
+    JSON.stringify({
+      type: "session_start",
+      session_id: "sess_inode_01",
+      timestamp: "2026-04-16T14:00:00.000Z",
+    }),
+    JSON.stringify({
+      session_id: "sess_inode_01",
+      turn_id: "t1",
+      timestamp: "2026-04-16T14:00:01.000Z",
+      event_msg: {
+        type: "token_count",
+        payload: {
+          model: "gpt-5",
+          input_tokens: 200,
+          output_tokens: 80,
+          cached_input_tokens: 0,
+          total_tokens: 280,
+        },
+      },
+    }),
+    "",
+  ].join("\n");
+  writeFileSync(path, content);
+  const fileSize = statSync(path).size;
+  const realInode = String(statSync(path).ino);
+
+  // Cursor pretends the last-seen inode was something else — size matches
+  // perfectly so the size-check wouldn't fire, but inode drift must trigger
+  // reset.
+  const cursor = inMemoryCursor();
+  await cursor.set(`offset:${path}`, String(fileSize));
+  await cursor.set(`inode:${path}`, `${Number.parseInt(realInode, 10) + 42}`);
+  await cursor.set(
+    `cumulative:${path}`,
+    JSON.stringify({
+      input_tokens: 5000,
+      output_tokens: 5000,
+      cached_input_tokens: 0,
+      total_tokens: 10_000,
+    }),
+  );
+
+  const prev = process.env.CODEX_HOME;
+  try {
+    process.env.CODEX_HOME = dir;
+    const a = new CodexAdapter({ tenantId: "o", engineerId: "e", deviceId: "d" });
+    const ctx = mkCtx(cursor);
+    await a.init(ctx);
+    const events = await a.poll(ctx, new AbortController().signal);
+    // Inode mismatch → reset → fresh parse → full 200/80 delta.
+    const resp = events.find((e) => e.dev_metrics.event_kind === "llm_response");
+    expect(resp?.gen_ai?.usage?.input_tokens).toBe(200);
+    expect(resp?.gen_ai?.usage?.output_tokens).toBe(80);
+    // Cursor inode refreshed to the real one.
+    expect(await cursor.get(`inode:${path}`)).toBe(realInode);
   } finally {
     if (prev === undefined) delete process.env.CODEX_HOME;
     else process.env.CODEX_HOME = prev;

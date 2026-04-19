@@ -1,3 +1,4 @@
+import { statSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Event } from "@bematist/schema";
@@ -6,6 +7,7 @@ import { type CodexDiscoverySources, discoverSources } from "./discovery";
 import { normalizeSession } from "./normalize";
 import {
   type CodexUsageSnapshot,
+  findLastCumulative,
   parseLines,
   parseSessionFile,
   ZERO_SNAPSHOT,
@@ -48,9 +50,66 @@ export class CodexAdapter implements Adapter {
       const offsetKey = `offset:${path}`;
       const cumulativeKey = `cumulative:${path}`;
       const branchKey = `branch:${path}`;
-      const prevOffset = Number.parseInt((await ctx.cursor.get(offsetKey)) ?? "0", 10);
-      const priorCumulative = parseCumulative(await ctx.cursor.get(cumulativeKey));
+      const inodeKey = `inode:${path}`;
+      let prevOffset = Number.parseInt((await ctx.cursor.get(offsetKey)) ?? "0", 10);
+      let priorCumulative = parseCumulative(await ctx.cursor.get(cumulativeKey));
       let branch: string | undefined = (await ctx.cursor.get(branchKey)) ?? undefined;
+      const prevInode = (await ctx.cursor.get(inodeKey)) ?? null;
+
+      // Rotation / truncation detection (bug #2). Compare the file's current
+      // (size, inode) against the last cursor state. If size < prevOffset the
+      // file was truncated or replaced with a smaller one; if the inode
+      // changed, the file was rotated (rm + recreate keeps the path but
+      // changes the inode). In either case, reset to first-run: re-parse the
+      // whole file, derive a fresh cumulative, and overwrite the stale cursor
+      // rows.
+      let currentInode: string | null = null;
+      try {
+        const stat = statSync(path);
+        currentInode = String(stat.ino);
+        const rotatedBySize = prevOffset > 0 && stat.size < prevOffset;
+        const rotatedByInode = prevInode !== null && prevInode !== currentInode;
+        if (rotatedBySize || rotatedByInode) {
+          ctx.log.warn("codex: rollout rotated/truncated, resetting offset", {
+            path,
+            prevOffset,
+            size: stat.size,
+            prevInode,
+            currentInode,
+            reason: rotatedBySize ? "size<offset" : "inode-change",
+          });
+          prevOffset = 0;
+          priorCumulative = null;
+          // Cursor rows get overwritten below by the first-run branch — no
+          // explicit delete needed (CursorStore has no delete surface).
+        }
+      } catch {
+        // stat failed — file gone or inaccessible. Skip this file this tick;
+        // if/when it reappears we'll see a fresh inode and reset cleanly.
+        continue;
+      }
+
+      // Cursor-wipe recovery (bug #1). If we have a non-zero offset but no
+      // cumulative, the cursor DB was wiped/corrupted between polls. Re-derive
+      // priorCumulative by scanning the already-emitted prefix (capped at
+      // prevOffset) so the next delta is computed against the true last-known
+      // cumulative — never the newest cumulative in the file (which would
+      // silently swallow the next turn's delta as zero).
+      if (prevOffset > 0 && priorCumulative === null) {
+        const recovered = await findLastCumulative(path, 262_144, prevOffset);
+        if (recovered) {
+          priorCumulative = recovered;
+          ctx.log.warn("codex: cursor cumulative missing, recovered from rollout tail", {
+            path,
+            prevOffset,
+          });
+        } else {
+          ctx.log.warn("codex: cursor cumulative missing and no tail snapshot found", {
+            path,
+            prevOffset,
+          });
+        }
+      }
 
       if (prevOffset === 0) {
         const parsed = await parseSessionFile(path, { priorCumulative });
@@ -73,11 +132,19 @@ export class CodexAdapter implements Adapter {
         if (parsed.lastCumulative) {
           await ctx.cursor.set(cumulativeKey, JSON.stringify(parsed.lastCumulative));
         }
+        if (currentInode !== null) await ctx.cursor.set(inodeKey, currentInode);
         continue;
       }
 
       const { lines, nextOffset } = await readLinesFromOffset(path, prevOffset);
-      if (lines.length === 0) continue;
+      if (lines.length === 0) {
+        // Still pin the inode — a later poll can detect rotation even if
+        // nothing new has been appended yet.
+        if (currentInode !== null && prevInode !== currentInode) {
+          await ctx.cursor.set(inodeKey, currentInode);
+        }
+        continue;
+      }
       const parsed = parseLines(lines, { priorCumulative });
       parsed.sessionId = parsed.sessionId ?? sessionIdFromPath(path);
       out.push(
@@ -92,6 +159,7 @@ export class CodexAdapter implements Adapter {
       if (parsed.lastCumulative) {
         await ctx.cursor.set(cumulativeKey, JSON.stringify(parsed.lastCumulative));
       }
+      if (currentInode !== null) await ctx.cursor.set(inodeKey, currentInode);
     }
     return out;
   }
@@ -103,7 +171,7 @@ export class CodexAdapter implements Adapter {
       caveats.push("No ~/.codex/sessions directory — no Codex data will be captured.");
     } else {
       caveats.push(
-        "Per-turn tokens derived by diffing cumulative token_count; collector restart mid-session can lose the prior cumulative if the egress journal was wiped.",
+        "Per-turn tokens derived by diffing cumulative token_count; cursor wipes self-heal by re-deriving from the rollout tail.",
       );
     }
     const status = s.sessionsDirExists ? "ok" : "disabled";

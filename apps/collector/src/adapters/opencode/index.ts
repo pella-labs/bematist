@@ -1,9 +1,13 @@
+import { statSync } from "node:fs";
 import type { Event } from "@bematist/schema";
 import type { Adapter, AdapterContext, AdapterHealth } from "@bematist/sdk";
 import { type DiscoverySources, discoverSources } from "./discovery";
 import { normalizeSession } from "./normalize";
 import { listLegacySessionIds, SkippedCounter } from "./skipped";
-import { readAllSessions } from "./sqlite";
+import { readSessionsSince } from "./sqlite";
+
+const WATERMARK_KEY = "watermark:opencode";
+const INODE_KEY = "inode:opencode";
 
 const SOURCE_VERSION_DEFAULT = "1.2.x";
 
@@ -46,7 +50,25 @@ export class OpenCodeAdapter implements Adapter {
     this.recordSkippedLegacy(s, ctx);
     if (!s.sqliteExists) return [];
 
-    const payloads = readAllSessions(s.sqlitePath);
+    // Rotation / wipe detection (Bug #9): if the SQLite file's inode has
+    // changed since the last tick, the DB was replaced (fresh install, blown
+    // away + restored, etc.). Reset the watermark so we do a clean full
+    // re-scan rather than continuing off a stale cursor from the previous
+    // file's timeline.
+    const currentInode = safeInode(s.sqlitePath);
+    const prevInode = await ctx.cursor.get(INODE_KEY);
+    let watermark = await ctx.cursor.get(WATERMARK_KEY);
+    if (prevInode !== null && currentInode !== null && prevInode !== currentInode) {
+      ctx.log.warn("opencode: sqlite rotated, resetting watermark", {
+        path: s.sqlitePath,
+        prevInode,
+        currentInode,
+      });
+      watermark = null;
+    }
+
+    const { payloads, nextWatermark } = readSessionsSince(s.sqlitePath, watermark);
+
     const out: Event[] = [];
     for (const payload of payloads) {
       const events = normalizeSession(
@@ -56,6 +78,17 @@ export class OpenCodeAdapter implements Adapter {
       );
       out.push(...events);
     }
+
+    // Advance cursors only after normalize has produced events — if normalize
+    // throws, the next tick re-reads this window instead of silently losing
+    // it. Watermark advances only when we actually saw new rows.
+    if (nextWatermark !== null) {
+      await ctx.cursor.set(WATERMARK_KEY, nextWatermark);
+    }
+    if (currentInode !== null && currentInode !== prevInode) {
+      await ctx.cursor.set(INODE_KEY, currentInode);
+    }
+
     return out;
   }
 
@@ -95,5 +128,13 @@ export class OpenCodeAdapter implements Adapter {
     for (const sessionId of listLegacySessionIds(s.legacyDir)) {
       this.skipped.record(sessionId, "pre-v1.2 sharded JSON", ctx.log);
     }
+  }
+}
+
+function safeInode(path: string): string | null {
+  try {
+    return String(statSync(path).ino);
+  } catch {
+    return null;
   }
 }

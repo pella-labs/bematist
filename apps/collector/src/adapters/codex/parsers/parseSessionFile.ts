@@ -1,3 +1,4 @@
+import { statSync } from "node:fs";
 import { log } from "../../../logger";
 import { readLinesFromOffset } from "./safeRead";
 import type {
@@ -285,6 +286,85 @@ function hasAnyUsage(s: CodexUsageSnapshot): boolean {
 function nonNegativeDelta(curr: number, prior: number): number {
   const d = curr - prior;
   return d > 0 ? d : 0;
+}
+
+/**
+ * Recover the most-recent cumulative `token_count` snapshot from the tail of
+ * a rollout file. Used when the cursor DB is wiped or corrupted (bug #1) —
+ * without this, a resumed poll would re-emit every historical turn's tokens
+ * as new.
+ *
+ * Reads up to `maxScanBytes` ending at `upToOffset` (default = entire file),
+ * scans the returned lines forward, and keeps the last `token_count`
+ * cumulative snapshot it sees. The `upToOffset` cap is load-bearing when
+ * recovering from a cursor wipe where NEW bytes have already been appended
+ * past the saved offset — we want the cumulative at the last known-emitted
+ * position, not the newest snapshot in the file.
+ *
+ * Returns null if the file is empty, unreadable, or contains no parseable
+ * token_count lines within the scan window — callers should treat that as
+ * ZERO_SNAPSHOT (worst case: we slightly under-emit one turn's delta).
+ *
+ * The first line of the scanned window may be a partial line if the window
+ * does not start at a newline boundary; we rely on JSON.parse failing on the
+ * partial to skip it, and the forward scan still picks up the latest
+ * complete cumulative snapshot.
+ */
+export async function findLastCumulative(
+  path: string,
+  maxScanBytes = 262_144,
+  upToOffset?: number,
+): Promise<CodexUsageSnapshot | null> {
+  let size: number;
+  try {
+    size = statSync(path).size;
+  } catch {
+    return null;
+  }
+  if (size === 0) return null;
+  const capOffset = upToOffset === undefined ? size : Math.min(upToOffset, size);
+  if (capOffset <= 0) return null;
+  const startOffset = Math.max(0, capOffset - maxScanBytes);
+  const { lines } = await readLinesFromOffset(path, startOffset);
+  let latest: CodexUsageSnapshot | null = null;
+  // Track how many bytes of the scan window we've consumed so we can stop
+  // at `capOffset`. Include the newline separators the splitter drops.
+  let consumed = startOffset;
+  const windowEnd = capOffset;
+  for (const raw of lines) {
+    const lineEnd = consumed + raw.length + 1; // +1 for the '\n' stripped by the splitter
+    if (consumed >= windowEnd) break;
+    // Advance `consumed` BEFORE the parse so we correctly count even skipped
+    // partial lines. Note: readLinesFromOffset may return a final residual
+    // with no trailing newline — we still count +1 which overshoots by one
+    // byte, which is harmless (we only use `consumed >= windowEnd` to stop).
+    consumed = lineEnd;
+    let parsed: RawCodexLine;
+    try {
+      parsed = JSON.parse(raw) as RawCodexLine;
+    } catch {
+      // Partial line at the head of a mid-file window, or malformed JSONL —
+      // either way, skip. We still get the latest complete snapshot.
+      continue;
+    }
+    const kind = extractKind(parsed);
+    if (kind !== "token_count") continue;
+    const payload = extractPayload(parsed);
+    if (!payload || payload.info === null) continue;
+    const snap = snapshotFromPayload(payload);
+    if (!hasAnyUsage(snap)) continue;
+    // Only accept snapshots whose line END is at or before the cap — so a
+    // line that straddles the cap is ignored rather than half-applied.
+    if (lineEnd > windowEnd) break;
+    latest = snap;
+  }
+  if (latest === null) {
+    log.warn(
+      { path, maxScanBytes, upToOffset },
+      "codex: findLastCumulative found no token_count snapshot in scan window",
+    );
+  }
+  return latest;
 }
 
 export { ZERO_SNAPSHOT };
