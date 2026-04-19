@@ -24,7 +24,11 @@ import { zodAction } from "@/lib/zodActions";
 const _createInviteAction = zodAction(CreateInviteInput, createInvite);
 const _revokeInviteAction = zodAction(RevokeInviteInput, revokeInvite);
 
-export async function createInviteAction(raw: { role?: "admin" | "ic"; expires_in_days?: number }) {
+export async function createInviteAction(raw: {
+  role?: "admin" | "ic";
+  expires_in_days?: number;
+  max_uses?: number | null;
+}) {
   const result = await _createInviteAction(raw);
   if (result.ok) {
     revalidatePath("/admin/invites");

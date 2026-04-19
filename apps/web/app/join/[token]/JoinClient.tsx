@@ -28,7 +28,11 @@ export function JoinClient({ token }: JoinClientProps) {
     try {
       // `encodeURIComponent` guards against tokens with URL-unsafe chars,
       // though `randomBytes(32).toString('base64url')` can't produce any.
-      const callbackURL = `/post-auth/accept-invite?token=${encodeURIComponent(token)}`;
+      // Full URL avoids a prod bug where Better Auth's relative callbackURL
+      // resolution drops the path during the OAuth state round-trip.
+      const path = `/post-auth/accept-invite?token=${encodeURIComponent(token)}`;
+      const callbackURL =
+        typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
       const result = await signIn.social({ provider: "github", callbackURL });
       if (result && "error" in result && result.error) {
         setError(result.error.message ?? "Sign-in failed");

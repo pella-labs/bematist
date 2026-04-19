@@ -168,7 +168,19 @@ export async function GET(req: Request) {
 }
 
 function absoluteUrl(req: Request, path: string): URL {
-  return new URL(path, req.url);
+  // Behind a proxy (Railway), `req.url` reflects the internal origin
+  // (e.g. http://0.0.0.0:3000) which would leak localhost URLs into the
+  // Location header. Prefer BETTER_AUTH_URL (same var Better Auth uses
+  // as its baseURL), then x-forwarded-{proto,host}, then req.url.
+  const baseUrl =
+    process.env.BETTER_AUTH_URL ??
+    (() => {
+      const proto = req.headers.get("x-forwarded-proto");
+      const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+      if (proto && host) return `${proto}://${host}`;
+      return undefined;
+    })();
+  return new URL(path, baseUrl ?? req.url);
 }
 
 /**

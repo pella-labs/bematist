@@ -19,14 +19,23 @@ import { createInviteAction } from "../actions";
 export function CreateInviteForm() {
   const [role, setRole] = useState<"admin" | "ic">("ic");
   const [expiresInDays, setExpiresInDays] = useState<number>(14);
+  // Empty string → unlimited (null sent to the action). Users rarely want
+  // a cap; default UX is one link for the whole team.
+  const [maxUsesInput, setMaxUsesInput] = useState<string>("");
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<ActionResult<CreateInviteOutput> | null>(null);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setResult(null);
+    const trimmed = maxUsesInput.trim();
+    const max_uses = trimmed === "" ? null : Number.parseInt(trimmed, 10);
     startTransition(async () => {
-      const res = await createInviteAction({ role, expires_in_days: expiresInDays });
+      const res = await createInviteAction({
+        role,
+        expires_in_days: expiresInDays,
+        max_uses: max_uses === null || Number.isNaN(max_uses) ? null : max_uses,
+      });
       setResult(res);
     });
   }
@@ -64,6 +73,21 @@ export function CreateInviteForm() {
             max={90}
             value={expiresInDays}
             onChange={(e) => setExpiresInDays(Number(e.target.value))}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1 text-xs">
+          <label htmlFor="invite-max-uses" className="text-muted-foreground">
+            Max uses (blank = unlimited)
+          </label>
+          <Input
+            id="invite-max-uses"
+            type="number"
+            min={1}
+            max={10000}
+            placeholder="unlimited"
+            value={maxUsesInput}
+            onChange={(e) => setMaxUsesInput(e.target.value)}
           />
         </div>
 
@@ -107,9 +131,12 @@ function InviteReveal({ invite }: { invite: CreateInviteOutput }) {
         Invite link created for role <span className="font-mono text-xs">{invite.role}</span>.
       </p>
       <p className="mt-1 text-xs text-muted-foreground">
-        Share this URL with the invitee. It works once, then expires on{" "}
-        {new Date(invite.expires_at).toLocaleString()}. Revoke from the list below if it's sent to
-        the wrong person.
+        Share this URL with invitees.{" "}
+        {invite.max_uses === null
+          ? "Anyone with this link can join."
+          : `Good for up to ${invite.max_uses} ${invite.max_uses === 1 ? "acceptance" : "acceptances"}.`}{" "}
+        Expires on {new Date(invite.expires_at).toLocaleString()}. Revoke from the list below if
+        it's sent to the wrong person.
       </p>
       <div className="mt-3 flex items-center gap-2">
         <Input

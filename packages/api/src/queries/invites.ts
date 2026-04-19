@@ -64,16 +64,27 @@ function toIsoOrNull(v: unknown): string | null {
   return toIso(v);
 }
 
-/** Derive the display status from lifecycle columns + now. */
+/** Derive the display status from lifecycle columns + now. Multi-use invites
+ *  show "accepted" only when their use cap is hit; unlimited invites with
+ *  non-zero uses stay "active" since more devs can still join. */
 function deriveStatus(row: {
   accepted_at: unknown;
   revoked_at: unknown;
   expires_at: unknown;
+  uses?: number;
+  max_uses?: number | null;
 }): InviteListItem["status"] {
   if (row.revoked_at) return "revoked";
-  if (row.accepted_at) return "accepted";
   const exp = row.expires_at instanceof Date ? row.expires_at : new Date(String(row.expires_at));
   if (!Number.isNaN(exp.getTime()) && exp.getTime() <= Date.now()) return "expired";
+  if (
+    typeof row.uses === "number" &&
+    row.max_uses !== null &&
+    row.max_uses !== undefined &&
+    row.uses >= row.max_uses
+  ) {
+    return "accepted";
+  }
   return "active";
 }
 
@@ -162,6 +173,10 @@ export async function createInvite(
   // when called directly (e.g. from tests). Normalize defensively.
   const role: InviteRole = (input?.role ?? "ic") as InviteRole;
   const expiresInDays = input?.expires_in_days ?? 14;
+  // `null` max_uses = unlimited. Admin-form default is "unlimited" so one
+  // invite link works for a whole team — scales to 100-dev orgs without
+  // per-engineer link churn.
+  const maxUses = input?.max_uses ?? null;
 
   const token = generateToken();
 
@@ -170,10 +185,10 @@ export async function createInvite(
     created_at: unknown;
     expires_at: unknown;
   }>(
-    `INSERT INTO org_invites (org_id, token, role, created_by, expires_at)
-     VALUES ($1, $2, $3, $4, now() + ($5 || ' days')::interval)
+    `INSERT INTO org_invites (org_id, token, role, created_by, expires_at, max_uses)
+     VALUES ($1, $2, $3, $4, now() + ($5 || ' days')::interval, $6)
      RETURNING id, created_at, expires_at`,
-    [ctx.tenant_id, token, role, ctx.actor_id, String(expiresInDays)],
+    [ctx.tenant_id, token, role, ctx.actor_id, String(expiresInDays), maxUses],
   );
 
   const row = rows[0];
@@ -185,7 +200,7 @@ export async function createInvite(
     action: "org_invite.create",
     target_type: "org_invite",
     target_id: row.id,
-    metadata: { role, expires_in_days: expiresInDays },
+    metadata: { role, expires_in_days: expiresInDays, max_uses: maxUses },
   });
 
   const baseUrl = resolveBetterAuthUrl();
@@ -197,6 +212,7 @@ export async function createInvite(
     role,
     expires_at: toIso(row.expires_at),
     created_at: toIso(row.created_at),
+    max_uses: maxUses,
   };
 }
 
@@ -220,6 +236,8 @@ export async function listInvites(ctx: Ctx, input: ListInvitesInput): Promise<Li
     accepted_at: unknown;
     accepted_by_email: string | null;
     revoked_at: unknown;
+    uses: number;
+    max_uses: number | null;
   }>(
     `SELECT
        i.id,
@@ -229,7 +247,9 @@ export async function listInvites(ctx: Ctx, input: ListInvitesInput): Promise<Li
        i.expires_at,
        i.accepted_at,
        u.email AS accepted_by_email,
-       i.revoked_at
+       i.revoked_at,
+       i.uses,
+       i.max_uses
      FROM org_invites i
      LEFT JOIN users u
        ON u.id = i.accepted_by_user_id
@@ -239,7 +259,7 @@ export async function listInvites(ctx: Ctx, input: ListInvitesInput): Promise<Li
          includeInactive
            ? ""
            : `AND i.revoked_at IS NULL
-              AND i.accepted_at IS NULL
+              AND (i.max_uses IS NULL OR i.uses < i.max_uses)
               AND i.expires_at > now()`
        }
      ORDER BY i.created_at DESC
@@ -257,6 +277,8 @@ export async function listInvites(ctx: Ctx, input: ListInvitesInput): Promise<Li
     accepted_by_email: r.accepted_by_email ?? null,
     revoked_at: toIsoOrNull(r.revoked_at),
     status: deriveStatus(r),
+    uses: r.uses,
+    max_uses: r.max_uses,
   }));
 
   return { invites };
@@ -323,15 +345,17 @@ export async function getInvitePreview(
     org_name: string;
     role: string;
     expires_at: unknown;
-    accepted_at: unknown;
     revoked_at: unknown;
+    max_uses: number | null;
+    uses: number;
   }>(
     `SELECT
        o.name        AS org_name,
        i.role        AS role,
        i.expires_at  AS expires_at,
-       i.accepted_at AS accepted_at,
-       i.revoked_at  AS revoked_at
+       i.revoked_at  AS revoked_at,
+       i.max_uses    AS max_uses,
+       i.uses        AS uses
      FROM org_invites i
      JOIN orgs o ON o.id = i.org_id
      WHERE i.token = $1
@@ -343,7 +367,9 @@ export async function getInvitePreview(
   if (!row) return { ok: false, error: "not_found" };
 
   if (row.revoked_at) return { ok: false, error: "revoked" };
-  if (row.accepted_at) return { ok: false, error: "already_accepted" };
+  if (row.max_uses !== null && row.uses >= row.max_uses) {
+    return { ok: false, error: "already_accepted" };
+  }
 
   const exp = row.expires_at instanceof Date ? row.expires_at : new Date(String(row.expires_at));
   if (Number.isNaN(exp.getTime()) || exp.getTime() <= Date.now()) {
@@ -400,10 +426,11 @@ export async function acceptInviteByToken(
     org_id: string;
     role: string;
     expires_at: unknown;
-    accepted_at: unknown;
     revoked_at: unknown;
+    max_uses: number | null;
+    uses: number;
   }>(
-    `SELECT id, org_id, role, expires_at, accepted_at, revoked_at
+    `SELECT id, org_id, role, expires_at, revoked_at, max_uses, uses
      FROM org_invites
      WHERE token = $1
      LIMIT 1`,
@@ -413,7 +440,9 @@ export async function acceptInviteByToken(
   const invite = inviteRows[0];
   if (!invite) return { ok: false, error: "not_found" };
   if (invite.revoked_at) return { ok: false, error: "revoked" };
-  if (invite.accepted_at) return { ok: false, error: "already_accepted" };
+  if (invite.max_uses !== null && invite.uses >= invite.max_uses) {
+    return { ok: false, error: "already_accepted" };
+  }
 
   const exp =
     invite.expires_at instanceof Date ? invite.expires_at : new Date(String(invite.expires_at));
@@ -443,32 +472,41 @@ export async function acceptInviteByToken(
   // invariant (invite is consumed exactly once) is enforced by the WHERE
   // clause on `org_invites.accepted_at IS NULL`. Downstream failures (users
   // UPDATE, developers INSERT) are idempotent on retry.
-  const consumed = await pg.query<{ id: string }>(
+  // Atomic increment of `uses` gated by `max_uses` + lifecycle. First-accept
+  // populates `accepted_by_user_id` + `accepted_at` (audit trail); later
+  // accepts only bump `uses`. Conditional UPDATE handles concurrent races —
+  // the WHERE clause enforces the cap.
+  const consumed = await pg.query<{ id: string; uses: number }>(
     `UPDATE org_invites
-       SET accepted_by_user_id = $1,
-           accepted_at = now()
+       SET uses = uses + 1,
+           accepted_by_user_id = COALESCE(accepted_by_user_id, $1),
+           accepted_at = COALESCE(accepted_at, now())
      WHERE id = $2
-       AND accepted_at IS NULL
        AND revoked_at IS NULL
        AND expires_at > now()
-     RETURNING id`,
+       AND (max_uses IS NULL OR uses < max_uses)
+     RETURNING id, uses`,
     [input.userId, invite.id],
   );
 
   if (consumed.length === 0) {
-    // Racing acceptance or the invite transitioned into revoked/expired
+    // Racing acceptance or the invite transitioned into revoked/expired/cap-hit
     // between our SELECT and our UPDATE. Re-read to return the right error.
     const fresh = await pg.query<{
-      accepted_at: unknown;
       revoked_at: unknown;
       expires_at: unknown;
-    }>(`SELECT accepted_at, revoked_at, expires_at FROM org_invites WHERE id = $1 LIMIT 1`, [
-      invite.id,
-    ]);
+      max_uses: number | null;
+      uses: number;
+    }>(
+      `SELECT revoked_at, expires_at, max_uses, uses FROM org_invites WHERE id = $1 LIMIT 1`,
+      [invite.id],
+    );
     const f = fresh[0];
     if (!f) return { ok: false, error: "not_found" };
     if (f.revoked_at) return { ok: false, error: "revoked" };
-    if (f.accepted_at) return { ok: false, error: "already_accepted" };
+    if (f.max_uses !== null && f.uses >= f.max_uses) {
+      return { ok: false, error: "already_accepted" };
+    }
     return { ok: false, error: "expired" };
   }
 

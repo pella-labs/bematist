@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const config: NextConfig = {
-  output: "standalone",
+  // `output: "standalone"` was locked in CLAUDE.md for minimal-image
+  // deploys. Disabled tonight because Railway's `next start` doesn't
+  // serve from the standalone output (it expects the regular .next/
+  // layout). Revisit when we move to a slimmer base image that runs
+  // `node .next/standalone/server.js` directly.
   reactStrictMode: true,
   typedRoutes: true,
   // Ported pharos card code has strict-mode violations we don't own. Landing
