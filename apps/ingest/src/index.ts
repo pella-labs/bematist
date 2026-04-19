@@ -12,6 +12,10 @@ import { createBunRedisDedupStore } from "./dedup/bunRedisDedupStore";
 import { getDeps, setDeps } from "./deps";
 import { assertFlagCoherence, FlagIncoherentError, parseFlags } from "./flags";
 import { createKafkaWebhookBus, parseBrokersEnv } from "./github-app/kafkaWebhookBus";
+import {
+  InMemoryWebhookSecretResolver,
+  type WebhookSecretResolver,
+} from "./github-app/secretsResolver";
 import { logger } from "./logger";
 import { startOtlpServer } from "./otlp/server";
 import { createPolicyFlipDbHandle } from "./policy-flip/dbClient";
@@ -133,6 +137,28 @@ if (process.env.NODE_ENV !== "test") {
         { transport },
         "KAFKA_TRANSPORT=memory — in-memory webhook bus retained (solo mode)",
       );
+    }
+
+    // Dev-mode seed for the webhook-secret resolver. The in-memory resolver
+    // ships empty; in prod it's swapped for a KMS-backed impl via setDeps()
+    // from the secrets-manager adapter. For dev-Railway + self-host we read
+    // the secret bytes from GITHUB_WEBHOOK_SECRET_DEV and seed under the ref
+    // "dev-default". When the admin claims a pending installation, they pass
+    // `webhook_secret_ref=dev-default` so HMAC verification resolves.
+    if (process.env.GITHUB_WEBHOOK_SECRET_DEV) {
+      const resolver: WebhookSecretResolver = getDeps().webhookSecretsResolver;
+      if (resolver instanceof InMemoryWebhookSecretResolver) {
+        resolver.seed("dev-default", process.env.GITHUB_WEBHOOK_SECRET_DEV);
+        logger.info(
+          { ref: "dev-default", bytes: process.env.GITHUB_WEBHOOK_SECRET_DEV.length },
+          "seeded webhook secret from GITHUB_WEBHOOK_SECRET_DEV (dev mode)",
+        );
+      } else {
+        logger.warn(
+          { resolver: resolver.constructor.name },
+          "GITHUB_WEBHOOK_SECRET_DEV set but resolver is not in-memory — ignoring",
+        );
+      }
     }
     logger.info(
       { bun_version: Bun.version, redis_url: process.env.REDIS_URL ?? "default" },
