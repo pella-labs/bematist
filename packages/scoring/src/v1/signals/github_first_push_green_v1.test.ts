@@ -86,10 +86,11 @@ describe("github_first_push_green_v1", () => {
         { ...basePush, commit_sha: "a".repeat(40), non_config_file_changed: false },
         { ...basePush, commit_sha: "b".repeat(40), non_config_file_changed: true },
         { ...basePush, commit_sha: "c".repeat(40), non_config_file_changed: true },
+        { ...basePush, commit_sha: "d".repeat(40), non_config_file_changed: true },
       ]),
     );
-    expect(result.denominator).toBe(2);
-    expect(result.numerator).toBe(2);
+    expect(result.denominator).toBe(3);
+    expect(result.numerator).toBe(3);
     expect(result.raw).toBeCloseTo(1.0, 6);
   });
 
