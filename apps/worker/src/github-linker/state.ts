@@ -644,7 +644,9 @@ function walkEvidence(node: unknown, path: string): void {
     throw new Error(`FORBIDDEN_STRING at ${path}: value does not match structural shapes`);
   }
   if (Array.isArray(node)) {
-    node.forEach((v, i) => walkEvidence(v, `${path}[${i}]`));
+    node.forEach((v, i) => {
+      walkEvidence(v, `${path}[${i}]`);
+    });
     return;
   }
   if (typeof node === "object") {

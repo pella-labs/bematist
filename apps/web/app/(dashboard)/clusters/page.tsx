@@ -1,17 +1,5 @@
-import {
-  findSessionTwins,
-  listClusterContributors,
-  listClusters,
-} from "@bematist/api";
-import {
-  Badge,
-  Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  FidelityChip,
-  Input,
-} from "@bematist/ui";
+import { findSessionTwins, listClusterContributors, listClusters } from "@bematist/api";
+import { Badge, Button, Card, CardHeader, CardTitle, FidelityChip, Input } from "@bematist/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSessionCtx } from "@/lib/session";
@@ -42,9 +30,7 @@ interface ClustersPageProps {
   }>;
 }
 
-export default async function ClustersPage({
-  searchParams,
-}: ClustersPageProps) {
+export default async function ClustersPage({ searchParams }: ClustersPageProps) {
   const ctx = await getSessionCtx();
   const sp = (await searchParams) ?? {};
   const [data, twins, contributors] = await Promise.all([
@@ -66,10 +52,9 @@ export default async function ClustersPage({
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Clusters</h1>
         <p className="text-sm text-muted-foreground">
-          Prompt-pattern clusters from the on-device Clio pipeline. Labels are
-          3–5 words, regex-validated — no URLs, no proper nouns, no PII. The k≥3
-          contributor floor is enforced server-side: clusters below the floor
-          are computed but never surfaced.
+          Prompt-pattern clusters from the on-device Clio pipeline. Labels are 3–5 words,
+          regex-validated — no URLs, no proper nouns, no PII. The k≥3 contributor floor is enforced
+          server-side: clusters below the floor are computed but never surfaced.
         </p>
       </header>
 
@@ -77,23 +62,15 @@ export default async function ClustersPage({
         <Badge tone="neutral">30-day window</Badge>
         <Badge tone="accent">{data.clusters.length} clusters</Badge>
         {data.suppressed_below_floor > 0 ? (
-          <Badge tone="warning">
-            {data.suppressed_below_floor} suppressed · below k=3 floor
-          </Badge>
+          <Badge tone="warning">{data.suppressed_below_floor} suppressed · below k=3 floor</Badge>
         ) : null}
       </div>
 
-      <section
-        aria-label="Cluster list"
-        className="grid grid-cols-1 gap-4 md:grid-cols-2"
-      >
+      <section aria-label="Cluster list" className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {data.clusters.map((c) => {
-          const merged =
-            c.top_outcomes.find((o) => o.kind === "merged_pr")?.count ?? 0;
-          const green =
-            c.top_outcomes.find((o) => o.kind === "green_test")?.count ?? 0;
-          const reverts =
-            c.top_outcomes.find((o) => o.kind === "revert")?.count ?? 0;
+          const merged = c.top_outcomes.find((o) => o.kind === "merged_pr")?.count ?? 0;
+          const green = c.top_outcomes.find((o) => o.kind === "green_test")?.count ?? 0;
+          const reverts = c.top_outcomes.find((o) => o.kind === "revert")?.count ?? 0;
           const isSelected = sp.cluster_id === c.id;
           return (
             <Link
@@ -113,16 +90,13 @@ export default async function ClustersPage({
                     <FidelityChip fidelity={c.fidelity} />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {c.contributor_count} contributors · {c.session_count}{" "}
-                    sessions
+                    {c.contributor_count} contributors · {c.session_count} sessions
                   </p>
                 </CardHeader>
                 <dl className="grid grid-cols-4 gap-3 text-xs">
                   <div>
                     <dt className="text-muted-foreground">Avg cost</dt>
-                    <dd className="mt-0.5 font-medium text-sm">
-                      {USD.format(c.avg_cost_usd)}
-                    </dd>
+                    <dd className="mt-0.5 font-medium text-sm">{USD.format(c.avg_cost_usd)}</dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">Merged PRs</dt>
@@ -152,19 +126,13 @@ export default async function ClustersPage({
       </section>
 
       {contributors ? (
-        <section
-          aria-label="Cluster contributors"
-          className="flex flex-col gap-3"
-        >
+        <section aria-label="Cluster contributors" className="flex flex-col gap-3">
           <header>
-            <h2 className="text-lg font-semibold tracking-tight">
-              Cluster contributors
-            </h2>
+            <h2 className="text-lg font-semibold tracking-tight">Cluster contributors</h2>
             <p className="text-sm text-muted-foreground">
-              Distinct engineers who contributed prompts to the selected
-              cluster. IC names are hidden by default per CLAUDE.md §Scoring
-              Rules — each dot is an opaque engineer hash. Reveal requires IC
-              opt-in.
+              Distinct engineers who contributed prompts to the selected cluster. IC names are
+              hidden by default per CLAUDE.md §Scoring Rules — each dot is an opaque engineer hash.
+              Reveal requires IC opt-in.
             </p>
           </header>
           {contributors.ok ? (
@@ -173,15 +141,12 @@ export default async function ClustersPage({
                 <CardTitle className="text-base">
                   {contributors.contributor_count} contributor
                   {contributors.contributor_count === 1 ? "" : "s"} in{" "}
-                  <code className="font-mono text-sm">
-                    {contributors.cluster_id}
-                  </code>
+                  <code className="font-mono text-sm">{contributors.cluster_id}</code>
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  Showing top {contributors.contributors.length} by session
-                  count. Color is derived deterministically from the engineer
-                  hash — same engineer always paints the same dot across Twin
-                  Finder + this view.
+                  Showing top {contributors.contributors.length} by session count. Color is derived
+                  deterministically from the engineer hash — same engineer always paints the same
+                  dot across Twin Finder + this view.
                 </p>
               </CardHeader>
               <ul className="flex flex-wrap items-center gap-3">
@@ -191,9 +156,7 @@ export default async function ClustersPage({
                     className="flex items-center gap-2 rounded-full border border-border bg-background/50 px-2 py-1 text-xs"
                   >
                     <ContributorDot hash={c.engineer_id_hash} />
-                    <span className="font-mono text-muted-foreground">
-                      {c.engineer_id_hash}
-                    </span>
+                    <span className="font-mono text-muted-foreground">{c.engineer_id_hash}</span>
                     <span className="tabular-nums">
                       {c.session_count} session
                       {c.session_count === 1 ? "" : "s"}
@@ -217,9 +180,8 @@ export default async function ClustersPage({
       {data.clusters.length === 0 ? (
         <Card>
           <p className="text-sm text-muted-foreground">
-            No clusters pass the k≥3 floor for this window. This is the
-            privacy-preserving default — clusters emerge as more engineers
-            contribute prompts in the same pattern.
+            No clusters pass the k≥3 floor for this window. This is the privacy-preserving default —
+            clusters emerge as more engineers contribute prompts in the same pattern.
           </p>
         </Card>
       ) : null}
@@ -228,10 +190,9 @@ export default async function ClustersPage({
         <header>
           <h2 className="text-lg font-semibold tracking-tight">Twin Finder</h2>
           <p className="text-sm text-muted-foreground">
-            Find sessions whose prompt embeddings cluster near a query session.
-            The k≥3 contributor floor is enforced server-side: candidate
-            clusters with fewer than 3 distinct engineers are never surfaced.
-            Engineer ids are returned as opaque hashes.
+            Find sessions whose prompt embeddings cluster near a query session. The k≥3 contributor
+            floor is enforced server-side: candidate clusters with fewer than 3 distinct engineers
+            are never surfaced. Engineer ids are returned as opaque hashes.
           </p>
         </header>
 
@@ -280,15 +241,10 @@ export default async function ClustersPage({
                 <CardTitle className="text-base">
                   {twins.matches.length} twin
                   {twins.matches.length === 1 ? "" : "s"} for{" "}
-                  <code className="font-mono text-sm">
-                    {twins.query_session_id}
-                  </code>
+                  <code className="font-mono text-sm">{twins.query_session_id}</code>
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  Query cluster:{" "}
-                  <code className="font-mono">
-                    {twins.query_cluster_id ?? "—"}
-                  </code>{" "}
+                  Query cluster: <code className="font-mono">{twins.query_cluster_id ?? "—"}</code>{" "}
                   · {twins.latency_ms}ms
                 </p>
               </CardHeader>
