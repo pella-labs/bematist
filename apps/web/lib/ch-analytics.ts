@@ -53,21 +53,21 @@ export async function readAnalyticsForEngineer(
       query: `
         SELECT
           session_id,
-          toString(min(ts))                     AS ts,
-          any(source)                            AS source,
-          any(source_version)                    AS source_version,
-          sumIf(cost_usd, event_seq = 0)         AS cost_usd,
-          sumIf(input_tokens, event_seq = 0)     AS input_tokens,
-          sumIf(output_tokens, event_seq = 0)    AS output_tokens,
-          sumIf(cache_read_input_tokens, event_seq = 0)     AS cache_read,
-          sumIf(cache_creation_input_tokens, event_seq = 0) AS cache_create,
-          maxIf(duration_ms, event_seq = 0)      AS duration_ms,
-          any(gen_ai_system)                     AS provider,
-          any(gen_ai_response_model)             AS model,
-          any(branch)                            AS branch,
-          anyIf(raw_attrs, event_seq = 0)        AS raw_attrs,
-          sumIf(1, tool_status = 'error')        AS errs,
-          sumIf(1, tool_status = 'ok')           AS oks
+          toString(min(ts))                                      AS ts,
+          any(source)                                            AS source,
+          any(source_version)                                    AS source_version,
+          sumIf(cost_usd, event_kind = 'llm_response')           AS cost_usd,
+          sumIf(input_tokens, event_kind = 'llm_response')       AS input_tokens,
+          sumIf(output_tokens, event_kind = 'llm_response')      AS output_tokens,
+          sumIf(cache_read_input_tokens, event_kind = 'llm_response')     AS cache_read,
+          sumIf(cache_creation_input_tokens, event_kind = 'llm_response') AS cache_create,
+          toUInt32(dateDiff('millisecond', min(ts), max(ts)))    AS duration_ms,
+          anyIf(gen_ai_system, gen_ai_system != '')              AS provider,
+          anyIf(gen_ai_response_model, gen_ai_response_model != '') AS model,
+          anyIf(branch, branch IS NOT NULL AND branch != '')     AS branch,
+          anyIf(raw_attrs, raw_attrs != '' AND raw_attrs != '{}') AS raw_attrs,
+          countIf(event_kind = 'tool_result' AND tool_status = 'error') AS errs,
+          countIf(event_kind = 'tool_result' AND tool_status = 'ok')    AS oks
         FROM events
         WHERE org_id = {orgId:String}
           AND engineer_id = {engineerId:String}
