@@ -127,10 +127,7 @@ async function codeDeliveryFixture(
   };
 }
 
-async function codeDeliveryReal(
-  ctx: Ctx,
-  input: CodeDeliveryInput,
-): Promise<CodeDeliveryOutput> {
+async function codeDeliveryReal(ctx: Ctx, input: CodeDeliveryInput): Promise<CodeDeliveryOutput> {
   const days = WINDOW_DAYS[input.window];
   const authorGateRequested = !isJustMe(ctx, input);
 
@@ -287,24 +284,28 @@ async function codeDeliveryReal(
   // cost_per_merged_pr — session-aware. Needs commit_sha linkage; if linker
   // hasn't populated session_repo_links, surface null and let the UI copy
   // explain the wait.
-  const costRows = await ctx.db.pg.query<{ cost: number | null }>(
-    `SELECT coalesce(sum(srl.total_cost_usd), 0) AS cost
+  const costRows = await ctx.db.pg
+    .query<{ cost: number | null }>(
+      `SELECT coalesce(sum(srl.total_cost_usd), 0) AS cost
        FROM session_repo_links srl
       WHERE srl.tenant_id = $1
         AND srl.observed_at >= now() - ($2 || ' days')::interval`,
-    [ctx.tenant_id, String(days)],
-  ).catch(() => []);
+      [ctx.tenant_id, String(days)],
+    )
+    .catch(() => []);
   const totalCost = Number(costRows[0]?.cost ?? 0);
   const cost_per_merged_pr = merged > 0 && totalCost > 0 ? round2(totalCost / merged) : null;
 
-  const commitsOnlyRows = await ctx.db.pg.query<{ n: number | string }>(
-    `SELECT count(*) AS n
+  const commitsOnlyRows = await ctx.db.pg
+    .query<{ n: number | string }>(
+      `SELECT count(*) AS n
        FROM git_events
       WHERE tenant_id = $1
         AND kind = 'push'
         AND ts >= now() - ($2 || ' days')::interval`,
-    [ctx.tenant_id, String(days)],
-  ).catch(() => [{ n: 0 }]);
+      [ctx.tenant_id, String(days)],
+    )
+    .catch(() => [{ n: 0 }]);
   const commits_without_pr = Math.max(0, Number(commitsOnlyRows[0]?.n ?? 0) - merged);
 
   const first_try_pct = opened > 0 ? round2(1 - (closed + recent_prs.length * 0) / opened) : null;

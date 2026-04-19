@@ -1,4 +1,4 @@
 export { activityOverview } from "./activity";
-export { codeDelivery } from "./delivery";
 export { cohortFilters } from "./cohortFilters";
+export { codeDelivery } from "./delivery";
 export { sessionDetail, sessionsFeed } from "./sessions";

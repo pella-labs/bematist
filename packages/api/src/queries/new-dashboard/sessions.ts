@@ -55,10 +55,7 @@ async function sessionsFeedFixture(
   };
 }
 
-async function sessionsFeedReal(
-  ctx: Ctx,
-  input: SessionsFeedInput,
-): Promise<SessionsFeedOutput> {
+async function sessionsFeedReal(ctx: Ctx, input: SessionsFeedInput): Promise<SessionsFeedOutput> {
   const days = WINDOW_DAYS[input.window];
   const { clauses, params } = buildCommonClauses(ctx.tenant_id, days, input);
 
@@ -333,15 +330,13 @@ async function sessionDetailReal(
     { tid: ctx.tenant_id, sid: input.session_id, cap: TIMELINE_CAP + 1 },
   );
   const truncated = timelineRows.length > TIMELINE_CAP;
-  const timeline: SessionTimelineEvent[] = timelineRows
-    .slice(0, TIMELINE_CAP)
-    .map((r) => ({
-      ts: new Date(r.ts).toISOString(),
-      event_kind: r.event_kind,
-      tool_name: r.tool_name || undefined,
-      duration_ms: Number(r.duration_ms) || undefined,
-      cost_usd: Number(r.cost_usd) || undefined,
-    }));
+  const timeline: SessionTimelineEvent[] = timelineRows.slice(0, TIMELINE_CAP).map((r) => ({
+    ts: new Date(r.ts).toISOString(),
+    event_kind: r.event_kind,
+    tool_name: r.tool_name || undefined,
+    duration_ms: Number(r.duration_ms) || undefined,
+    cost_usd: Number(r.cost_usd) || undefined,
+  }));
 
   const toolRows = await ctx.db.ch.query<{
     tool_name: string;

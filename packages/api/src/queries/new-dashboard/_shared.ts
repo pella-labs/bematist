@@ -16,10 +16,7 @@ export function buildCommonClauses(
   days: number,
   filter: DashboardFilter,
 ): { clauses: string[]; params: Record<string, unknown> } {
-  const clauses = [
-    "org_id = {tenant_id:String}",
-    "ts >= now() - toIntervalDay({days:UInt16})",
-  ];
+  const clauses = ["org_id = {tenant_id:String}", "ts >= now() - toIntervalDay({days:UInt16})"];
   const params: Record<string, unknown> = { tenant_id, days };
 
   if (filter.engineer_ids && filter.engineer_ids.length > 0) {

@@ -6,6 +6,7 @@ beforeAll(() => {
   // the fixture branch here so these unit tests don't require a live CH/PG.
   process.env.USE_FIXTURES = "1";
 });
+
 import {
   ActivityOverviewOutput,
   CodeDeliveryOutput,

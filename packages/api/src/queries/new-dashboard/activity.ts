@@ -9,13 +9,7 @@ import type {
   TopModel,
   TopTool,
 } from "../../schemas/new-dashboard";
-import {
-  buildCommonClauses,
-  round2,
-  WINDOW_DAYS,
-  seededRand,
-  seedFromString,
-} from "./_shared";
+import { buildCommonClauses, round2, seededRand, seedFromString, WINDOW_DAYS } from "./_shared";
 
 export async function activityOverview(
   ctx: Ctx,

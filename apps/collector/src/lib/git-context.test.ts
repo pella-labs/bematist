@@ -1,8 +1,8 @@
+import { describe, expect, test } from "bun:test";
 import { execSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, test } from "bun:test";
 import { resolveGitContext } from "./git-context";
 
 function makeRepo(): { dir: string; sha: string } {

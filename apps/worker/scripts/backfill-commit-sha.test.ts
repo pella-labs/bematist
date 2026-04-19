@@ -1,15 +1,15 @@
+import { describe, expect, test } from "bun:test";
 import { execSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, test } from "bun:test";
 import {
   buildJsonlIndex,
   type ClickHouseLike,
   type MutationIdSink,
   noopEmitter,
-  readCwdFromJsonl,
   type RecomputeEmitter,
+  readCwdFromJsonl,
   resolveHeadSha,
   runBackfill,
 } from "./backfill-commit-sha";
@@ -131,10 +131,7 @@ describe("runBackfill", () => {
     const claudeDir = tmp();
     mkdirSync(join(claudeDir, "proj"), { recursive: true });
     const repo = await seedRepo();
-    writeFileSync(
-      join(claudeDir, "proj", "sess-1.jsonl"),
-      `${JSON.stringify({ cwd: repo })}\n`,
-    );
+    writeFileSync(join(claudeDir, "proj", "sess-1.jsonl"), `${JSON.stringify({ cwd: repo })}\n`);
 
     const ch = new FakeCh();
     ch.listRows = [{ session_id: "sess-1", engineer_id: "eng-a" }];
@@ -184,10 +181,7 @@ describe("runBackfill", () => {
     const claudeDir = tmp();
     mkdirSync(join(claudeDir, "proj"), { recursive: true });
     const repo = await seedRepo();
-    writeFileSync(
-      join(claudeDir, "proj", "sess-1.jsonl"),
-      `${JSON.stringify({ cwd: repo })}\n`,
-    );
+    writeFileSync(join(claudeDir, "proj", "sess-1.jsonl"), `${JSON.stringify({ cwd: repo })}\n`);
     const ch = new FakeCh();
     ch.listRows = [{ session_id: "sess-1", engineer_id: "e" }];
     const emitter = new FakeEmitter();
