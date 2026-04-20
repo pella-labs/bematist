@@ -398,6 +398,59 @@
   color: var(--mk-ink-faint);
 }
 
+/* ---- Suspense skeletons --------------------------------------------- */
+
+.newdash-section--skeleton {
+  opacity: 0.85;
+}
+
+.newdash-card--skeleton {
+  gap: 0.55rem;
+}
+
+.newdash-skel {
+  display: block;
+  background: linear-gradient(
+    90deg,
+    var(--mk-border) 0%,
+    var(--mk-accent-muted) 50%,
+    var(--mk-border) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: 0.25rem;
+  animation: newdash-skel-shimmer 1.4s ease-in-out infinite;
+}
+
+.newdash-skel--label {
+  height: 0.7rem;
+  width: 40%;
+}
+
+.newdash-skel--value {
+  height: 1.6rem;
+  width: 62%;
+}
+
+.newdash-skel--row {
+  height: 0.9rem;
+  width: 100%;
+}
+
+@keyframes newdash-skel-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .newdash-skel {
+    animation: none;
+  }
+}
+
 /* ---- Drawer --------------------------------------------------------- */
 
 .newdash-drawer-backdrop {
