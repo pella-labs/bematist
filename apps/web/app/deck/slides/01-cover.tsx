@@ -118,7 +118,7 @@ export function Slide01Cover(_props: { totalPages: number }) {
         </div>
         <div>
           <div className="label">Contact</div>
-          <div className="val" style={{ display: "inline-flex", alignItems: "baseline", gap: 12 }}>
+          <div className="val" style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
             <XGlyph />
             <span>@bematist_dev</span>
           </div>
@@ -133,17 +133,37 @@ export function Slide01Cover(_props: { totalPages: number }) {
  * Inline X (formerly Twitter) glyph. Official mark path, sized to match
  * the surrounding footer type.
  */
+/**
+ * X (formerly Twitter) brand mark rendered as a filled chip — matches how
+ * X presents its own social button so the glyph reads as a *logo* next to
+ * the handle, not as a thin letter X. Sized in ems so it scales with the
+ * surrounding footer type at any slide zoom.
+ */
 function XGlyph() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden="true"
-      role="img"
-      style={{ width: "0.82em", height: "0.82em", flexShrink: 0 }}
+    <span
+      aria-hidden
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "1.5em",
+        height: "1.5em",
+        borderRadius: "6px",
+        background: "var(--ink)",
+        color: "var(--bg)",
+        flexShrink: 0,
+      }}
     >
-      <title>X</title>
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-    </svg>
+      <svg
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        role="img"
+        style={{ width: "0.78em", height: "0.78em" }}
+      >
+        <title>X</title>
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+      </svg>
+    </span>
   );
 }
