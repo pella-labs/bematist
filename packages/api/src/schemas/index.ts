@@ -7,6 +7,7 @@ export * from "./deviceAuth";
 export * from "./ingestKey";
 export * from "./insights";
 export * from "./invite";
+export * from "./new-dashboard";
 export * from "./outcomes";
 export * from "./policy";
 export * from "./session";

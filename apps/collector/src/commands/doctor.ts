@@ -17,7 +17,7 @@ import { createHash } from "node:crypto";
 import { createReadStream, existsSync, mkdirSync } from "node:fs";
 import { access, constants } from "node:fs/promises";
 import { buildRegistry } from "../adapters";
-import { type ConfigSource, COLLECTOR_VERSION, loadConfigWithSources } from "../config";
+import { COLLECTOR_VERSION, type ConfigSource, loadConfigWithSources } from "../config";
 import { harden } from "../harden";
 
 interface Check {

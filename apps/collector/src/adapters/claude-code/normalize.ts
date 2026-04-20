@@ -76,12 +76,33 @@ interface ClampCtx {
   warned: boolean;
 }
 
+/**
+ * Combined options bag passed to `normalizeSession`. Merges:
+ *   - clock-skew clamp knobs (`nowMs`, `clampWindowMs`) — test seam for
+ *     deterministic timestamp clamping.
+ *   - adapter-resolved git context (`branch`, `commit_sha`) — denormalized
+ *     onto every event via `raw_attrs` so the ingest canonicalizer copies
+ *     them into typed CH columns for the GitHub-App linker.
+ */
 export interface NormalizeOpts {
   /** Pinned wall-clock (ms) — test seam for deterministic clamping. */
   nowMs?: number;
   /** Override the clamp window (ms). Defaults to env or 7d. */
   clampWindowMs?: number;
+  /** Active git branch at poll time. Falls back to each line's `gitBranch`
+   *  field (Claude Code v2.1.x+) when the adapter can't resolve from cwd. */
+  branch?: string;
+  /** HEAD commit SHA for the session's cwd; feeds the GitHub-App linker that
+   *  joins sessions to PRs and merged commits. */
+  commit_sha?: string;
 }
+
+/**
+ * Back-compat alias retained for call sites that historically passed a
+ * `NormalizeExtras` shape. Now that extras and opts share a struct the
+ * alias simply points at `NormalizeOpts`.
+ */
+export type NormalizeExtras = NormalizeOpts;
 
 const MODEL_PRICING_PER_MTOK: Record<
   string,
@@ -114,6 +135,16 @@ export function normalizeSession(
     warned: false,
   };
 
+  // Fall back to the in-line `gitBranch` field Claude Code stamps on every
+  // line (v2.1.x+) when the adapter didn't resolve a branch from cwd.
+  const resolvedExtras: { branch?: string; commit_sha?: string } = {};
+  if (opts.branch) resolvedExtras.branch = opts.branch;
+  if (opts.commit_sha) resolvedExtras.commit_sha = opts.commit_sha;
+  if (!resolvedExtras.branch) {
+    const firstBranch = parsed.entries.find((l) => l.gitBranch)?.gitBranch;
+    if (firstBranch) resolvedExtras.branch = firstBranch;
+  }
+
   // Real-format sessions (`~/.claude/projects/**.jsonl`) never emit an explicit
   // `session_start` line — the session begins at the first user message. The
   // fixture format does emit one. Synthesize one here if we're dealing with
@@ -136,6 +167,7 @@ export function normalizeSession(
       session_id,
       seq,
       clampCtx,
+      resolvedExtras,
     );
     for (const e of startEvents) {
       events.push(e);
@@ -146,7 +178,17 @@ export function normalizeSession(
   for (let idx = 0; idx < parsed.entries.length; idx++) {
     const line = parsed.entries[idx];
     if (!line) continue;
-    const eventsForLine = mapLine(line, idx, parsed, id, sourceVersion, session_id, seq, clampCtx);
+    const eventsForLine = mapLine(
+      line,
+      idx,
+      parsed,
+      id,
+      sourceVersion,
+      session_id,
+      seq,
+      clampCtx,
+      resolvedExtras,
+    );
     for (const e of eventsForLine) {
       events.push(e);
       seq++;
@@ -164,6 +206,7 @@ function mapLine(
   session_id: string,
   seq: number,
   clampCtx: ClampCtx,
+  extras: { branch?: string; commit_sha?: string },
 ): Event[] {
   const { iso, clamped } = resolveTimestamp(line.timestamp, clampCtx.nowMs, clampCtx.windowMs);
   if (clamped) {
@@ -182,11 +225,21 @@ function mapLine(
     }
   }
 
-  // Schema drift note is a Tier-C-only field — it's metadata about the
-  // parse, not a counter or a prompt, and only a Tier-C tenant's allowlist
-  // permits `raw_attrs` to surface drift markers. Tier A/B instances get
-  // the clamp silently (log-only).
+  // Branch: adapter-resolved (extras.branch) is the session-wide authoritative
+  // value; fall back to the per-line `gitBranch` only when the adapter
+  // couldn't resolve one. Matches codex-adapter semantics — a session
+  // targets one working tree, and denormalizing the session's HEAD branch on
+  // every event is what the outcome linker expects.
+  const lineBranch = extras.branch ?? line.gitBranch;
+
+  // Build raw_attrs honoring the Tier-A/B allowlist: `schema_drift_note` is
+  // a parse-metadata field that only a Tier-C tenant's allowlist permits.
+  // Tier A/B instances get the clamp silently (log-only). `branch` and
+  // `commit_sha` are attribution fields ingest canonicalizes into typed CH
+  // columns regardless of tier.
   const baseRawAttrs: Record<string, unknown> = {};
+  if (lineBranch) baseRawAttrs.branch = lineBranch;
+  if (extras.commit_sha) baseRawAttrs.commit_sha = extras.commit_sha;
   if (clamped && id.tier === "C") {
     baseRawAttrs.schema_drift_note = "ts_clamped";
   }

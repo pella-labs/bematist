@@ -1,3 +1,4 @@
+import { isComplianceEnabled } from "@bematist/api";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -102,12 +103,14 @@ function PageShell({ children }: { children: React.ReactNode }) {
             <span aria-hidden className="inline-block h-6 w-6 rounded-md bg-primary" />
             bematist
           </a>
-          <a
-            href="/privacy"
-            className="cursor-pointer text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-          >
-            Bill of Rights
-          </a>
+          {isComplianceEnabled() ? (
+            <a
+              href="/privacy"
+              className="cursor-pointer text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              Bill of Rights
+            </a>
+          ) : null}
         </header>
         <main className="flex flex-1 flex-col items-center justify-center gap-8">{children}</main>
       </div>
@@ -121,8 +124,9 @@ function ManualEntryFallback() {
       <div className="flex w-full max-w-md flex-col gap-6 rounded-xl border border-border bg-card p-8 shadow-sm">
         <h1 className="text-2xl font-semibold tracking-tight">Authorize a CLI session</h1>
         <p className="text-sm text-muted-foreground">
-          Open this page by running <code className="font-mono text-foreground">bematist login</code>{" "}
-          in your terminal. The CLI prints a URL with the code pre-filled.
+          Open this page by running{" "}
+          <code className="font-mono text-foreground">bematist login</code> in your terminal. The
+          CLI prints a URL with the code pre-filled.
         </p>
         <p className="text-xs text-muted-foreground">
           If you know the user code, you can append it to this URL:{" "}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { hashCardToken } from "@/lib/card-backend";
 import { getDbClients } from "@/lib/db";
+import { fetchGithubName } from "@/lib/github-profile";
 
 // Narrow, strict shape for CLI-submitted stats. Matches CardData.stats in
 // apps/web/app/(marketing)/_card/card-utils.ts. Unknown fields at the top
@@ -249,13 +250,18 @@ export async function POST(req: Request) {
   let ownerUserId: string | null = null;
 
   if (row.subject_kind === "better_auth_user") {
-    const ownerRows = await pg.query<{ name: string; image: string | null }>(
+    const ownerRows = await pg.query<{ name: string | null; image: string | null }>(
       `SELECT name, image FROM better_auth_user WHERE id = $1 LIMIT 1`,
       [row.subject_id],
     );
     const owner = ownerRows[0];
     if (owner) {
-      displayName = owner.name;
+      // Better Auth stores GitHub's profile `name` if the user set one; if
+      // they haven't, fall back to a live GitHub profile fetch, then to the
+      // @login handle. Never null out — the card snapshot is what renders.
+      const stored = owner.name?.trim();
+      const login = row.github_username;
+      displayName = stored || (await fetchGithubName(login)) || (login ? `@${login}` : null);
       avatarUrl = owner.image;
       ownerUserId = row.subject_id;
     }
@@ -264,7 +270,7 @@ export async function POST(req: Request) {
     // the original case from the user's input on the marketing page. Fall
     // back to the slug if it somehow didn't land.
     const login = row.github_username ?? row.subject_id;
-    displayName = `@${login}`;
+    displayName = (await fetchGithubName(login)) ?? `@${login}`;
     avatarUrl = `https://github.com/${login}.png`;
   }
 
