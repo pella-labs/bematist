@@ -174,8 +174,11 @@ async function activityOverviewReal(
     calls: number | string;
     errors: number | string;
   }>(
+    // Normalize the tool name so e.g. `Edit` and `edit` (Cursor vs Claude
+    // Code naming) collapse into one row instead of one with a 53% "error
+    // rate" that's actually case-collision noise.
     `SELECT
-       tool_name,
+       lower(tool_name) AS tool_name,
        count() AS calls,
        countIf(tool_status = 'error') AS errors
      FROM events
