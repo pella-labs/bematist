@@ -114,7 +114,7 @@ export default function MarketingHome() {
               open-source. self-hostable.
             </div>
             <h1>
-              Measure <em>AI-assisted engineering</em>.
+              Measure <em>AI&#8209;assisted engineering</em>.
             </h1>
             <p>
               See the spend. See the work. Scale what ships. Open-source analytics across Claude
