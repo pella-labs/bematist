@@ -48,8 +48,12 @@ const PUBLIC_PATH_PREFIXES = [
   "/favicon",
 ];
 
+const STATIC_ASSET_EXT =
+  /\.(mp4|webm|mov|jpg|jpeg|png|gif|svg|webp|avif|ico|woff2?|ttf|otf|txt|xml|json|map)$/i;
+
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/privacy" || pathname === "/home") return true;
+  if (STATIC_ASSET_EXT.test(pathname)) return true;
   return PUBLIC_PATH_PREFIXES.some((p) => pathname.startsWith(p));
 }
 

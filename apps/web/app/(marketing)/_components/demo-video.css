@@ -1,0 +1,244 @@
+/*
+ * Demo video section — framed muted-autoplay player with click-to-unmute.
+ * All tokens reference --mk-* from marketing.css.
+ */
+
+.bematist-marketing .mk-demo-section {
+  position: relative;
+  border-bottom: 1px solid var(--mk-border);
+  isolation: isolate;
+  overflow: hidden;
+}
+
+/* Soft sage vignette so the section reads as "stage, not page" */
+.bematist-marketing .mk-demo-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      ellipse 70% 60% at 50% 60%,
+      rgba(110, 138, 111, 0.08) 0%,
+      rgba(110, 138, 111, 0) 60%
+    );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Faint grid to echo the HeroGrid motif */
+.bematist-marketing .mk-demo-section::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--mk-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--mk-border) 1px, transparent 1px);
+  background-size: var(--mk-grid-size) var(--mk-grid-size);
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 0;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 55%, black 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 55%, black 20%, transparent 75%);
+}
+
+.bematist-marketing .mk-demo-wrap {
+  position: relative;
+  z-index: 1;
+  padding: 56px var(--mk-grid-size) 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+}
+
+/* ─── Lede (eyebrow + headline + sub-copy) ─────────────────── */
+.bematist-marketing .mk-demo-lede {
+  max-width: 760px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bematist-marketing .mk-demo-eyebrow {
+  font-size: 11px;
+  color: var(--mk-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 500;
+}
+
+.bematist-marketing .mk-demo-lede h2 {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: clamp(28px, 3.5vw, 44px);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--mk-ink);
+  margin: 0;
+}
+
+.bematist-marketing .mk-demo-lede p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--mk-ink-muted);
+  margin: 0;
+  max-width: 640px;
+  align-self: center;
+}
+
+/* ─── Frame ─────────────────────────────────────────────────── */
+.bematist-marketing .mk-demo-frame {
+  position: relative;
+  width: 100%;
+  max-width: 1040px;
+  aspect-ratio: 16 / 9;
+  background: var(--mk-bg-terminal);
+  border: 1px solid var(--mk-border-hover);
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow:
+    0 0 0 1px rgba(110, 138, 111, 0.18),
+    0 24px 80px -24px rgba(110, 138, 111, 0.4),
+    0 64px 160px -48px rgba(0, 0, 0, 0.7);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.bematist-marketing .mk-demo-frame:hover {
+  box-shadow:
+    0 0 0 1px rgba(110, 138, 111, 0.32),
+    0 32px 100px -24px rgba(110, 138, 111, 0.55),
+    0 80px 200px -48px rgba(0, 0, 0, 0.8);
+}
+
+.bematist-marketing .mk-demo-video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+/* Gradient fade behind controls so they're readable on any frame */
+.bematist-marketing .mk-demo-frame > .mk-demo-video + .mk-demo-controls::before,
+.bematist-marketing .mk-demo-frame::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 84px;
+  background: linear-gradient(to top, rgba(5, 5, 6, 0.8) 0%, rgba(5, 5, 6, 0) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ─── Corner markers (L-shaped accents, instrument-panel motif) ─ */
+.bematist-marketing .mk-demo-corner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  z-index: 3;
+  pointer-events: none;
+  border: 1.5px solid var(--mk-accent);
+}
+
+.bematist-marketing .mk-demo-corner.tl {
+  top: -1px;
+  left: -1px;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.bematist-marketing .mk-demo-corner.tr {
+  top: -1px;
+  right: -1px;
+  border-left: 0;
+  border-bottom: 0;
+}
+
+.bematist-marketing .mk-demo-corner.bl {
+  bottom: -1px;
+  left: -1px;
+  border-right: 0;
+  border-top: 0;
+}
+
+.bematist-marketing .mk-demo-corner.br {
+  bottom: -1px;
+  right: -1px;
+  border-left: 0;
+  border-top: 0;
+}
+
+/* ─── Controls ──────────────────────────────────────────────── */
+.bematist-marketing .mk-demo-controls {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.bematist-marketing .mk-demo-frame:hover .mk-demo-controls,
+.bematist-marketing .mk-demo-frame:focus-within .mk-demo-controls {
+  opacity: 1;
+}
+
+.bematist-marketing .mk-demo-btn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(237, 232, 222, 0.08);
+  border: 1px solid var(--mk-border);
+  color: var(--mk-ink);
+  cursor: pointer;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.bematist-marketing .mk-demo-btn:hover {
+  background: rgba(237, 232, 222, 0.14);
+  border-color: var(--mk-border-hover);
+}
+
+.bematist-marketing .mk-demo-btn:focus-visible {
+  outline: 2px solid var(--mk-accent);
+  outline-offset: 2px;
+}
+
+.bematist-marketing .mk-demo-btn-label {
+  line-height: 1;
+}
+
+/* ─── Responsive ────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .bematist-marketing .mk-demo-wrap {
+    padding: 32px var(--mk-grid-size) 40px;
+    gap: 24px;
+  }
+
+  .bematist-marketing .mk-demo-corner {
+    width: 14px;
+    height: 14px;
+  }
+
+  .bematist-marketing .mk-demo-controls {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bematist-marketing .mk-demo-frame {
+    transition: none;
+  }
+}
