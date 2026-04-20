@@ -24,6 +24,9 @@ const bmVars = [
   "BEMATIST_POLL_TIMEOUT_MS",
   "BEMATIST_HARD_KILL_MS",
   "BEMATIST_ADAPTER_QUARANTINE_MS",
+  "BEMATIST_JOURNAL_PRUNE_INTERVAL_MS",
+  "BEMATIST_JOURNAL_SUBMITTED_RETENTION_DAYS",
+  "BEMATIST_JOURNAL_DEAD_LETTER_RETENTION_DAYS",
   "BEMATIST_CONFIG_ENV_PATH",
   "DEVMETRICS_TOKEN",
   "DEVMETRICS_ENDPOINT",
@@ -68,6 +71,57 @@ test("loadConfig has sensible defaults", () => {
   // hardKillMs default = 0 → orchestrator computes at runtime.
   expect(cfg.hardKillMs).toBe(0);
   expect(cfg.adapterQuarantineMs).toBe(5 * 60 * 1000);
+  expect(cfg.journalPruneIntervalMs).toBe(86_400_000);
+  expect(cfg.journalSubmittedRetentionDays).toBe(14);
+  expect(cfg.journalDeadLetterRetentionDays).toBe(90);
+});
+
+test("BEMATIST_JOURNAL_PRUNE_INTERVAL_MS parses int", () => {
+  process.env.BEMATIST_JOURNAL_PRUNE_INTERVAL_MS = "60000";
+  expect(loadConfig().journalPruneIntervalMs).toBe(60_000);
+});
+
+test("invalid BEMATIST_JOURNAL_PRUNE_INTERVAL_MS falls back to 24h default", () => {
+  process.env.BEMATIST_JOURNAL_PRUNE_INTERVAL_MS = "not-a-number";
+  expect(loadConfig().journalPruneIntervalMs).toBe(86_400_000);
+});
+
+test("BEMATIST_JOURNAL_SUBMITTED_RETENTION_DAYS parses int", () => {
+  process.env.BEMATIST_JOURNAL_SUBMITTED_RETENTION_DAYS = "7";
+  expect(loadConfig().journalSubmittedRetentionDays).toBe(7);
+});
+
+test("invalid BEMATIST_JOURNAL_SUBMITTED_RETENTION_DAYS falls back to 14 default", () => {
+  process.env.BEMATIST_JOURNAL_SUBMITTED_RETENTION_DAYS = "nope";
+  expect(loadConfig().journalSubmittedRetentionDays).toBe(14);
+});
+
+test("BEMATIST_JOURNAL_DEAD_LETTER_RETENTION_DAYS parses int", () => {
+  process.env.BEMATIST_JOURNAL_DEAD_LETTER_RETENTION_DAYS = "30";
+  expect(loadConfig().journalDeadLetterRetentionDays).toBe(30);
+});
+
+test("invalid BEMATIST_JOURNAL_DEAD_LETTER_RETENTION_DAYS falls back to 90 default", () => {
+  process.env.BEMATIST_JOURNAL_DEAD_LETTER_RETENTION_DAYS = "abc";
+  expect(loadConfig().journalDeadLetterRetentionDays).toBe(90);
+});
+
+test("journal prune settings parse from config.env file", () => {
+  writeConfigEnv(
+    [
+      "BEMATIST_JOURNAL_PRUNE_INTERVAL_MS=3600000",
+      "BEMATIST_JOURNAL_SUBMITTED_RETENTION_DAYS=21",
+      "BEMATIST_JOURNAL_DEAD_LETTER_RETENTION_DAYS=120",
+      "",
+    ].join("\n"),
+  );
+  const { config, sources } = loadConfigWithSources();
+  expect(config.journalPruneIntervalMs).toBe(3_600_000);
+  expect(config.journalSubmittedRetentionDays).toBe(21);
+  expect(config.journalDeadLetterRetentionDays).toBe(120);
+  expect(sources.journalPruneIntervalMs).toBe("file");
+  expect(sources.journalSubmittedRetentionDays).toBe("file");
+  expect(sources.journalDeadLetterRetentionDays).toBe("file");
 });
 
 test("BEMATIST_HARD_KILL_MS parses int", () => {

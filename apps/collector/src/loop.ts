@@ -10,7 +10,12 @@
 //   3. Every flushIntervalMs: select a batch from Journal, write the batch
 //      descriptor to the append-only egress log (Bill of Rights #1), POST
 //      the events to the ingest via postWithRetry, update Journal rows.
-//   4. On SIGINT/SIGTERM: stop the loop, wait for in-flight poll + flush to
+//   4. Every journalPruneIntervalMs (+ once ~5s after boot): Journal.prune()
+//      drops submitted rows past `journalSubmittedRetentionDays` and dead-
+//      letter rows past `journalDeadLetterRetentionDays`, keeping the
+//      SQLite file bounded on long-running daemons. The egress.jsonl still
+//      carries the full audit trail.
+//   5. On SIGINT/SIGTERM: stop the loop, wait for in-flight poll + flush to
 //      finish, persist cursor state, close DB.
 //
 // Tested in loop.test.ts.
@@ -117,6 +122,12 @@ export function startLoop(deps: LoopDeps): LoopHandle {
 
     let pollTimer = 0;
     let flushTimer = 0;
+    // Kick the first prune ~5s after startup so we don't race the
+    // migration + first-poll-backfill burst, but short-lived daemons
+    // still get one GC pass. Subsequent ticks run every
+    // `journalPruneIntervalMs` (default 24h).
+    const STARTUP_PRUNE_DELAY_MS = 5_000;
+    let pruneTimer = STARTUP_PRUNE_DELAY_MS;
     const TICK_MS = 100;
 
     while (!ac.signal.aborted) {
@@ -167,9 +178,32 @@ export function startLoop(deps: LoopDeps): LoopHandle {
         }
       }
 
+      // PRUNE cycle.
+      if (pruneTimer <= 0) {
+        try {
+          const t0 = Date.now();
+          const { submittedDeleted, deadLetterDeleted } = journal.prune({
+            submittedRetentionDays: config.journalSubmittedRetentionDays,
+            deadLetterRetentionDays: config.journalDeadLetterRetentionDays,
+          });
+          log.info(
+            {
+              pruned_submitted: submittedDeleted,
+              pruned_dead_letter: deadLetterDeleted,
+              duration_ms: Date.now() - t0,
+            },
+            "journal prune tick",
+          );
+        } catch (e) {
+          log.warn({ err: String(e) }, "journal prune failed");
+        }
+        pruneTimer = config.journalPruneIntervalMs;
+      }
+
       await sleepImpl(TICK_MS);
       pollTimer -= TICK_MS;
       flushTimer -= TICK_MS;
+      pruneTimer -= TICK_MS;
     }
 
     // Shutdown: one last flush pass so we don't leave in-flight-but-unpushed rows.

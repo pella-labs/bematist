@@ -78,6 +78,29 @@ export interface CollectorConfig {
    * `BEMATIST_ADAPTER_QUARANTINE_MS`.
    */
   adapterQuarantineMs: number;
+  /**
+   * Milliseconds between Journal.prune() ticks. Prunes drop submitted
+   * rows past `journalSubmittedRetentionDays` and dead-letter rows past
+   * `journalDeadLetterRetentionDays`, keeping the SQLite journal file
+   * bounded on long-running daemons. Default 24h. A prune also runs on
+   * startup (a few seconds after boot) so short-lived daemons still
+   * get one GC pass. Env: `BEMATIST_JOURNAL_PRUNE_INTERVAL_MS`.
+   */
+  journalPruneIntervalMs: number;
+  /**
+   * Days to retain successfully-submitted rows in the journal before
+   * prune() drops them. The append-only egress.jsonl still carries the
+   * full audit trail. Default 14. Env:
+   * `BEMATIST_JOURNAL_SUBMITTED_RETENTION_DAYS`.
+   */
+  journalSubmittedRetentionDays: number;
+  /**
+   * Days to retain dead-letter rows before prune() drops them. Kept
+   * longer than submitted rows so `bematist audit --tail` can still
+   * explain why a row was dropped. Default 90. Env:
+   * `BEMATIST_JOURNAL_DEAD_LETTER_RETENTION_DAYS`.
+   */
+  journalDeadLetterRetentionDays: number;
 }
 
 export type ConfigSources = Record<keyof CollectorConfig, ConfigSource>;
@@ -268,6 +291,24 @@ export function loadConfigWithSources(overrides: Partial<CollectorConfig> = {}):
   // perPollTimeoutMs may itself be overridden later (e.g. via tests).
   const hardKillMs = resolveInt("BEMATIST_HARD_KILL_MS", fileVars, 0);
   const adapterQuarantineMs = resolveInt("BEMATIST_ADAPTER_QUARANTINE_MS", fileVars, 5 * 60 * 1000);
+  // Journal GC: default 24h between prune ticks. Submitted rows retained
+  // 14d (the egress.jsonl still has the audit trail); dead-letter rows
+  // retained 90d so `bematist audit --tail` can explain historical drops.
+  const journalPruneIntervalMs = resolveInt(
+    "BEMATIST_JOURNAL_PRUNE_INTERVAL_MS",
+    fileVars,
+    86_400_000,
+  );
+  const journalSubmittedRetentionDays = resolveInt(
+    "BEMATIST_JOURNAL_SUBMITTED_RETENTION_DAYS",
+    fileVars,
+    14,
+  );
+  const journalDeadLetterRetentionDays = resolveInt(
+    "BEMATIST_JOURNAL_DEAD_LETTER_RETENTION_DAYS",
+    fileVars,
+    90,
+  );
 
   const config: CollectorConfig = {
     endpoint: endpoint.value,
@@ -287,6 +328,9 @@ export function loadConfigWithSources(overrides: Partial<CollectorConfig> = {}):
     perPollTimeoutMs: perPollTimeoutMs.value,
     hardKillMs: hardKillMs.value,
     adapterQuarantineMs: adapterQuarantineMs.value,
+    journalPruneIntervalMs: journalPruneIntervalMs.value,
+    journalSubmittedRetentionDays: journalSubmittedRetentionDays.value,
+    journalDeadLetterRetentionDays: journalDeadLetterRetentionDays.value,
     ...overrides,
   };
 
@@ -308,6 +352,9 @@ export function loadConfigWithSources(overrides: Partial<CollectorConfig> = {}):
     perPollTimeoutMs: perPollTimeoutMs.source,
     hardKillMs: hardKillMs.source,
     adapterQuarantineMs: adapterQuarantineMs.source,
+    journalPruneIntervalMs: journalPruneIntervalMs.source,
+    journalSubmittedRetentionDays: journalSubmittedRetentionDays.source,
+    journalDeadLetterRetentionDays: journalDeadLetterRetentionDays.source,
   };
 
   for (const k of Object.keys(overrides) as Array<keyof CollectorConfig>) {

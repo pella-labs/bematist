@@ -260,6 +260,61 @@ test("restart resumes from cursor (no duplicate emissions)", async () => {
   expect(emitted.length).toBe(0);
 });
 
+test("prune runs on startup and at configured interval", async () => {
+  const journal = new Journal(db);
+  const egressLog = new EgressLog(dir);
+  const adapter = mkScriptedAdapter("prune-test", [[], [], [], []]);
+
+  const pruneCalls: Array<{
+    submittedRetentionDays: number;
+    deadLetterRetentionDays: number;
+    at: number;
+  }> = [];
+  const origPrune = journal.prune.bind(journal);
+  journal.prune = (opts) => {
+    pruneCalls.push({ ...opts, at: Date.now() });
+    return origPrune(opts);
+  };
+
+  const fetchMock = async () => new Response(JSON.stringify({ accepted: 0 }), { status: 202 });
+
+  const handle = startLoop({
+    db,
+    journal,
+    egressLog,
+    config: loadConfig({
+      endpoint: "http://ingest.test",
+      token: "bm_test",
+      dataDir: dir,
+      dryRun: false,
+      batchSize: 10,
+      pollIntervalMs: 1_000,
+      flushIntervalMs: 1_000,
+      // Force rapid prune ticks so the test can observe the second
+      // firing without waiting a full day; startup prune still fires at
+      // ~5s (the STARTUP_PRUNE_DELAY_MS constant in loop.ts).
+      journalPruneIntervalMs: 200,
+      journalSubmittedRetentionDays: 14,
+      journalDeadLetterRetentionDays: 90,
+    }),
+    fetchImpl: fetchMock as unknown as typeof fetch,
+    registry: [adapter],
+  });
+
+  // Wait long enough to see the startup prune (fires ~5s after boot)
+  // plus a second interval firing (+200ms) after.
+  await new Promise((r) => setTimeout(r, 5_500));
+  await handle.stop();
+
+  expect(pruneCalls.length).toBeGreaterThanOrEqual(2);
+  expect(pruneCalls[0]?.submittedRetentionDays).toBe(14);
+  expect(pruneCalls[0]?.deadLetterRetentionDays).toBe(90);
+  // Startup prune fires a few seconds after boot, not at t=0.
+  const firstAt = pruneCalls[0]?.at ?? 0;
+  const secondAt = pruneCalls[1]?.at ?? 0;
+  expect(secondAt - firstAt).toBeGreaterThanOrEqual(150);
+}, 15_000);
+
 test("graceful stop drains in-flight flush", async () => {
   const journal = new Journal(db);
   const egressLog = new EgressLog(dir);
