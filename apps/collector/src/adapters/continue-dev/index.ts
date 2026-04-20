@@ -1,6 +1,6 @@
 import { statSync } from "node:fs";
 import type { Event } from "@bematist/schema";
-import type { Adapter, AdapterContext, AdapterHealth } from "@bematist/sdk";
+import type { Adapter, AdapterContext, AdapterHealth, EventEmitter } from "@bematist/sdk";
 import { type ContinueDiscovery, discoverSources } from "./discovery";
 import {
   normalizeChatInteraction,
@@ -65,68 +65,67 @@ export class ContinueDevAdapter implements Adapter {
     });
   }
 
-  async poll(ctx: AdapterContext, _signal: AbortSignal): Promise<Event[]> {
+  async poll(ctx: AdapterContext, signal: AbortSignal, emit: EventEmitter): Promise<void> {
     const s = this.sources ?? discoverSources();
-    if (!s.baseDirExists) return [];
+    if (!s.baseDirExists) return;
+    if (signal.aborted) return;
 
     const identity = { ...this.identity, tier: ctx.tier };
 
-    // Parse every stream BEFORE any cursor advances. Each stream's worth of
-    // events is accumulated with its pending cursor update; only if the full
-    // sweep completes successfully do we flush all four cursor pairs to the
-    // store in a single atomic `setMany` call (Bug #1 fix).
-    const out: Event[] = [];
+    // Streaming emit (per-event-per-stream) — but cursor writes still commit
+    // atomically as one setMany at the end so the four stream offsets stay
+    // consistent under a mid-flush crash (Bug #7). Events emitted before
+    // setMany returns are durable in the journal; if setMany throws, the
+    // next poll re-reads from the prior offsets and idempotency
+    // (deterministicId + Redis SETNX) collapses the replay.
     const pending: PendingCursor[] = [];
 
-    out.push(
-      ...(await this.pollStream(
-        ctx,
-        s,
-        "chatInteraction",
-        parseChatInteractionStream,
-        (lines) => normalizeChatInteraction(lines, identity, SOURCE_VERSION_DEFAULT),
-        pending,
-      )),
+    await this.pollStream(
+      ctx,
+      s,
+      "chatInteraction",
+      parseChatInteractionStream,
+      (lines) => normalizeChatInteraction(lines, identity, SOURCE_VERSION_DEFAULT),
+      pending,
+      emit,
     );
-    out.push(
-      ...(await this.pollStream(
-        ctx,
-        s,
-        "tokensGenerated",
-        parseTokensGeneratedStream,
-        (lines) => normalizeTokensGenerated(lines, identity, SOURCE_VERSION_DEFAULT),
-        pending,
-      )),
+    if (signal.aborted) return;
+    await this.pollStream(
+      ctx,
+      s,
+      "tokensGenerated",
+      parseTokensGeneratedStream,
+      (lines) => normalizeTokensGenerated(lines, identity, SOURCE_VERSION_DEFAULT),
+      pending,
+      emit,
     );
-    out.push(
-      ...(await this.pollStream(
-        ctx,
-        s,
-        "editOutcome",
-        parseEditOutcomeStream,
-        (lines) => normalizeEditOutcome(lines, identity, SOURCE_VERSION_DEFAULT),
-        pending,
-      )),
+    if (signal.aborted) return;
+    await this.pollStream(
+      ctx,
+      s,
+      "editOutcome",
+      parseEditOutcomeStream,
+      (lines) => normalizeEditOutcome(lines, identity, SOURCE_VERSION_DEFAULT),
+      pending,
+      emit,
     );
-    out.push(
-      ...(await this.pollStream(
-        ctx,
-        s,
-        "toolUsage",
-        parseToolUsageStream,
-        (lines) => normalizeToolUsage(lines, identity, SOURCE_VERSION_DEFAULT),
-        pending,
-      )),
+    if (signal.aborted) return;
+    await this.pollStream(
+      ctx,
+      s,
+      "toolUsage",
+      parseToolUsageStream,
+      (lines) => normalizeToolUsage(lines, identity, SOURCE_VERSION_DEFAULT),
+      pending,
+      emit,
     );
 
     // All parsing succeeded — commit cursors atomically. If setMany throws
     // (disk-full, crash mid-flush, etc.) NO cursor advances and the whole
     // poll tick is a no-op for state purposes: the emitted events are
-    // re-enqueued on the next poll, which is acceptable because the ingest
-    // path dedups on `client_event_id` (Rule #2).
+    // already durable in the journal, which is acceptable because the
+    // ingest path dedups on `client_event_id` (Rule #2).
     await flushCursors(ctx, pending);
-
-    return out;
   }
 
   async health(_ctx: AdapterContext): Promise<AdapterHealth> {
@@ -169,9 +168,10 @@ export class ContinueDevAdapter implements Adapter {
     parse: (path: string, offset: number) => Promise<ParsedStream<L>>,
     normalize: (lines: L[]) => Event[],
     pending: PendingCursor[],
-  ): Promise<Event[]> {
+    emit: EventEmitter,
+  ): Promise<void> {
     const spec = s.streams[stream];
-    if (!spec.exists) return [];
+    if (!spec.exists) return;
 
     const prevOffset = await this.readOffset(ctx, stream);
     const prevInode = await this.readInode(ctx, stream);
@@ -203,13 +203,13 @@ export class ContinueDevAdapter implements Adapter {
       }
     } catch {
       // stat failed; treat as missing-for-this-poll and leave state alone.
-      return [];
+      return;
     }
 
     const parsed = await parse(spec.path, startOffset);
     const events = normalize(parsed.lines);
+    for (const e of events) emit(e);
     pending.push({ stream, offset: parsed.nextOffset, inode: currentInode });
-    return events;
   }
 
   private async readOffset(ctx: AdapterContext, stream: ContinueStreamName): Promise<number> {

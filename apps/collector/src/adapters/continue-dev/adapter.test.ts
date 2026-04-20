@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadFixture } from "@bematist/fixtures";
 import type { Adapter, AdapterContext } from "@bematist/sdk";
+import { collectPoll } from "../../test-helpers";
 import { ContinueDevAdapter, cursorKey, inodeKey } from "./index";
 import { CONTINUE_STREAM_NAMES } from "./paths";
 
@@ -93,7 +94,7 @@ test("poll() returns [] when dev_data dir is missing", async () => {
     const a = new ContinueDevAdapter({ tenantId: "o", engineerId: "e", deviceId: "d" });
     const ctx = mkCtx();
     await a.init(ctx);
-    expect(await a.poll(ctx, new AbortController().signal)).toEqual([]);
+    expect(await collectPoll(a, ctx)).toEqual([]);
   } finally {
     if (prev === undefined) delete process.env.BEMATIST_CONTINUE_DIR;
     else process.env.BEMATIST_CONTINUE_DIR = prev;
@@ -109,7 +110,7 @@ test("poll() reads all 4 streams and emits the expected canonical Event[]", asyn
     });
     const ctx = mkCtx();
     await a.init(ctx);
-    const events = await a.poll(ctx, new AbortController().signal);
+    const events = await collectPoll(a, ctx);
     const kinds = new Set(events.map((e) => e.dev_metrics.event_kind));
     for (const k of [
       "llm_request",
@@ -135,14 +136,14 @@ test("poll() advances per-stream cursors and a second poll returns []", async ()
     });
     const ctx = mkCtx();
     await a.init(ctx);
-    const first = await a.poll(ctx, new AbortController().signal);
+    const first = await collectPoll(a, ctx);
     expect(first.length).toBeGreaterThan(0);
     for (const stream of CONTINUE_STREAM_NAMES) {
       const v = await ctx.cursor.get(cursorKey(stream));
       expect(v).toBeDefined();
       expect(Number.parseInt(v ?? "0", 10)).toBeGreaterThan(0);
     }
-    const second = await a.poll(ctx, new AbortController().signal);
+    const second = await collectPoll(a, ctx);
     expect(second.length).toBe(0);
   });
 });
@@ -189,7 +190,7 @@ test("poll honors ctx.tier — Tier-A identity flows to every emitted event", as
     });
     const ctx = mkCtx({ tier: "A" });
     await a.init(ctx);
-    const events = await a.poll(ctx, new AbortController().signal);
+    const events = await collectPoll(a, ctx);
     expect(events.length).toBeGreaterThan(0);
     for (const e of events) expect(e.tier).toBe("A");
   });
@@ -231,7 +232,7 @@ test("incremental poll surfaces only newly appended lines, not previously consum
     });
     const ctx = mkCtx();
     await a.init(ctx);
-    await a.poll(ctx, new AbortController().signal);
+    await collectPoll(a, ctx);
     // Append a new chatInteraction row and poll again.
     const newRow = `${JSON.stringify({
       eventName: "chat",
@@ -242,7 +243,7 @@ test("incremental poll surfaces only newly appended lines, not previously consum
       timestamp: "2026-04-16T12:00:00.000Z",
     })}\n`;
     appendFileSync(join(devData, "chatInteraction.jsonl"), newRow);
-    const next = await a.poll(ctx, new AbortController().signal);
+    const next = await collectPoll(a, ctx);
     expect(next.length).toBe(1);
     expect(next[0]?.session_id).toBe("sess_cont_03");
     expect(next[0]?.dev_metrics.event_kind).toBe("llm_request");
@@ -288,7 +289,7 @@ test("poll uses setMany so all four cursor writes commit atomically in one batch
       },
     };
     await a.init(ctx);
-    await a.poll(ctx, new AbortController().signal);
+    await collectPoll(a, ctx);
     expect(setManyCalls).toBe(1);
     // No sequential set() writes — the atomic path is exclusive.
     expect(setCalls).toBe(0);
@@ -339,7 +340,7 @@ test("disk error inside setMany leaves ALL four cursors at their prior values (a
 
     let threw = false;
     try {
-      await a.poll(ctx, new AbortController().signal);
+      await collectPoll(a, ctx);
     } catch {
       threw = true;
     }
@@ -363,7 +364,7 @@ test("poll persists an inode cursor alongside each offset", async () => {
     });
     const ctx = mkCtx();
     await a.init(ctx);
-    await a.poll(ctx, new AbortController().signal);
+    await collectPoll(a, ctx);
     for (const stream of CONTINUE_STREAM_NAMES) {
       const inode = await ctx.cursor.get(inodeKey(stream));
       expect(inode).not.toBeNull();
@@ -383,7 +384,7 @@ test("rotation — truncated file + stale offset triggers reset and re-parse fro
     const ctx = mkCtx();
     await a.init(ctx);
     // First poll consumes the whole fixture.
-    const first = await a.poll(ctx, new AbortController().signal);
+    const first = await collectPoll(a, ctx);
     expect(first.length).toBeGreaterThan(0);
     const prevOffset = await ctx.cursor.get(cursorKey("chatInteraction"));
     expect(Number.parseInt(prevOffset ?? "0", 10)).toBeGreaterThan(0);
@@ -401,7 +402,7 @@ test("rotation — truncated file + stale offset triggers reset and re-parse fro
     writeFileSync(join(devData, "chatInteraction.jsonl"), shortened);
 
     // Second poll must detect rotation and re-parse the single new row.
-    const next = await a.poll(ctx, new AbortController().signal);
+    const next = await collectPoll(a, ctx);
     const chat = next.filter((e) => e.session_id === "sess_post_rotate");
     expect(chat.length).toBe(1);
     expect(chat[0]?.dev_metrics.event_kind).toBe("llm_request");
@@ -417,7 +418,7 @@ test("rotation — inode change after same-or-larger file size is detected and r
     });
     const ctx = mkCtx();
     await a.init(ctx);
-    await a.poll(ctx, new AbortController().signal);
+    await collectPoll(a, ctx);
     const prevInode = await ctx.cursor.get(inodeKey("chatInteraction"));
     expect(prevInode).not.toBeNull();
 
@@ -444,7 +445,7 @@ test("rotation — inode change after same-or-larger file size is detected and r
     rmSync(join(devData, "chatInteraction.jsonl"));
     writeFileSync(join(devData, "chatInteraction.jsonl"), `${replacement}{"_pad":"${padding}"}\n`);
 
-    const next = await a.poll(ctx, new AbortController().signal);
+    const next = await collectPoll(a, ctx);
     const sids = new Set(next.map((e) => e.session_id));
     expect(sids.has("sess_after_unlink_1")).toBe(true);
     expect(sids.has("sess_after_unlink_2")).toBe(true);
@@ -463,7 +464,7 @@ test("fallback — CursorStore without setMany still works via sequential set()"
     });
     const ctx = mkCtx({}, { omitSetMany: true });
     await a.init(ctx);
-    const events = await a.poll(ctx, new AbortController().signal);
+    const events = await collectPoll(a, ctx);
     expect(events.length).toBeGreaterThan(0);
     // And cursors DID advance for each stream.
     for (const stream of CONTINUE_STREAM_NAMES) {
