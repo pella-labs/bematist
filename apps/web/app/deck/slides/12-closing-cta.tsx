@@ -52,8 +52,8 @@ export function Slide12ClosingCta(_props: { totalPages: number }) {
           style={{
             display: "flex",
             flexDirection: "column",
-            justifyContent: "center",
-            gap: 72,
+            justifyContent: "flex-start",
+            gap: 56,
             minHeight: 0,
             position: "relative",
             zIndex: 3,
