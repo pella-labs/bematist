@@ -118,9 +118,7 @@ export default function MarketingHome() {
             </h1>
             <p>
               See the spend. See the work. Scale what ships. Open-source analytics across Claude
-              Code, Codex and the rest of your dev-AI stack — auto-instrumented on every engineer's
-              machine. Start with a personal card in 30 seconds; the team dashboard is where it
-              compounds.
+              Code, Codex and the rest of your dev-AI stack.
             </p>
             <div className="mk-hero-actions">
               <Link href="/auth/sign-in?intent=new-org" className="mk-btn mk-btn-primary">
