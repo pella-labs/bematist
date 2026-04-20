@@ -230,7 +230,11 @@ export function startLoop(deps: LoopDeps): LoopHandle {
     // Delay the first prune so we don't race startup. Slice the startup
     // wait into small ticks so graceful shutdown doesn't block the whole
     // 5s on its way out.
-    await interruptibleSleep(STARTUP_PRUNE_DELAY_MS, sleepImpl, () => ac.signal.aborted || fatalHalt);
+    await interruptibleSleep(
+      STARTUP_PRUNE_DELAY_MS,
+      sleepImpl,
+      () => ac.signal.aborted || fatalHalt,
+    );
     while (!ac.signal.aborted && !fatalHalt) {
       try {
         const t0 = Date.now();
