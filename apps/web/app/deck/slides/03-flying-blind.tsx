@@ -27,7 +27,7 @@ export function Slide03FlyingBlind({ totalPages }: { totalPages: number }) {
       >
         <div>
           <h2 className="title">
-            The AI bill is a <em>black box</em>.
+            The AI bill is a <em style={{ whiteSpace: "nowrap" }}>black box</em>.
           </h2>
           <p className="body-text" style={{ marginTop: 48 }}>
             You get the total at the end of the month. Who spent it, on what prompts, toward which

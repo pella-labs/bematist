@@ -60,17 +60,10 @@ export function Slide12ClosingCta(_props: { totalPages: number }) {
           }}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-            <h2
-              style={{
-                fontSize: 112,
-                lineHeight: 0.98,
-                margin: 0,
-                letterSpacing: "-0.03em",
-                fontFamily: "var(--f-head)",
-                fontWeight: 500,
-                maxWidth: 820,
-              }}
-            >
+            <div className="eyebrow" style={{ marginBottom: 0 }}>
+              05 / GET STARTED
+            </div>
+            <h2 className="title" style={{ margin: 0 }}>
               Measure{" "}
               <em
                 style={{
@@ -85,10 +78,8 @@ export function Slide12ClosingCta(_props: { totalPages: number }) {
             </h2>
 
             <p
+              className="body-text"
               style={{
-                fontSize: 28,
-                lineHeight: 1.45,
-                color: "var(--ink-muted)",
                 margin: 0,
                 maxWidth: 720,
               }}
@@ -110,15 +101,15 @@ export function Slide12ClosingCta(_props: { totalPages: number }) {
             }}
           >
             <CtaButton
-              href={SCHEDULE_LINK}
-              label="bematist.dev/intro →"
-              description="For engineering leaders: map bottlenecks, workflows, and AI spend."
-              tone="warm"
-            />
-            <CtaButton
               href={CARD_LINK}
               label="bematist.dev/card →"
               description="For Claude Code and Codex users: claim your card today."
+              tone="warm"
+            />
+            <CtaButton
+              href={SCHEDULE_LINK}
+              label="bematist.dev/intro →"
+              description="For engineering leaders: map bottlenecks, workflows, and AI spend."
               tone="ghost"
             />
           </div>
