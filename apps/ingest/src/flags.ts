@@ -21,10 +21,24 @@ function parseBool(v: string | undefined, fallback: boolean): boolean {
   return fallback;
 }
 
+/**
+ * Bug #12 fix: `ENFORCE_TIER_A_ALLOWLIST` defaults to ON. CLAUDE.md
+ * §Security Rules mandates the Tier-A raw_attrs allowlist is enforced at
+ * write-time by the ingest validator — not hopeful schema design. The flag
+ * remains as an explicit ESCAPE hatch (`ENFORCE_TIER_A_ALLOWLIST=0|false`)
+ * for the rare tests or legacy harnesses that need the pre-default-on
+ * behavior; any such override must be explicit.
+ */
+export function tierAAllowlistEnabled(
+  env: NodeJS.ProcessEnv | Record<string, string | undefined>,
+): boolean {
+  return parseBool(env.ENFORCE_TIER_A_ALLOWLIST, true);
+}
+
 export function parseFlags(env: Record<string, string | undefined>): Flags {
   const writer = env.CLICKHOUSE_WRITER === "sidecar" ? "sidecar" : "client";
   return {
-    ENFORCE_TIER_A_ALLOWLIST: parseBool(env.ENFORCE_TIER_A_ALLOWLIST, false),
+    ENFORCE_TIER_A_ALLOWLIST: tierAAllowlistEnabled(env),
     WAL_APPEND_ENABLED: parseBool(env.WAL_APPEND_ENABLED, true),
     WAL_CONSUMER_ENABLED: parseBool(env.WAL_CONSUMER_ENABLED, true),
     // Phase 5 flips default on; Phase 6 webhooks default off until shipped.

@@ -41,7 +41,18 @@ function makeDeps(overrides: Partial<OtlpDeps> = {}): OtlpDeps {
   };
 }
 
+// Bug #13b: use a now-ish start timestamp so the server-side ts-clamp
+// (7d past / 5m future window in `validate/timestamp.ts`) doesn't reject
+// the span as out-of-window. Span duration kept at 500ms for a realistic
+// gen_ai.request.create shape.
+function nowNanosBigInt(): { start: bigint; end: bigint } {
+  const startMs = BigInt(Date.now());
+  const startNs = startMs * 1_000_000n;
+  return { start: startNs, end: startNs + 500_000_000n };
+}
+
 function buildSimpleTracesProto(spanName = "gen_ai.request.create"): Uint8Array {
+  const { start, end } = nowNanosBigInt();
   const traceId = new Uint8Array(16);
   for (let i = 0; i < 16; i++) traceId[i] = i + 1;
   const spanId = new Uint8Array(8);
@@ -58,8 +69,8 @@ function buildSimpleTracesProto(spanName = "gen_ai.request.create"): Uint8Array 
     encodeBytes(1, traceId),
     encodeBytes(2, spanId),
     encodeString(5, spanName),
-    encodeFixed64(7, 1_737_000_000_000_000_000n),
-    encodeFixed64(8, 1_737_000_000_500_000_000n),
+    encodeFixed64(7, start),
+    encodeFixed64(8, end),
     encodeLengthDelimited(9, sysKv),
     encodeLengthDelimited(9, kindKv),
   );
@@ -85,6 +96,7 @@ function buildSimpleTracesProto(spanName = "gen_ai.request.create"): Uint8Array 
 }
 
 function jsonTracesPayload() {
+  const { start, end } = nowNanosBigInt();
   return {
     resourceSpans: [
       {
@@ -101,8 +113,8 @@ function jsonTracesPayload() {
                 traceId: "0102030405060708090a0b0c0d0e0f10",
                 spanId: "0102030405060708",
                 name: "gen_ai.request.create",
-                startTimeUnixNano: "1737000000000000000",
-                endTimeUnixNano: "1737000000500000000",
+                startTimeUnixNano: start.toString(),
+                endTimeUnixNano: end.toString(),
                 attributes: [
                   { key: "gen_ai.system", value: { stringValue: "anthropic" } },
                   { key: "dev_metrics.event_kind", value: { stringValue: "llm_request" } },
@@ -385,5 +397,48 @@ describe("handleOtlp /v1/traces (Phase 5 PRD tests 1–13)", () => {
     expect(body.partialSuccess).toBeDefined();
     expect(body.partialSuccess?.rejectedLogRecords).toBe(0);
     expect(body.partialSuccess?.rejectedSpans).toBeUndefined();
+  });
+
+  // --- Bug #13b: ts-clamp on OTLP path --------------------------------------
+
+  test("bug #13b: span with year-2099 startTimeUnixNano → rejected, 0 rows in WAL", async () => {
+    // Build the same proto shape but with a far-future start nano. Year 2099
+    // in nanos ≈ 4_070_908_800_000_000_000n.
+    const traceId = new Uint8Array(16);
+    for (let i = 0; i < 16; i++) traceId[i] = i + 1;
+    const spanId = new Uint8Array(8);
+    for (let i = 0; i < 8; i++) spanId[i] = i + 1;
+    const kindKv = concat(
+      encodeString(1, "dev_metrics.event_kind"),
+      encodeLengthDelimited(2, encodeString(1, "llm_request")),
+    );
+    const spanBody = concat(
+      encodeBytes(1, traceId),
+      encodeBytes(2, spanId),
+      encodeString(5, "gen_ai.request.create"),
+      encodeFixed64(7, 4_070_908_800_000_000_000n),
+      encodeFixed64(8, 4_070_908_800_500_000_000n),
+      encodeLengthDelimited(9, kindKv),
+    );
+    const scopeSpansBody = encodeLengthDelimited(2, spanBody);
+    const scopeSpans = encodeLengthDelimited(2, scopeSpansBody);
+    const svcNameKv = concat(
+      encodeString(1, "service.name"),
+      encodeLengthDelimited(2, encodeString(1, "claude-code")),
+    );
+    const resourceBody = encodeLengthDelimited(1, svcNameKv);
+    const resource = encodeLengthDelimited(1, resourceBody);
+    const resourceSpans = concat(resource, scopeSpans);
+    const buf = encodeLengthDelimited(1, resourceSpans);
+
+    const res = await handleOtlp(
+      makeRequest({ body: buf, contentType: "application/x-protobuf" }),
+      "traces",
+      { auth, deps: makeDeps(), skipRateLimit: true },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { partialSuccess?: { rejectedSpans?: number } };
+    expect(body.partialSuccess?.rejectedSpans).toBe(1);
+    expect(wal.drain().length).toBe(0);
   });
 });

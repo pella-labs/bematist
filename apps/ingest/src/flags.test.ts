@@ -4,14 +4,26 @@ import { assertFlagCoherence, FlagIncoherentError, parseFlags } from "./flags";
 describe("parseFlags", () => {
   test("defaults with empty env", () => {
     const f = parseFlags({});
+    // Bug #12 fix: Tier-A allowlist defaults ON per CLAUDE.md §Security Rules.
     expect(f).toEqual({
-      ENFORCE_TIER_A_ALLOWLIST: false,
+      ENFORCE_TIER_A_ALLOWLIST: true,
       WAL_APPEND_ENABLED: true,
       WAL_CONSUMER_ENABLED: true,
       OTLP_RECEIVER_ENABLED: false,
       WEBHOOKS_ENABLED: false,
       CLICKHOUSE_WRITER: "client",
     });
+  });
+
+  test("ENFORCE_TIER_A_ALLOWLIST: explicit =0 opts out (bug #12 escape hatch)", () => {
+    expect(parseFlags({ ENFORCE_TIER_A_ALLOWLIST: "0" }).ENFORCE_TIER_A_ALLOWLIST).toBe(false);
+    expect(parseFlags({ ENFORCE_TIER_A_ALLOWLIST: "false" }).ENFORCE_TIER_A_ALLOWLIST).toBe(false);
+  });
+
+  test("ENFORCE_TIER_A_ALLOWLIST: missing / =1 / =true → true", () => {
+    expect(parseFlags({}).ENFORCE_TIER_A_ALLOWLIST).toBe(true);
+    expect(parseFlags({ ENFORCE_TIER_A_ALLOWLIST: "1" }).ENFORCE_TIER_A_ALLOWLIST).toBe(true);
+    expect(parseFlags({ ENFORCE_TIER_A_ALLOWLIST: "true" }).ENFORCE_TIER_A_ALLOWLIST).toBe(true);
   });
 
   test("boolean parsing: 1/true → true, 0/false/undefined → false", () => {

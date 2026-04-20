@@ -10,6 +10,13 @@
 // The consumer NEVER calls `xadd` on the primary stream (that is the
 // appender's job); it only `xadd`s to the dead-letter stream.
 //
+// Bug #8 fix: on ch.insert failure the outer loop now spaces the next drain
+// by `min(60_000, 500 * 2^(n-1))` + ±10% jitter instead of the old
+// 200ms*2^n / 5s cap — which, combined with the per-batch retry inside
+// `clickhouse/retryInsert.ts`, keeps a 10-minute CH blip from tight-looping
+// the consumer against a dead backend. After 3 consecutive insert failures
+// the log line elevates from WARN to ERROR.
+//
 // Tests drive `drainOnce()` directly to avoid spawning the background loop.
 
 import type { ClickHouseWriter } from "../clickhouse";
@@ -36,12 +43,24 @@ export const defaultWalConsumerConfig: WalConsumerConfig = {
   deadLetterStream: "events_wal_dead",
 };
 
+export interface DrainResult {
+  inserted: number;
+  acked: string[];
+  deadLettered: string[];
+  /** True iff ch.insert threw on this drain. Lets the outer loop space the
+   * next attempt and elevate log level on sustained failure (bug #8). */
+  insertFailed?: boolean;
+}
+
 export interface WalConsumer {
   start(): Promise<void>;
   stop(): Promise<void>;
-  drainOnce(): Promise<{ inserted: number; acked: string[]; deadLettered: string[] }>;
+  drainOnce(): Promise<DrainResult>;
   isRunning(): boolean;
   lag(): Promise<number>;
+  /** Monotonic counter — companion metric for bug #8 observability
+   * (`ch_consumer_insert_failure_total`). */
+  insertFailureCount(): number;
 }
 
 interface WalConsumerLogger {
@@ -59,11 +78,35 @@ interface WalConsumerDeps {
   config?: Partial<WalConsumerConfig>;
   logger?: WalConsumerLogger;
   clock?: () => number;
+  /** Injectable sleep so tests can observe outer-loop spacing without real timers. */
+  sleep?: (ms: number) => Promise<void>;
+  /** Injectable random for deterministic jitter in tests. */
+  random?: () => number;
 }
 
 function backoffMs(attempt: number): number {
-  // 200ms * 2^attempts, capped at 5s.
+  // 200ms * 2^attempts, capped at 5s. Used for the idle-path backoff
+  // (no messages available, not a failure state).
   return Math.min(5000, 200 * 2 ** attempt);
+}
+
+/**
+ * Consumer-level backoff after a ClickHouse insert failure bubbles up.
+ * Separate from the writer-level retry in clickhouse/retryInsert.ts — the
+ * writer retries a single batch; this spaces the NEXT drainOnce so we don't
+ * tight-loop against a sustained outage. `min(60_000, 500 * 2^(n-1)) + ±10%`.
+ *
+ * `consecutiveFailures` is 1-indexed: first failure → base=500ms, second →
+ * 1000ms, …, ≥8 → 60_000ms cap.
+ */
+export function consumerFailureBackoffMs(
+  consecutiveFailures: number,
+  random: () => number = Math.random,
+): number {
+  if (consecutiveFailures < 1) return 0;
+  const base = Math.min(60_000, 500 * 2 ** (consecutiveFailures - 1));
+  const delta = (random() * 2 - 1) * 0.1; // ±10%
+  return Math.max(0, Math.round(base * (1 + delta)));
 }
 
 export function createWalConsumer(deps: WalConsumerDeps): WalConsumer {
@@ -71,10 +114,14 @@ export function createWalConsumer(deps: WalConsumerDeps): WalConsumer {
   const log = deps.logger ?? defaultLogger;
   const redis = deps.redis;
   const ch = deps.ch;
+  const sleepImpl = deps.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
+  const randomImpl = deps.random ?? Math.random;
 
   // Per-id retry count, kept in-memory. Survives only until the process
   // restarts; Redis is the durable source of truth via the pending-entry list.
   const retries = new Map<string, number>();
+  // Monotonic counter — surfaced via `insertFailureCount()` for metrics.
+  let chInsertFailureTotal = 0;
 
   let running = false;
   let stopRequested = false;
@@ -92,11 +139,7 @@ export function createWalConsumer(deps: WalConsumerDeps): WalConsumer {
     }
   }
 
-  async function drainOnce(): Promise<{
-    inserted: number;
-    acked: string[];
-    deadLettered: string[];
-  }> {
+  async function drainOnce(): Promise<DrainResult> {
     // H2 fix: `XREADGROUP ... >` only yields NEW entries. After a CH
     // failure the message is in this consumer's PEL (pending-entry list)
     // but `>` skips it forever — we used to just spin the retry counter
@@ -180,6 +223,7 @@ export function createWalConsumer(deps: WalConsumerDeps): WalConsumer {
       // drainOnce doesn't attempt a guaranteed-to-fail insert. Retries remain
       // functional now because the pending-re-read (xreadgroup "0") above
       // actually re-delivers the entries.
+      chInsertFailureTotal++;
       const acked: string[] = [...preAcked];
       const deadLettered: string[] = [...preDeadLettered];
       for (let i = 0; i < toInsertIds.length; i++) {
@@ -200,31 +244,60 @@ export function createWalConsumer(deps: WalConsumerDeps): WalConsumer {
         }
       }
       log.error(
-        { err: err instanceof Error ? err.message : String(err), batch: toInsertIds.length },
+        {
+          err: err instanceof Error ? err.message : String(err),
+          batch: toInsertIds.length,
+          ch_consumer_insert_failure_total: chInsertFailureTotal,
+        },
         "wal: ch.insert failed",
       );
-      return { inserted: 0, acked, deadLettered };
+      return { inserted: 0, acked, deadLettered, insertFailed: true };
     }
   }
 
   async function loop(): Promise<void> {
     running = true;
-    let consecutiveFailures = 0;
+    let idleAttempts = 0;
+    let consecutiveInsertFailures = 0;
     while (!stopRequested) {
       inFlight = drainOnce();
-      const result: { inserted: number; acked: string[]; deadLettered: string[] } = await (
-        inFlight as Promise<{ inserted: number; acked: string[]; deadLettered: string[] }>
-      ).catch((e) => {
+      const result: DrainResult = await (inFlight as Promise<DrainResult>).catch((e) => {
         log.error({ err: e instanceof Error ? e.message : String(e) }, "wal: drain threw");
         return { inserted: 0, acked: [] as string[], deadLettered: [] as string[] };
       });
       inFlight = null;
+
+      if (result.insertFailed) {
+        // Bug #8: sustained CH outage path. Space the next drain by a capped
+        // exponential + jitter. After 3 consecutive failures, elevate the log
+        // line from WARN to ERROR so ops can distinguish a transient blip
+        // from a full outage.
+        consecutiveInsertFailures++;
+        idleAttempts = 0;
+        const ms = consumerFailureBackoffMs(consecutiveInsertFailures, randomImpl);
+        const payload = {
+          consecutive_insert_failures: consecutiveInsertFailures,
+          sleep_ms: ms,
+          ch_consumer_insert_failure_total: chInsertFailureTotal,
+        };
+        if (consecutiveInsertFailures >= 3) {
+          log.error(payload, "wal: ch outage — sustained insert failures");
+        } else {
+          log.warn(payload, "wal: ch insert failure — backing off");
+        }
+        await sleepImpl(ms);
+        continue;
+      }
+
+      // Non-failure path: clear the failure streak, use the idle backoff
+      // when we had nothing to do so the loop yields the event thread.
+      consecutiveInsertFailures = 0;
       if (result.inserted === 0 && result.deadLettered.length === 0) {
-        consecutiveFailures++;
-        const ms = backoffMs(Math.min(consecutiveFailures, 5));
-        await new Promise((resolve) => setTimeout(resolve, ms));
+        idleAttempts++;
+        const ms = backoffMs(Math.min(idleAttempts, 5));
+        await sleepImpl(ms);
       } else {
-        consecutiveFailures = 0;
+        idleAttempts = 0;
       }
     }
     running = false;
@@ -265,6 +338,9 @@ export function createWalConsumer(deps: WalConsumerDeps): WalConsumer {
       // dedicated `lag` field on XINFO GROUPS; we approximate with the
       // PEL size, which is the tighter signal.
       return redis.xinfoGroupsPending(cfg.stream, cfg.group);
+    },
+    insertFailureCount(): number {
+      return chInsertFailureTotal;
     },
   };
 }

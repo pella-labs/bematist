@@ -8,6 +8,11 @@ import { logger } from "./logger";
 import { handlePolicyFlipRequest } from "./policy-flip/route";
 import { redactEventInPlace } from "./redact/hotpath";
 import { applyTierAAllowlist, enforceTier } from "./tier/enforceTier";
+import {
+  checkTsInWindow,
+  EVENT_TS_OUT_OF_WINDOW_CODE,
+  parseTsWindowConfigFromEnv,
+} from "./validate/timestamp";
 import { canonicalize } from "./wal/append";
 import { handleWebhook } from "./webhooks/router";
 import type { WebhookSource } from "./webhooks/verify";
@@ -271,6 +276,45 @@ async function handleEvents(req: Request, auth: AuthContext, requestId: string):
         "tier enforcement reject",
       );
       return json(bodyJson, { status: res.status });
+    }
+  }
+
+  // Bug #13b: server-side timestamp sanity-window clamp. Defense-in-depth on
+  // top of the collector-side clamp — rejects events with `ts` outside
+  // [now - 7d, now + 5m] at 400 EVENT_TS_OUT_OF_WINDOW so clock-skewed devs
+  // can't pollute CH partition keys (toYYYYMM(ts) per CLAUDE.md Arch Rule 9).
+  //
+  // Runs AFTER tier enforcement so forbidden-field payloads still 400 with
+  // the tier code (tighter privacy signal); runs BEFORE zod because a parse
+  // failure on `ts` would otherwise surface as a generic all-invalid 400.
+  const tsWindow = parseTsWindowConfigFromEnv(process.env);
+  const nowMs = Date.now();
+  for (let i = 0; i < events.length; i++) {
+    const ev = events[i] as { ts?: unknown };
+    const tsRes = checkTsInWindow(ev?.ts, nowMs, tsWindow);
+    if (!tsRes.ok) {
+      logger.warn(
+        {
+          event: "ts_rejected",
+          tenant_id: auth.tenantId,
+          request_id: requestId,
+          index: i,
+          ts: typeof ev?.ts === "string" ? ev.ts : null,
+          now: nowMs,
+          reason: tsRes.reason,
+        },
+        "ts out of window",
+      );
+      return json(
+        {
+          error: "event ts outside acceptable window",
+          code: EVENT_TS_OUT_OF_WINDOW_CODE,
+          reason: tsRes.reason,
+          request_id: requestId,
+          index: i,
+        },
+        { status: 400 },
+      );
     }
   }
 

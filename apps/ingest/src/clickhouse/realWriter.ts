@@ -10,6 +10,11 @@
 // HTTP helper from lib/http — we don't call client.ping() because the
 // @clickhouse/client one applies its own request-timeout semantics that
 // conflict with the /readyz 2s budget.
+//
+// Bug #8 fix: the raw `client.insert` call is wrapped in `withRetryInsert`
+// so transient CH 5xx / network errors retry with capped exponential backoff
+// (max 8 attempts, 60s cap) before surfacing to the WAL consumer. 4xx schema
+// / auth errors bubble up unretried so the consumer can dead-letter promptly.
 
 import { createClient } from "@clickhouse/client";
 import {
@@ -18,6 +23,13 @@ import {
   defaultClickHouseConfig,
 } from "../clickhouse";
 import { pingClickHouse as pingClickHouseHttp } from "../lib/http";
+import {
+  defaultRetryInsertConfig,
+  parseRetryConfigFromEnv,
+  type RetryDeps,
+  type RetryInsertConfig,
+  withRetryInsert,
+} from "./retryInsert";
 
 // Client-level `date_time_input_format='best_effort'` lets DateTime64 columns
 // accept ISO8601 strings (`2026-04-18T01:23:45.678Z`) — the shape EventSchema
@@ -64,21 +76,43 @@ export function buildClientOptions(cfg: ClickHouseConfig): Record<string, unknow
   };
 }
 
+export interface CreateRealWriterOpts {
+  /**
+   * Override the retry config. When absent, reads `CH_WRITER_MAX_RETRIES`
+   * from `process.env` and falls back to `defaultRetryInsertConfig`.
+   */
+  retry?: Partial<RetryInsertConfig>;
+  /** Injectable sleep / random / logger for the retry loop (tests). */
+  retryDeps?: RetryDeps;
+}
+
 export function createRealClickHouseWriter(
   cfg: Partial<ClickHouseConfig> = {},
   clientFactory: CHClientFactory = defaultClientFactory,
+  opts: CreateRealWriterOpts = {},
 ): ClickHouseWriter {
   const merged: ClickHouseConfig = { ...defaultClickHouseConfig, ...cfg };
 
   const client = clientFactory(buildClientOptions(merged));
 
-  return {
-    async insert(rows: Record<string, unknown>[]): Promise<{ ok: true }> {
-      await client.insert({
+  const retryCfg: RetryInsertConfig = {
+    ...parseRetryConfigFromEnv(process.env, defaultRetryInsertConfig),
+    ...opts.retry,
+  };
+  const retryingInsert = withRetryInsert(
+    (rows) =>
+      client.insert({
         table: merged.table,
         values: rows,
         format: "JSONEachRow",
-      });
+      }),
+    retryCfg,
+    opts.retryDeps,
+  );
+
+  return {
+    async insert(rows: Record<string, unknown>[]): Promise<{ ok: true }> {
+      await retryingInsert(rows);
       return { ok: true };
     },
     async ping(): Promise<boolean> {

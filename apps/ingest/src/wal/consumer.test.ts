@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createInMemoryClickHouseWriter } from "../clickhouse";
 import { canonicalize, type WalRedis } from "./append";
-import { createWalConsumer } from "./consumer";
+import { consumerFailureBackoffMs, createWalConsumer } from "./consumer";
 
 // ---- Fake WalRedis -------------------------------------------------------
 //
@@ -379,6 +379,69 @@ describe("WalConsumer.drainOnce", () => {
     const c2 = createWalConsumer({ redis, ch });
     const r2 = await c2.drainOnce();
     expect(r2.inserted).toBe(0);
+  });
+
+  // --- Bug #8 additions: CH-outage backoff + log elevation --------------
+
+  test("bug #8: insertFailed=true returned when ch.insert throws", async () => {
+    const redis = makeFakeRedis();
+    const ch = createInMemoryClickHouseWriter();
+    await redis.xgroupCreate("events_wal", "ingest-consumer", "$", { mkstream: true });
+    await appendRow(redis, "events_wal", 0);
+    const consumer = createWalConsumer({ redis, ch });
+    ch.setInsertBehavior("throw-500");
+    const r = await consumer.drainOnce();
+    expect(r.insertFailed).toBe(true);
+    expect(r.inserted).toBe(0);
+    expect(consumer.insertFailureCount()).toBe(1);
+  });
+
+  test("bug #8: insertFailureCount increments monotonically", async () => {
+    const redis = makeFakeRedis();
+    const ch = createInMemoryClickHouseWriter();
+    await redis.xgroupCreate("events_wal", "ingest-consumer", "$", { mkstream: true });
+    await appendRow(redis, "events_wal", 0);
+    await appendRow(redis, "events_wal", 1);
+    const consumer = createWalConsumer({ redis, ch });
+    ch.setInsertBehavior("throw-500");
+    await consumer.drainOnce();
+    await consumer.drainOnce();
+    await consumer.drainOnce();
+    expect(consumer.insertFailureCount()).toBe(3);
+  });
+
+  test("bug #8: three drainOnce failures accumulate insertFailureCount (outer loop would elevate log at 3rd)", async () => {
+    // We drive drainOnce() directly instead of spinning the real loop —
+    // the loop itself is a thin wrapper over `consumerFailureBackoffMs` +
+    // a log-level switch that's exercised separately below. Running the
+    // loop with an instant-resolve fake sleep would tight-loop forever
+    // in a CPU-bound async chain and starve the stop signal.
+    const redis = makeFakeRedis();
+    const ch = createInMemoryClickHouseWriter();
+    await redis.xgroupCreate("events_wal", "ingest-consumer", "$", { mkstream: true });
+    for (let i = 0; i < 3; i++) await appendRow(redis, "events_wal", i);
+    ch.setInsertBehavior("throw-500");
+    const consumer = createWalConsumer({ redis, ch, config: { maxRetries: 10 } });
+    const r1 = await consumer.drainOnce();
+    const r2 = await consumer.drainOnce();
+    const r3 = await consumer.drainOnce();
+    expect(r1.insertFailed).toBe(true);
+    expect(r2.insertFailed).toBe(true);
+    expect(r3.insertFailed).toBe(true);
+    expect(consumer.insertFailureCount()).toBe(3);
+  });
+
+  test("bug #8: consumerFailureBackoffMs schedule (no jitter)", () => {
+    // Exported helper — asserts the base schedule directly.
+    // random=0.5 → delta=0 → base value is returned.
+    expect(consumerFailureBackoffMs(1, () => 0.5)).toBe(500);
+    expect(consumerFailureBackoffMs(2, () => 0.5)).toBe(1000);
+    expect(consumerFailureBackoffMs(3, () => 0.5)).toBe(2000);
+    expect(consumerFailureBackoffMs(4, () => 0.5)).toBe(4000);
+    // Cap at 60_000
+    expect(consumerFailureBackoffMs(100, () => 0.5)).toBe(60_000);
+    // 0 / negative → 0
+    expect(consumerFailureBackoffMs(0, () => 0.5)).toBe(0);
   });
 
   test("lag() returns PEL size (pending-entry count), not xlen", async () => {

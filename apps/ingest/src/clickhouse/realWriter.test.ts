@@ -32,6 +32,56 @@ describe("realClickHouseWriter (offline)", () => {
     expect(settings.date_time_input_format).toBe("best_effort");
   });
 
+  test("bug #8: createRealClickHouseWriter wraps insert in retry — transient 5xx retries then succeeds", async () => {
+    let calls = 0;
+    const fake: CHClientLike = {
+      async insert() {
+        calls++;
+        if (calls < 2) {
+          throw Object.assign(new Error("ch 503"), { status_code: 503 });
+        }
+        return {};
+      },
+    };
+    const writer = createRealClickHouseWriter({ url }, () => fake, {
+      retry: { maxAttempts: 5, baseDelayMs: 1, maxDelayMs: 5, jitter: 0 },
+      retryDeps: {
+        sleep: async () => {},
+        random: () => 0.5,
+        logger: { warn: () => {}, error: () => {} },
+      },
+    });
+    const r = await writer.insert([{ a: 1 }]);
+    expect(r).toEqual({ ok: true });
+    expect(calls).toBe(2);
+  });
+
+  test("bug #8: createRealClickHouseWriter insert surfaces 4xx immediately (no retry)", async () => {
+    let calls = 0;
+    const fake: CHClientLike = {
+      async insert() {
+        calls++;
+        throw Object.assign(new Error("bad schema"), { status_code: 400 });
+      },
+    };
+    const writer = createRealClickHouseWriter({ url }, () => fake, {
+      retry: { maxAttempts: 5, baseDelayMs: 1, maxDelayMs: 5, jitter: 0 },
+      retryDeps: {
+        sleep: async () => {},
+        random: () => 0.5,
+        logger: { warn: () => {}, error: () => {} },
+      },
+    });
+    let err: Error | null = null;
+    try {
+      await writer.insert([{ a: 1 }]);
+    } catch (e) {
+      err = e as Error;
+    }
+    expect(err?.message).toContain("bad schema");
+    expect(calls).toBe(1);
+  });
+
   test("insert hands a canonicalize() row with ISO8601 ts through unchanged", async () => {
     const captured: Array<Record<string, unknown>> = [];
     const fake: CHClientLike = {

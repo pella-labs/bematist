@@ -780,6 +780,114 @@ describe("ingest server", () => {
     const flags = parseFlags({ WAL_APPEND_ENABLED: "0", WAL_CONSUMER_ENABLED: "1" });
     expect(() => assertFlagCoherence(flags)).toThrow(FlagIncoherentError);
   });
+
+  // --- Bug #12: Tier-A allowlist default-on -------------------------------
+
+  test("bug #12: parseFlags({}) defaults ENFORCE_TIER_A_ALLOWLIST to true", () => {
+    expect(parseFlags({}).ENFORCE_TIER_A_ALLOWLIST).toBe(true);
+  });
+
+  test("bug #12: ENFORCE_TIER_A_ALLOWLIST=0 opts out (escape hatch)", () => {
+    expect(parseFlags({ ENFORCE_TIER_A_ALLOWLIST: "0" }).ENFORCE_TIER_A_ALLOWLIST).toBe(false);
+    expect(parseFlags({ ENFORCE_TIER_A_ALLOWLIST: "false" }).ENFORCE_TIER_A_ALLOWLIST).toBe(false);
+  });
+
+  test("bug #12: Tier-A raw_attrs filter applies by default (no flag set)", async () => {
+    // Install Tier-A org policy with an allowlist_extra; rely on default-on
+    // flag (no explicit ENFORCE_TIER_A_ALLOWLIST set). Previously this was
+    // a no-op path (default-off); now the filter fires unless the explicit
+    // escape hatch is set.
+    const wal = createInMemoryWalAppender();
+    const row: IngestKeyRow = {
+      id: "legacy_test_key",
+      org_id: "test",
+      engineer_id: "eng_test",
+      key_sha256: hashSecret("abc"),
+      tier_default: "A",
+      revoked_at: null,
+    };
+    const flags = parseFlags({}); // default-on
+    setDeps({
+      store: makeStore([row]),
+      cache: new LRUCache({ max: 1000, ttlMs: 60_000 }),
+      rateLimiter: permissiveRateLimiter(),
+      orgPolicyStore: makePolicyStore({
+        test: { tier_c_managed_cloud_optin: false, tier_default: "A" },
+      }),
+      dedupStore: new InMemoryDedupStore(),
+      wal,
+      flags,
+    });
+    const ev = makeEvent({
+      tier: "A",
+      session_id: "sess_tier_a_default_on",
+      event_seq: 0,
+      raw_attrs: { foo: "dropme", "device.id": "keep" },
+    });
+    const res = await postEvents({ events: [ev] });
+    expect(res.status).toBe(202);
+    const rows = wal.drain();
+    expect(rows.length).toBe(1);
+    const parsed = JSON.parse(rows[0]?.row.raw_attrs as string);
+    expect(parsed.foo).toBeUndefined();
+    expect(parsed["device.id"]).toBe("keep");
+    beforeAllReseed();
+  });
+
+  // --- Bug #13b: server-side ts-clamp --------------------------------------
+
+  test("bug #13b: ts within window → 202 accepted", async () => {
+    const ts = new Date().toISOString();
+    const ev = makeEvent({ ts, session_id: "ts_ok" });
+    const res = await postEvents({ events: [ev] });
+    expect(res.status).toBe(202);
+  });
+
+  test("bug #13b: ts year 2099 → 400 EVENT_TS_OUT_OF_WINDOW reason=FUTURE", async () => {
+    const ev = makeEvent({ ts: "2099-01-01T00:00:00.000Z", session_id: "ts_future" });
+    const res = await postEvents({ events: [ev] });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { code: string; reason: string; index: number };
+    expect(body.code).toBe("EVENT_TS_OUT_OF_WINDOW");
+    expect(body.reason).toBe("TS_FUTURE_WINDOW");
+    expect(body.index).toBe(0);
+  });
+
+  test("bug #13b: ts year 1970 → 400 EVENT_TS_OUT_OF_WINDOW reason=PAST", async () => {
+    const ev = makeEvent({ ts: "1970-01-01T00:00:00.000Z", session_id: "ts_past" });
+    const res = await postEvents({ events: [ev] });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { code: string; reason: string };
+    expect(body.code).toBe("EVENT_TS_OUT_OF_WINDOW");
+    expect(body.reason).toBe("TS_PAST_WINDOW");
+  });
+
+  test("bug #13b: ts outside env-overridden window → 400", async () => {
+    const originalPast = process.env.INGEST_TS_PAST_WINDOW_MS;
+    process.env.INGEST_TS_PAST_WINDOW_MS = "1000"; // 1s
+    try {
+      const ts = new Date(Date.now() - 60_000).toISOString(); // 1 min past
+      const ev = makeEvent({ ts, session_id: "ts_env_past" });
+      const res = await postEvents({ events: [ev] });
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { code: string; reason: string };
+      expect(body.code).toBe("EVENT_TS_OUT_OF_WINDOW");
+      expect(body.reason).toBe("TS_PAST_WINDOW");
+    } finally {
+      if (originalPast === undefined) delete process.env.INGEST_TS_PAST_WINDOW_MS;
+      else process.env.INGEST_TS_PAST_WINDOW_MS = originalPast;
+    }
+  });
+
+  test("bug #13b: index pinpoints the bad event (2nd position)", async () => {
+    const good = makeEvent({ session_id: "ts_idx_good" });
+    const bad = makeEvent({ ts: "2099-01-01T00:00:00.000Z", session_id: "ts_idx_bad" });
+    const res = await postEvents({ events: [good, bad] });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { index: number; code: string };
+    expect(body.code).toBe("EVENT_TS_OUT_OF_WINDOW");
+    expect(body.index).toBe(1);
+  });
 });
 
 // -------- helpers ----------------------------------------------------------

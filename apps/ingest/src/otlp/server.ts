@@ -47,6 +47,7 @@ import { checkDedup, type DedupStore } from "../dedup/checkDedup";
 import type { Flags } from "../flags";
 import { logger } from "../logger";
 import { enforceTier, type OrgPolicyStore } from "../tier/enforceTier";
+import { checkTsInWindow, parseTsWindowConfigFromEnv } from "../validate/timestamp";
 import { canonicalize, type WalAppender } from "../wal/append";
 
 const MAX_REQUEST_BODY_BYTES = 16 * 1024 * 1024;
@@ -266,9 +267,34 @@ export async function handleOtlp(
   // on the signal kind (traces/metrics/logs) per OTLP spec; picked below.
   let rejected = 0;
   const acceptedDrafts: ReturnType<typeof EventSchema.parse>[] = [];
-  for (const draft of drafts) {
+  const tsWindow = parseTsWindowConfigFromEnv(process.env);
+  const nowMs = Date.now();
+  for (let i = 0; i < drafts.length; i++) {
+    const draft = drafts[i];
+    if (draft === undefined) continue;
     const tierRes = await enforceTier(draft, auth, policy);
     if (tierRes.reject) {
+      rejected++;
+      continue;
+    }
+    // Bug #13b: server-side timestamp sanity-window clamp. OTLP individual
+    // spans/records have per-draft `ts`; ts-out-of-window drafts are counted
+    // into partialSuccess.rejected* (never a 4xx for the whole request — per
+    // OTLP spec "Failures and Retries", per-entry rejects go in partialSuccess).
+    const tsRes = checkTsInWindow(draft.ts, nowMs, tsWindow);
+    if (!tsRes.ok) {
+      logger.warn(
+        {
+          event: "ts_rejected",
+          tenant_id: auth.tenantId,
+          request_id: requestId,
+          index: i,
+          ts: typeof draft.ts === "string" ? draft.ts : null,
+          now: nowMs,
+          reason: tsRes.reason,
+        },
+        "otlp ts out of window",
+      );
       rejected++;
       continue;
     }
