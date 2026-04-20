@@ -14,18 +14,19 @@ interface Props {
 }
 
 export function DeliverySection({ data }: Props) {
-  const { pr_kpis, merge_latency, weekly_throughput, size_distribution, pr_by_repo } = data;
-  const totalSizes =
-    size_distribution.xs +
-    size_distribution.s +
-    size_distribution.m +
-    size_distribution.l +
-    size_distribution.xl;
+  // size_distribution intentionally hidden until github_pull_requests
+  // has additions/deletions backfilled — every PR currently shows up
+  // as XS because the webhook payload doesn't carry diff stats.
+  const { pr_kpis, merge_latency, weekly_throughput, pr_by_repo, subscription } = data;
 
   return (
     <section className="newdash-section" data-newdash-section="delivery">
       <h2>Code delivery</h2>
       <p className="newdash-section-sub">How PRs are moving through GitHub in this window.</p>
+
+      {subscription && subscription.active_engineers > 0 && (
+        <SubscriptionHero subscription={subscription} />
+      )}
 
       <div className="newdash-kpi-row">
         <div className="newdash-card">
@@ -84,30 +85,20 @@ export function DeliverySection({ data }: Props) {
           <>
             <span className="newdash-cost-value">{USD.format(data.cost_per_merged_pr)}</span>
             <span className="newdash-card-hint">
-              Only counts PRs where a Claude Code session touched the same repo inside the merge
-              window.
+              {USD.format(data.cost_per_merged_pr * pr_kpis.merged)} ÷ {INT.format(pr_kpis.merged)}{" "}
+              merged PRs
             </span>
           </>
         )}
       </div>
 
-      <div className="newdash-grid-2">
-        <div className="newdash-card">
-          <span className="newdash-card-label">Weekly throughput</span>
-          {weekly_throughput.length === 0 ? (
-            <div className="newdash-empty">No PR activity in this window yet.</div>
-          ) : (
-            <WeeklyThroughputBars data={weekly_throughput} />
-          )}
-        </div>
-        <div className="newdash-card">
-          <span className="newdash-card-label">PR size mix</span>
-          {totalSizes === 0 ? (
-            <div className="newdash-empty">Add a teammate or broaden the window.</div>
-          ) : (
-            <SizeDistribution dist={size_distribution} total={totalSizes} />
-          )}
-        </div>
+      <div className="newdash-card">
+        <span className="newdash-card-label">Weekly throughput</span>
+        {weekly_throughput.length === 0 ? (
+          <div className="newdash-empty">No PR activity in this window yet.</div>
+        ) : (
+          <WeeklyThroughputBars data={weekly_throughput} />
+        )}
       </div>
 
       <div className="newdash-card">
@@ -143,7 +134,12 @@ export function DeliverySection({ data }: Props) {
       </div>
 
       <div className="newdash-card">
-        <span className="newdash-card-label">Contributors</span>
+        <span className="newdash-card-label">Per-developer delivery + spend</span>
+        <span className="newdash-card-hint">
+          Spend columns join sessions to that author&rsquo;s PRs (same head branch or commit SHA in
+          the merge window). &ldquo;Wasted on unmerged&rdquo; is spend on sessions whose linked PRs
+          never merged — closed, abandoned, or still open.
+        </span>
         {data.cohort_gated ? (
           <div className="newdash-note">
             Your team is small. We&rsquo;ll unlock per-teammate breakdowns once at least 5 of your
@@ -153,29 +149,145 @@ export function DeliverySection({ data }: Props) {
         ) : data.pr_by_author.length === 0 ? (
           <div className="newdash-empty">No PR authors in this window.</div>
         ) : (
-          <table className="newdash-table">
+          <table className="newdash-table newdash-table-wide">
             <thead>
               <tr>
                 <th>Teammate</th>
                 <th style={{ textAlign: "right" }}>Opened</th>
                 <th style={{ textAlign: "right" }}>Merged</th>
                 <th style={{ textAlign: "right" }}>Reverts</th>
+                <th style={{ textAlign: "right" }}>Spend</th>
+                <th style={{ textAlign: "right" }}>$ / merged PR</th>
+                <th style={{ textAlign: "right" }}>Wasted on unmerged</th>
+                <th style={{ textAlign: "right" }}>Tokens</th>
               </tr>
             </thead>
             <tbody>
-              {data.pr_by_author.map((a) => (
-                <tr key={a.author_hash}>
-                  <td>#{a.author_hash}</td>
-                  <td style={{ textAlign: "right" }}>{INT.format(a.opened)}</td>
-                  <td style={{ textAlign: "right" }}>{INT.format(a.merged)}</td>
-                  <td style={{ textAlign: "right" }}>{INT.format(a.revert_count)}</td>
-                </tr>
-              ))}
+              {data.pr_by_author.map((a) => {
+                const wastePct =
+                  a.spend_usd && a.spend_usd > 0 && a.spend_on_unmerged_usd != null
+                    ? a.spend_on_unmerged_usd / a.spend_usd
+                    : null;
+                return (
+                  <tr key={a.author_hash}>
+                    <td>#{a.author_hash}</td>
+                    <td style={{ textAlign: "right" }}>{INT.format(a.opened)}</td>
+                    <td style={{ textAlign: "right" }}>{INT.format(a.merged)}</td>
+                    <td style={{ textAlign: "right" }}>{INT.format(a.revert_count)}</td>
+                    <td style={{ textAlign: "right" }}>
+                      {a.spend_usd == null ? "—" : USD.format(a.spend_usd)}
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      {a.cost_per_merged_pr == null ? "—" : USD.format(a.cost_per_merged_pr)}
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      {a.spend_on_unmerged_usd == null ? (
+                        "—"
+                      ) : (
+                        <>
+                          {USD.format(a.spend_on_unmerged_usd)}
+                          {wastePct != null && wastePct > 0 ? (
+                            <span
+                              style={{
+                                marginLeft: 6,
+                                color:
+                                  wastePct >= 0.4
+                                    ? "var(--mk-warm)"
+                                    : wastePct >= 0.2
+                                      ? "var(--mk-ink-muted)"
+                                      : "var(--mk-ink-faint)",
+                                fontSize: "0.7rem",
+                              }}
+                            >
+                              {PCT.format(wastePct)}
+                            </span>
+                          ) : null}
+                        </>
+                      )}
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      {a.tokens == null
+                        ? "—"
+                        : new Intl.NumberFormat("en-US", { notation: "compact" }).format(a.tokens)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
       </div>
     </section>
+  );
+}
+
+function SubscriptionHero({ subscription }: { subscription: schemas.SubscriptionSummary }) {
+  const sub = subscription;
+  const utilization =
+    sub.subscription_cost_usd > 0 ? sub.actual_spend_usd / sub.subscription_cost_usd : 0;
+  const saving = sub.savings_usd >= 0;
+  const tone = saving ? "var(--mk-accent)" : "var(--mk-warm)";
+  const utilPct = Math.min(1, Math.max(0, utilization));
+  return (
+    <div className="newdash-cost-card" style={{ borderColor: tone }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+        <span className="newdash-card-label">
+          Spend vs subscription · {sub.window_days}d · {sub.active_engineers} active engineer
+          {sub.active_engineers === 1 ? "" : "s"}
+        </span>
+        <span className="newdash-card-hint">{sub.plan_label}</span>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          gap: "2.5rem",
+          alignItems: "baseline",
+          flexWrap: "wrap",
+          marginTop: "0.5rem",
+        }}
+      >
+        <div>
+          <div className="newdash-card-hint">Actual API spend</div>
+          <div className="newdash-cost-value">{USD.format(sub.actual_spend_usd)}</div>
+        </div>
+        <div>
+          <div className="newdash-card-hint">Subscription value</div>
+          <div className="newdash-cost-value" style={{ color: "var(--mk-ink-muted)" }}>
+            {USD.format(sub.subscription_cost_usd)}
+          </div>
+        </div>
+        <div>
+          <div className="newdash-card-hint">{saving ? "Savings vs API pricing" : "Overage"}</div>
+          <div className="newdash-cost-value" style={{ color: tone }}>
+            {saving ? "+" : ""}
+            {USD.format(sub.savings_usd)}
+          </div>
+        </div>
+      </div>
+      <div
+        aria-label={`Subscription utilization ${PCT.format(utilization)}`}
+        style={{
+          height: 6,
+          background: "var(--mk-border)",
+          borderRadius: 999,
+          marginTop: "0.85rem",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            width: `${utilPct * 100}%`,
+            height: "100%",
+            background: tone,
+            transition: "width 200ms",
+          }}
+        />
+      </div>
+      <div className="newdash-card-hint" style={{ marginTop: "0.35rem" }}>
+        Using {PCT.format(utilization)} of paid subscription value — the rest is what you&rsquo;d be
+        billed if every engineer were on metered API instead of the seat plan.
+      </div>
+    </div>
   );
 }
 
@@ -214,32 +326,6 @@ function WeeklyThroughputBars({ data }: { data: schemas.WeeklyThroughputPoint[] 
           <span style={{ width: "3rem", textAlign: "right" }}>
             {INT.format(w.merged)}/{INT.format(w.opened)}
           </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function SizeDistribution({ dist, total }: { dist: schemas.SizeDistribution; total: number }) {
-  const rows: Array<[string, number, string]> = [
-    ["XS (<10)", dist.xs, "Tiny touch-ups"],
-    ["S (10–100)", dist.s, "Small diffs"],
-    ["M (100–500)", dist.m, "Real features"],
-    ["L (500–1000)", dist.l, "Big changes"],
-    ["XL (>1000)", dist.xl, "Refactors / drops"],
-  ];
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginTop: "0.5rem" }}>
-      {rows.map(([label, v, hint]) => (
-        <div
-          key={label}
-          style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.78rem" }}
-        >
-          <span style={{ width: "7rem" }}>{label}</span>
-          <div style={{ flex: 1 }}>
-            <div className="newdash-bar" style={{ width: `${(v / total) * 100}%` }} title={hint} />
-          </div>
-          <span style={{ width: "2.5rem", textAlign: "right" }}>{INT.format(v)}</span>
         </div>
       ))}
     </div>

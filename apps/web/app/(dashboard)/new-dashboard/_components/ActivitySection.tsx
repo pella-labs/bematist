@@ -167,7 +167,7 @@ function DailyTrend({ daily }: { daily: schemas.ActivityDailyPoint[] }) {
         }}
       >
         <span>{daily[0]?.day}</span>
-        <span>${USD.format(maxSpend)} peak</span>
+        <span>{USD.format(maxSpend)} peak</span>
         <span>{daily[daily.length - 1]?.day}</span>
       </div>
     </div>

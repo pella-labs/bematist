@@ -12,6 +12,8 @@ interface Props {
    * Better Auth user_id. Kept here only so the toggle can detect "Just me"
    * state from URL params. */
   myEngineerId: string;
+  /** Caller's display name (Better Auth `name`, or email-local-part). */
+  myName: string;
 }
 
 const WINDOWS: Array<{ label: string; value: "7d" | "30d" | "90d" }> = [
@@ -20,7 +22,7 @@ const WINDOWS: Array<{ label: string; value: "7d" | "30d" | "90d" }> = [
   { label: "Last 90 days", value: "90d" },
 ];
 
-export function FilterBar({ filter, cohorts, myEngineerId }: Props) {
+export function FilterBar({ filter, cohorts, myEngineerId, myName }: Props) {
   const router = useRouter();
   const justMe =
     (filter.engineer_ids ?? []).length === 1 && filter.engineer_ids?.[0] === myEngineerId;
@@ -148,7 +150,7 @@ export function FilterBar({ filter, cohorts, myEngineerId }: Props) {
 
       <span className="newdash-filterbar-meta">
         Refreshed {updated}
-        {myEngineerId ? ` · you are ${myEngineerId.slice(0, 8)}` : ""}
+        {myName ? ` · signed in as ${myName}` : ""}
       </span>
     </section>
   );
