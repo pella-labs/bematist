@@ -738,7 +738,9 @@ export function CardPage({
 
   const s = data.stats;
   const hl = s.highlights;
-  const userName = data.user?.displayName || "Developer";
+  const userName =
+    data.user?.displayName ||
+    (data.user?.githubUsername ? `@${data.user.githubUsername}` : "Developer");
   const totalTokens = getTotalTokens(s);
   const tier = getTier(
     statView === "claude"
