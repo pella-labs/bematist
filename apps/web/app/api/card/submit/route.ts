@@ -202,7 +202,12 @@ export async function POST(req: Request) {
   if (!header?.startsWith("Bearer ")) {
     return NextResponse.json({ error: "Missing or invalid Authorization header" }, { status: 401 });
   }
-  const token = header.split("Bearer ")[1];
+  // Trim trailing whitespace / CR / LF — Windows clipboards and PowerShell
+  // stdin often append `\r` or `\r\n` when users paste the token. Tokens are
+  // minted server-side with no whitespace, so trimming is safe and always
+  // correct; without it, `bm_xxx\r` hashes to a different sha256 than
+  // `bm_xxx` and the UPDATE returns 0 rows ("Invalid or expired token").
+  const token = header.split("Bearer ")[1]?.trim();
   if (!token) {
     return NextResponse.json({ error: "Missing or invalid Authorization header" }, { status: 401 });
   }
