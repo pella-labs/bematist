@@ -462,10 +462,17 @@
   position: relative;
   width: 100%;
   max-width: 720px;
-  aspect-ratio: 1;
+  aspect-ratio: 1 / 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Lock to a perfect square in flex parents — without these, mobile Safari
+     and some Android browsers compress the cross-axis (height) when the
+     section's min-height is shorter than the stage's natural square height,
+     stretching the rendered B and turning the rings elliptical. */
+  flex: 0 0 auto;
+  align-self: center;
+  min-height: 0;
 }
 
 .bematist-marketing .mk-monogram-frame {
