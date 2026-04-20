@@ -33,7 +33,20 @@ export function DemoVideo() {
         <span className="mk-mono mk-xs">00 / See Bematist in 30 seconds</span>
       </div>
       <div className="mk-demo-wrap">
+        <div className="mk-demo-lede">
+          <span className="mk-demo-eyebrow mk-mono">▶ Product tour · 30s</span>
+          <h2>See where every AI-engineering dollar lands.</h2>
+          <p>
+            One view of your team's spend, sessions, and outcomes across Claude Code, Codex, and
+            Cursor — in a single dashboard that reads session files directly from each dev's
+            machine.
+          </p>
+        </div>
         <div className="mk-demo-frame">
+          <div className="mk-demo-corner tl" aria-hidden />
+          <div className="mk-demo-corner tr" aria-hidden />
+          <div className="mk-demo-corner bl" aria-hidden />
+          <div className="mk-demo-corner br" aria-hidden />
           <video
             ref={videoRef}
             className="mk-demo-video"
