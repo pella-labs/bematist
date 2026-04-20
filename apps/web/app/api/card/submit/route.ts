@@ -202,7 +202,12 @@ export async function POST(req: Request) {
   if (!header?.startsWith("Bearer ")) {
     return NextResponse.json({ error: "Missing or invalid Authorization header" }, { status: 401 });
   }
-  const token = header.split("Bearer ")[1];
+  // Trim trailing whitespace / CR / LF — Windows clipboards and PowerShell
+  // stdin often append `\r` or `\r\n` when users paste the token. Tokens are
+  // minted server-side with no whitespace, so trimming is safe and always
+  // correct; without it, `bm_xxx\r` hashes to a different sha256 than
+  // `bm_xxx` and the UPDATE returns 0 rows ("Invalid or expired token").
+  const token = header.split("Bearer ")[1]?.trim();
   if (!token) {
     return NextResponse.json({ error: "Missing or invalid Authorization header" }, { status: 401 });
   }
@@ -247,28 +252,18 @@ export async function POST(req: Request) {
 
   let displayName: string | null = null;
   let avatarUrl: string | null = null;
-  let ownerUserId: string | null = null;
+  const ownerUserId: string | null = null;
 
-  if (row.subject_kind === "better_auth_user") {
-    const ownerRows = await pg.query<{ name: string | null; image: string | null }>(
-      `SELECT name, image FROM better_auth_user WHERE id = $1 LIMIT 1`,
-      [row.subject_id],
-    );
-    const owner = ownerRows[0];
-    if (owner) {
-      // Better Auth stores GitHub's profile `name` if the user set one; if
-      // they haven't, fall back to a live GitHub profile fetch, then to the
-      // @login handle. Never null out — the card snapshot is what renders.
-      const stored = owner.name?.trim();
-      const login = row.github_username;
-      displayName = stored || (await fetchGithubName(login)) || (login ? `@${login}` : null);
-      avatarUrl = owner.image;
-      ownerUserId = row.subject_id;
-    }
-  } else if (row.subject_kind === "github_star") {
-    // subject_id is the lowercase slug (= card_id). github_username preserves
-    // the original case from the user's input on the marketing page. Fall
-    // back to the slug if it somehow didn't land.
+  // Both subject_kinds resolve the display fields identically: fetch the
+  // public GitHub `name` for the login, fall back to `@<login>`, and pull
+  // the avatar from github.com/<login>.png. Historically we tried to read
+  // `better_auth_user.name`/`.image` for the signed-in path, but
+  // `card_tokens.subject_id` holds the URL slug (lowercased login), not
+  // the `better_auth_user.id` — so the join silently returned 0 rows and
+  // the whole block was dead code. Unifying here keeps both paths correct
+  // without a schema migration; `owner_user_id` stays null for now
+  // (the FK was never populated for signed-in cards either).
+  if (row.subject_kind === "better_auth_user" || row.subject_kind === "github_star") {
     const login = row.github_username ?? row.subject_id;
     displayName = (await fetchGithubName(login)) ?? `@${login}`;
     avatarUrl = `https://github.com/${login}.png`;
