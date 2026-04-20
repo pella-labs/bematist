@@ -28,11 +28,14 @@ import {
 } from "./github-app/secretsResolver";
 import { createInMemoryWebhookBus, type WebhookBusProducer } from "./github-app/webhookBus";
 import type { AuditLogSink } from "./github-app/webhookRoute";
+import { logger } from "./logger";
+import { createPolicyFlipDbHandle } from "./policy-flip/dbClient";
 import type { PolicyFlipDeps } from "./policy-flip/handler";
 import { noopAuditSink } from "./redact/auditSink";
 import type { RedactionAuditSink } from "./redact/hotpath";
 import { InMemoryOrgPolicyStore, type OrgPolicyStore } from "./tier/enforceTier";
 import { createInMemoryWalAppender, type WalAppender } from "./wal/append";
+import { createDrizzleOutcomesStore } from "./webhooks/drizzleOutcomesStore";
 import { createInMemoryGitEventsStore, type GitEventsStore } from "./webhooks/gitEventsStore";
 import { createInMemoryOutcomesStore, type OutcomesStore } from "./webhooks/outcomesStore";
 
@@ -128,7 +131,13 @@ function makeDefaultDeps(): Deps {
     walConsumerLag: null,
     webhookDedup: new InMemoryDedupStore(),
     gitEventsStore: createInMemoryGitEventsStore(),
-    outcomesStore: createInMemoryOutcomesStore(),
+    // OutcomesStore: InMemory is the safe default for tests + dev where
+    // DATABASE_URL is absent. Prod + self-host deploys land trailer rows in
+    // the real `outcomes` table via the Drizzle-backed store. The env switch
+    // below mirrors the pattern used for other pg-backed stores (wired from
+    // index.ts) but is applied directly here so the Drizzle store picks up
+    // as soon as DATABASE_URL is set — no second setDeps() hop required.
+    outcomesStore: resolveOutcomesStore(),
     orgResolver: createInMemoryOrgResolver(),
     policyFlip: null,
     installationResolver: createInMemoryInstallationResolver(),
@@ -140,6 +149,51 @@ function makeDefaultDeps(): Deps {
       /* no-op */
     },
   };
+}
+
+/**
+ * Resolves the default OutcomesStore at module-load time.
+ *
+ *   - BEMATIST_OUTCOMES_STORE=memory           → always InMemory
+ *   - BEMATIST_OUTCOMES_STORE=drizzle          → force Drizzle (throws if no
+ *                                                DATABASE_URL)
+ *   - (unset) + NODE_ENV=test                  → InMemory (no network in
+ *                                                bun test)
+ *   - (unset) + DATABASE_URL present           → Drizzle
+ *   - (unset) + DATABASE_URL absent            → InMemory (graceful on solo
+ *                                                mode boots without PG)
+ *
+ * Any Drizzle-construction failure falls back to InMemory with a loud
+ * warning so a misconfigured solo boot doesn't crash before the HTTP
+ * server comes up. The webhook path then logs `outcome trailer recorded`
+ * against the in-memory store — honest state, nothing lost, but operators
+ * see the warning on boot.
+ */
+function resolveOutcomesStore(): OutcomesStore {
+  const override = (process.env.BEMATIST_OUTCOMES_STORE ?? "").toLowerCase();
+  if (override === "memory") return createInMemoryOutcomesStore();
+  const hasDbUrl =
+    typeof process.env.DATABASE_URL === "string" && process.env.DATABASE_URL.length > 0;
+  const isTest = process.env.NODE_ENV === "test";
+  const wantDrizzle = override === "drizzle" || (!isTest && hasDbUrl);
+  if (!wantDrizzle) return createInMemoryOutcomesStore();
+  try {
+    const handle = createPolicyFlipDbHandle();
+    logger.info(
+      { override: override || "auto" },
+      "outcomesStore wired (drizzle-backed, postgres-js pool max=3)",
+    );
+    return createDrizzleOutcomesStore(handle.db);
+  } catch (err) {
+    logger.warn(
+      {
+        err: err instanceof Error ? err.message : String(err),
+        fallback: "memory",
+      },
+      "drizzle outcomesStore wiring failed — falling back to in-memory",
+    );
+    return createInMemoryOutcomesStore();
+  }
 }
 
 export { createInMemoryOrgResolver };
