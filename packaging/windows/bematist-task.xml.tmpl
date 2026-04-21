@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-16"?>
 <!--
-  Bematist collector — Windows Scheduled Task definition.
+  Bema collector — Windows Scheduled Task definition.
   Consumed by Register-ScheduledTask via `schtasks /Create /XML` in the
   Chocolatey install script (packaging/choco/chocolateyInstall.ps1.tmpl)
   and by `bematist start` via the PowerShell dispatch.
@@ -13,8 +13,8 @@
 -->
 <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
-    <URI>\Bematist\Collector</URI>
-    <Description>Bematist collector — captures LLM/coding-agent usage and ships it to your configured ingest endpoint.</Description>
+    <URI>\Bema\Collector</URI>
+    <Description>Bema collector — captures LLM/coding-agent usage and ships it to your configured ingest endpoint.</Description>
   </RegistrationInfo>
   <Triggers>
     <LogonTrigger>

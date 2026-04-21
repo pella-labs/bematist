@@ -1,6 +1,6 @@
 // GET /install.sh → 302 to the latest signed install.sh published to the
 // GH release. Point of this route: so users can keep muscle-memory'ing
-// `curl -fsSL https://bematist.dev/install.sh | sh` without hitting the
+// `curl -fsSL https://bema.tools/install.sh | sh` without hitting the
 // proxy's auth-redirect (which would return the sign-in HTML and blow up
 // `sh` as it tried to parse `<`).
 //

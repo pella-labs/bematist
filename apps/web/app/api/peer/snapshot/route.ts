@@ -55,7 +55,7 @@ export async function GET(req: Request): Promise<Response> {
   return NextResponse.json(safe, {
     headers: {
       "cache-control": "no-store",
-      "x-bematist-peer-version": "1",
+      "x-bema-peer-version": "1",
     },
   });
 }

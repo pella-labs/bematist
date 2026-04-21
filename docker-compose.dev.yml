@@ -1,4 +1,4 @@
-# Bematist — dev stack (DBs only).
+# Bema — dev stack (DBs only).
 # Apps run via `bun run dev` on the host for fast iteration.
 # Postgres is bound to host port 5433 (not 5432) to avoid colliding with other projects.
 services:

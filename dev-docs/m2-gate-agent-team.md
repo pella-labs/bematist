@@ -406,7 +406,7 @@ The 4-tier resolver (OpenAI / Voyage / Ollama / Xenova), Redis L1 + Postgres L2 
 ## 7. Standard preamble (prepend to every agent prompt)
 
 ```
-You are one of ~13 Opus-4.7 subagents building the Bematist M2 gate in parallel.
+You are one of ~13 Opus-4.7 subagents building the Bema M2 gate in parallel.
 Before writing any code, read:
 
 - /Users/sebastian/dev/gauntlet/analytics-research/CLAUDE.md — locked project conventions

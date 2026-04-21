@@ -21,7 +21,7 @@ docker compose -f docker-compose.dev.yml up -d
 docker compose -f docker-compose.dev.yml ps    # all three healthy
 ```
 
-Expected: `bematist-postgres`, `bematist-clickhouse`, `bematist-redis` all
+Expected: `bema-postgres`, `bema-clickhouse`, `bema-redis` all
 report `(healthy)`.
 
 ## 2. Install + apply migrations
@@ -44,7 +44,7 @@ Expected on `db:migrate:ch`:
 [ch-migrate] applied 0007_prompt_cluster_stats.sql
 [ch-migrate] applied 0008_projection_repo_lookup.sql
 [ch-migrate] applied 0009_projection_cluster_lookup.sql
-[ch-migrate] done — 9 file(s) applied to bematist
+[ch-migrate] done — 9 file(s) applied to bema
 ```
 
 ## 3. Live smoke — collector → ingest → CH events table → dev_daily_rollup MV
@@ -113,7 +113,7 @@ agent, not by A17). Once that wiring lands, the local-dashboard render is:
 
 ```bash
 USE_FIXTURES=0 \
-DATABASE_URL=postgres://postgres:postgres@localhost:5433/bematist \
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/bema \
 CLICKHOUSE_URL=http://localhost:8123 \
 REDIS_URL=redis://localhost:6379 \
 bun --filter='@bematist/web' dev

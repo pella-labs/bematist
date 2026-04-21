@@ -3,7 +3,7 @@ import { OG_COLORS, OG_CONTENT_TYPE, OG_SIZE, OgFrame, OgHeadline, OgStatRow } f
 
 export const runtime = "nodejs";
 export const alt =
-  "Bematist — measure agentic engineering output: see the spend, see the work, scale what ships";
+  "Bema — measure agentic engineering output: see the spend, see the work, scale what ships";
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 

@@ -1,4 +1,4 @@
-// Bematist — PgBoss worker entrypoint.
+// Bema — PgBoss worker entrypoint.
 // PgBoss is for crons only (CLAUDE.md Architecture Rule #4). Per-event work goes
 // to ClickHouse MVs or Redis Streams.
 

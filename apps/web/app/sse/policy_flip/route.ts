@@ -8,7 +8,7 @@ import { assertAllowedChannel, sseResponse } from "../_lib/stream";
  *
  * Upstream: apps/ingest/src/policy-flip/drizzleAlerts.ts inserts a row into
  * `alerts` with `kind='policy_flip'`, `signal='tier_c_activated'` and fires
- * pg_notify on `bematist_alerts` (same channel the anomaly detector uses).
+ * pg_notify on `bema_alerts` (same channel the anomaly detector uses).
  * This route LISTENs on that channel, filters to `kind === "policy_flip"`, and
  * pushes the banner payload to every connected IC dashboard.
  *
@@ -26,7 +26,7 @@ export const dynamic = "force-dynamic";
 // the anomalies SSE route).
 export const runtime = "nodejs";
 
-const ALERT_CHANNEL = "bematist_alerts";
+const ALERT_CHANNEL = "bema_alerts";
 
 interface NotifyPayload {
   id: string;
@@ -43,7 +43,7 @@ export async function GET() {
   const ctx = await getSessionCtx();
   return sseResponse((push) => {
     const sql = postgres(
-      process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5433/bematist",
+      process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5433/bema",
       { max: 1, idle_timeout: 0, connect_timeout: 5 },
     );
 

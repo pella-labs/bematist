@@ -1,4 +1,4 @@
-# Bematist ingest — Railway deployment Dockerfile (single-stage).
+# Bema ingest — Railway deployment Dockerfile (single-stage).
 #
 # Multi-stage was tried first but Bun workspace symlinks don't reliably
 # survive `COPY --from=deps /app/node_modules` — runtime complained about

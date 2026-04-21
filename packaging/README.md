@@ -47,7 +47,7 @@ Distro packages:
 Fallback:
 
 ```sh
-curl -fsSL https://bematist.dev/install.sh | sh -s -- --verify-cosign
+curl -fsSL https://bema.tools/install.sh | sh -s -- --verify-cosign
 ```
 
 ## Layout

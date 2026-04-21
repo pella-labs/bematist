@@ -426,7 +426,7 @@ const fixtures: FixtureSpec[] = [
             },
           },
         ],
-        app: { id: APP_ID, slug: "bematist-fixture-app", name: "Bematist Fixture App" },
+        app: { id: APP_ID, slug: "bematist-fixture-app", name: "Bema Fixture App" },
         created_at: "2026-04-01T00:05:30Z",
         updated_at: "2026-04-01T00:12:00Z",
         latest_check_runs_count: 5,

@@ -21,7 +21,7 @@ import {
  *      into the invite's org at the invite's role. See
  *      `packages/api/src/queries/invites.ts#acceptInviteByToken`.
  *   3. Mints a fresh ingest key bound to the new developer row.
- *   4. Seals the bearer plaintext in the signed `bematist-welcome-bearer`
+ *   4. Seals the bearer plaintext in the signed `bema-welcome-bearer`
  *      cookie and redirects to `/welcome`, which reads + clears the cookie
  *      and shows the install one-liner.
  *

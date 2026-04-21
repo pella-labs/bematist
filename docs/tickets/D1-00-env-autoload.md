@@ -1,7 +1,7 @@
 # D1-00 Primer: Dev env autoload + per-dev compose override
 
 **For:** Fresh session needing to understand the env plumbing already in place
-**Project:** bematist (DevMetrics)
+**Project:** bema (DevMetrics)
 **Workstream:** D (Storage & Schema) — setup only, no storage surface affected
 **Date:** 2026-04-17
 **Status:** ✅ committed to local branch `dev-env-autoload-compose-override-jorge`; push blocked pending collaborator grant
@@ -15,7 +15,7 @@ Ergonomic floor for local development. Root `package.json` scripts now auto-load
 
 ### Why It Matters
 
-- Without this, every `bun run db:migrate:pg` on a fresh shell errors out with "database bematist does not exist" because the fallback URL points at port 5433 (held by other projects on Jorge's machine).
+- Without this, every `bun run db:migrate:pg` on a fresh shell errors out with "database bema does not exist" because the fallback URL points at port 5433 (held by other projects on Jorge's machine).
 - Sets the floor for every subsequent ticket — Sprint 1 phases 02+ all rely on `bun run db:migrate:*` working without ceremony.
 - Keeps the tracked `docker-compose.dev.yml` at upstream defaults so other workstreams aren't affected.
 

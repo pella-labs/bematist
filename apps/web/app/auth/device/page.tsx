@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export const metadata: Metadata = {
-  title: "Authorize CLI — Bematist",
+  title: "Authorize CLI — Bema",
   robots: { index: false, follow: false },
 };
 
@@ -101,7 +101,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
             className="flex cursor-pointer items-center gap-2 text-sm font-semibold tracking-tight"
           >
             <span aria-hidden className="inline-block h-6 w-6 rounded-md bg-primary" />
-            bematist
+            bema
           </a>
           {isComplianceEnabled() ? (
             <a

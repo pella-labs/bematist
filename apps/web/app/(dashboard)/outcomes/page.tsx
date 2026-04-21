@@ -31,7 +31,7 @@ function formatHm(ms: number): string {
 
 /**
  * Last path segment of a project identifier. Claude Code slugifies
- * "/Users/san/Desktop/CAPSTONE/bematist" → "-Users-san-Desktop-CAPSTONE-bematist";
+ * "/Users/san/Desktop/CAPSTONE/bema" → "-Users-san-Desktop-CAPSTONE-bema";
  * Codex typically stores the real path. Handle both plus the pass-through case
  * (already a short name). Display-only — the aggregation key in
  * `buildWasteSummary` is still the full path so two projects with the same

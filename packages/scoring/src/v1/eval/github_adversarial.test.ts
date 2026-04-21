@@ -3,7 +3,7 @@
  *
  * One test per persona. These are NOT MAE gates — they're shape
  * assertions: the ALS math must NOT mislabel the persona in a way that
- * breaks Bematist's "no public leaderboard, no bottom-10%, no performance
+ * breaks Bema's "no public leaderboard, no bottom-10%, no performance
  * scoring" posture (CLAUDE.md §Scoring Rules).
  *
  * Each persona's ground-truth intent is encoded on the FixtureCase via

@@ -1,4 +1,4 @@
-// Bematist — @bematist/otel public surface.
+// Bema — @bematist/otel public surface.
 //
 // Sprint-1 Phase 5 shipped a hand-rolled proto3 + proto3-JSON decoder as a
 // stop-gap; the Sprint-1 follow-up (D-S1-12) replaces it with

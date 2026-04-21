@@ -80,8 +80,8 @@ export const LAUNCHD_PLIST_TMPL = `<?xml version="1.0" encoding="UTF-8"?>
 
 /** Linux systemd user unit — rendered with @BIN@ substituted. */
 export const SYSTEMD_SERVICE_TMPL = `[Unit]
-Description=Bematist collector
-Documentation=https://bematist.dev/docs
+Description=Bema collector
+Documentation=https://bema.tools/docs
 After=network-online.target
 Wants=network-online.target
 
@@ -104,8 +104,8 @@ WantedBy=default.target
 export const WINDOWS_TASK_XML_TMPL = `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
-    <URI>\\Bematist\\Collector</URI>
-    <Description>Bematist collector — captures LLM/coding-agent usage and ships it to your configured ingest endpoint.</Description>
+    <URI>\\Bema\\Collector</URI>
+    <Description>Bema collector — captures LLM/coding-agent usage and ships it to your configured ingest endpoint.</Description>
   </RegistrationInfo>
   <Triggers>
     <LogonTrigger>

@@ -1,7 +1,7 @@
 # D1-01 Primer: Contract 05 naming drift fix (`@devmetrics/*` → `@bematist/*`)
 
 **For:** Fresh session picking up the contract-drift fix
-**Project:** bematist (DevMetrics)
+**Project:** bema (DevMetrics)
 **Workstream:** D (owns contract 09); this ticket touches contract 05 owned by H, but D coordinates because the fix pattern matches the one already applied to 03 + 06
 **Date:** 2026-04-17
 **Status:** ✅ **Verified no-op on 2026-04-17** — see Resolution section below.
@@ -40,7 +40,7 @@ No branch push or PR needed. This primer is kept as the audit trail proving the 
 
 ## What Is This Ticket?
 
-Three contracts (03, 06) received an additive changelog entry on 2026-04-16 flipping import paths from `@devmetrics/schema` → `@bematist/schema` (per PRD D32 — product name is DevMetrics, repo/workspace namespace is `@bematist`). Contract **05 — Embed provider** was missed and still references the old namespace. This ticket lands the matching additive changelog line so H's embed work can build against the correct import path without drift.
+Three contracts (03, 06) received an additive changelog entry on 2026-04-16 flipping import paths from `@devmetrics/schema` → `@bematist/schema` (per PRD D32 — product name is DevMetrics, repo/workspace namespace is `@bema`). Contract **05 — Embed provider** was missed and still references the old namespace. This ticket lands the matching additive changelog line so H's embed work can build against the correct import path without drift.
 
 ### Why It Matters
 
@@ -69,7 +69,7 @@ Three contracts (03, 06) received an additive changelog entry on 2026-04-16 flip
 
 #### A. Implementation
 
-- [ ] Grep `contracts/05-embed-provider.md` for `@devmetrics`; flip each occurrence to `@bematist` (expect 0–2 hits based on current contract review)
+- [ ] Grep `contracts/05-embed-provider.md` for `@devmetrics`; flip each occurrence to `@bema` (expect 0–2 hits based on current contract review)
 - [ ] Append changelog entry to `contracts/05-embed-provider.md` matching the pattern from 03 + 06:
   ```markdown
   - 2026-04-17 — Sprint-0 M0: `@devmetrics/*` import paths → `@bematist/*` (repo renamed; see PRD §D32). Product name stays DevMetrics.
@@ -155,7 +155,7 @@ EOF
 
 | Decision | Reference | Summary |
 |----------|-----------|---------|
-| Namespace | D32 | Product = DevMetrics; repo slug = bematist; workspace packages = `@bematist/*`. |
+| Namespace | D32 | Product = DevMetrics; repo slug = bema; workspace packages = `@bematist/*`. |
 | Change class | contracts/README | Additive (default to old alongside new if possible). Here: renaming a purely documentation reference, so single-shot flip is fine. |
 
 ---

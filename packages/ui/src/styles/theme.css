@@ -11,14 +11,14 @@
 @source "../**/*.{ts,tsx}";
 
 /*
- * Bematist theme — tokens ported from ~/dev/gauntlet/bematist-theme
+ * Bema theme — tokens ported from ~/dev/gauntlet/bematist-theme
  * (shadcn base-lyra style, zinc base color, OKLCH color space).
  *
  * Structure:
  *   - `:root` / `.dark` declare the primitive tokens (--background, --primary, etc).
  *   - `@theme inline` maps them into Tailwind v4 utility tokens (--color-*, --radius-*)
  *     so `bg-background`, `text-foreground`, `rounded-lg` work without `@apply`.
- *   - Bematist adds `--positive` + `--warning` on top of base-lyra because we need
+ *   - Bema adds `--positive` + `--warning` on top of base-lyra because we need
  *     business-semantic colors that the default theme (blue-only + destructive)
  *     doesn't cover (merged PRs = positive, suppression counts = warning).
  *
@@ -65,7 +65,7 @@
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.705 0.015 286.067);
 
-  /* Bematist extensions — business-semantic colors beyond shadcn base-lyra. */
+  /* Bema extensions — business-semantic colors beyond shadcn base-lyra. */
   --positive: oklch(0.765 0.17 158);
   --positive-foreground: oklch(0.141 0.005 285.823);
   --warning: oklch(0.808 0.165 74);
@@ -151,7 +151,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Bematist extensions exposed as Tailwind utilities. */
+  /* Bema extensions exposed as Tailwind utilities. */
   --color-positive: var(--positive);
   --color-positive-foreground: var(--positive-foreground);
   --color-warning: var(--warning);

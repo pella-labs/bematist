@@ -1,5 +1,5 @@
 /*
- * Bematist ingest perf harness.
+ * Bema ingest perf harness.
  *
  * Run with:   k6 run tests/perf/ingest.k6.js
  *             K6_GATE_M2=1 k6 run tests/perf/ingest.k6.js   # strict (default in CI)

@@ -6,7 +6,7 @@ import { BMonogram } from "./Monogram";
  */
 export function BrandMonolith() {
   return (
-    <section className="mk-monolith" aria-label="Bematist brand mark">
+    <section className="mk-monolith" aria-label="Bema brand mark">
       <div className="mk-monolith-stage">
         <Ring
           className="mk-ring"

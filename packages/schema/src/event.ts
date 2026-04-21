@@ -1,4 +1,4 @@
-// Bematist wire-format event schema (contract 01).
+// Bema wire-format event schema (contract 01).
 //
 // NOTE on `redaction_count`:
 //   `redaction_count` is a RAW counter emitted by the server-side redaction
@@ -76,7 +76,7 @@ export const EventSchema = z.object({
     })
     .optional(),
 
-  // Bematist extensions (dev_metrics.*) — coding-agent specifics, analog to gen_ai.*
+  // Bema extensions (dev_metrics.*) — coding-agent specifics, analog to gen_ai.*
   dev_metrics: z.object({
     event_kind: z.enum([
       "session_start",

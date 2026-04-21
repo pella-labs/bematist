@@ -1,4 +1,4 @@
-// @bematist/ui — shared UI primitives for the Bematist dashboard.
+// @bematist/ui — shared UI primitives for the Bema dashboard.
 // Dark mode default, WCAG AA target, every chart has a table toggle.
 
 export type { BrandColor } from "../brand.config";

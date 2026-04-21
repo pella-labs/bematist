@@ -1,4 +1,4 @@
-# Bematist — Team onboarding (post-M4 cutover)
+# Bema — Team onboarding (post-M4 cutover)
 
 > **TL;DR** — Sign up at the dashboard, copy the one-liner on the welcome page, paste it in your terminal. Collector starts tailing your Claude Code / Codex / Cursor / Continue.dev sessions and ships events to the Railway-hosted dev ingest. No Tailscale.
 
@@ -8,7 +8,7 @@
 
 ## 1. Sign up
 
-1. Open the dashboard — **https://app.bematist.dev** (prod) or **http://localhost:3000** if you're running the web app locally.
+1. Open the dashboard — **https://app.bema.tools** (prod) or **http://localhost:3000** if you're running the web app locally.
 2. Click **"Sign up with GitHub"** on the landing page.
 3. GitHub OAuth. First-time signers get their own org and are promoted to **admin** of it; you can invite your team from here.
 

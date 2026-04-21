@@ -1,4 +1,4 @@
-# Bematist — Workstream H-scoring PRD
+# Bema — Workstream H-scoring PRD
 
 **Owner:** Sandesh
 **Workstream:** H-scoring (the scoring math — `packages/scoring`)

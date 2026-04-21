@@ -432,7 +432,7 @@ export const SECRET_CORPUS: ReadonlyArray<CorpusEntry> = [
   },
   {
     id: "C-52",
-    text: "CC: ops+oncall@bematist.dev about the regression",
+    text: "CC: ops+oncall@bema.tools about the regression",
     mustDetect: true,
     expectedType: "email",
     expectedRule: "Email",
@@ -516,7 +516,7 @@ export const SECRET_CORPUS: ReadonlyArray<CorpusEntry> = [
   },
   {
     id: "C-64",
-    text: "Regards, Alex Morgan — Bematist Inc.",
+    text: "Regards, Alex Morgan — Bema Inc.",
     mustDetect: true,
     expectedType: "name",
     expectedRule: "FullNameWithContext",
@@ -551,7 +551,7 @@ export const SECRET_CORPUS: ReadonlyArray<CorpusEntry> = [
   },
   {
     id: "C-69",
-    text: "Forward complaint to abuse@example.org and team-lead@bematist.dev",
+    text: "Forward complaint to abuse@example.org and team-lead@bema.tools",
     mustDetect: true,
     expectedType: "email",
     expectedRule: "Email",

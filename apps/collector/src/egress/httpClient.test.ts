@@ -185,7 +185,7 @@ test("postWithRetry respects ingestOnlyTo allowlist", async () => {
       "http://evil.test/v1/events",
       { method: "POST" },
       {
-        ingestOnlyTo: "ingest.bematist.dev",
+        ingestOnlyTo: "ingest.bema.tools",
         fetchImpl: (async () => new Response(null)) as unknown as typeof fetch,
         sleepImpl: noSleep,
       },
@@ -200,10 +200,10 @@ test("postWithRetry allows host that matches ingestOnlyTo", async () => {
     return new Response(JSON.stringify({ accepted: 1 }), { status: 202 });
   };
   const result = await postWithRetry(
-    "http://ingest.bematist.dev/v1/events",
+    "http://ingest.bema.tools/v1/events",
     { method: "POST" },
     {
-      ingestOnlyTo: "ingest.bematist.dev",
+      ingestOnlyTo: "ingest.bema.tools",
       fetchImpl: fetchMock as unknown as typeof fetch,
       sleepImpl: noSleep,
     },

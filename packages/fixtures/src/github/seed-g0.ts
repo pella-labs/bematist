@@ -336,7 +336,7 @@ const PAYLOADS: Array<{ event: string; scenario: string; body: unknown }> = [
             base: { ref: "main", sha: BASE_SHA, repo: { id: REPO_ID, name: REPO_NAME } },
           },
         ],
-        app: { id: APP_ID, slug: "bematist-fixture-app", name: "Bematist Fixture App" },
+        app: { id: APP_ID, slug: "bematist-fixture-app", name: "Bema Fixture App" },
         created_at: "2026-04-01T00:05:30Z",
         updated_at: "2026-04-01T00:10:00Z",
         latest_check_runs_count: 3,

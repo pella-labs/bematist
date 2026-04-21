@@ -1,4 +1,4 @@
-# PRD — Bematist GitHub Integration v1
+# PRD — Bema GitHub Integration v1
 
 > **Status.** Consolidated PRD. Extends `dev-docs/PRD.md` (main) without overriding. Decisions D33–D60 extend the existing D1–D32 series. Produced by `/research-and-plan` on 2026-04-18 and hardened in-session to strip EU/works-council scope (owned by a separate workstream being moved behind env flags) and demo-mode flags (local-dev-first, no tunneling).
 >
@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-GitHub becomes Bematist's first authoritative repo-attribution backend AND the primary outcome-signal source that turns session spend into outcome quality. This PRD:
+GitHub becomes Bema's first authoritative repo-attribution backend AND the primary outcome-signal source that turns session spend into outcome quality. This PRD:
 
 1. Ratifies the brief at `docs/github.md` as the v1 design with numbered decisions D33–D60.
 2. Resolves all open questions from the brief (§4).
@@ -69,7 +69,7 @@ All open questions from `docs/github.md §Open questions` are closed. No open qu
 
 ## 5. Outcome Signal — Effort × Value Scoring
 
-Effort bands per the PRD size rubric. Manager value scored against moving Bematist from spend analytics to outcome analytics.
+Effort bands per the PRD size rubric. Manager value scored against moving Bema from spend analytics to outcome analytics.
 
 | # | Signal | Feeds | Effort | Mgr Value | v1 Tier | Gate |
 |---|--------|-------|--------|-----------|---------|------|

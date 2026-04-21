@@ -57,7 +57,7 @@ export function WrappedCard({ data }: { data: CardData }) {
         <div className="wrapped-card-shine" aria-hidden />
         <div className="wrapped-card-inner">
           <div className="wrapped-card-top">
-            <span className="wrapped-card-brand">BEMATIST</span>
+            <span className="wrapped-card-brand">BEMA</span>
             <span className="wrapped-card-tier">{tier}</span>
           </div>
 
@@ -104,7 +104,7 @@ export function WrappedCard({ data }: { data: CardData }) {
       <div className="wrapped-card-caption">
         <span className="mk-sys">Live sample</span>
         <p>
-          Every bematist user gets a private card summarizing their coding-agent activity. Share it,
+          Every bema user gets a private card summarizing their coding-agent activity. Share it,
           keep it, burn after reading.
         </p>
       </div>

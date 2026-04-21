@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// Bematist — per-machine collector entrypoint.
+// Bema — per-machine collector entrypoint.
 //
 // This module is the `bun build --compile` target. It delegates to the CLI
 // so `bematist` and `bun src/index.ts` behave identically.

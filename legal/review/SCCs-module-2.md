@@ -1,12 +1,12 @@
-# Standard Contractual Clauses — Module Two (Controller to Processor) — Bematist managed-cloud
+# Standard Contractual Clauses — Module Two (Controller to Processor) — Bema managed-cloud
 
 **Template version:** 1.0.0-draft
 **Statutory basis:** Commission Implementing Decision (EU) 2021/914 of 4 June 2021 on standard contractual clauses for the transfer of personal data to third countries pursuant to Regulation (EU) 2016/679 of the European Parliament and of the Council. Module Two — Controller-to-Processor.
 **Companion documents:** Transfer Impact Assessment (TIA) per *Schrems II* (CJEU C-311/18) and EDPB Recommendations 01/2020. EU-US Data Privacy Framework (DPF) self-certification plan (Phase-1 posture; Phase-2 EU-region migration plan).
-**Maintained by:** Bematist Workstream I (Compliance).
-**Audience:** customer Data Protection Officer, Data Importer (Bematist managed-cloud entity), enterprise legal counsel.
+**Maintained by:** Bema Workstream I (Compliance).
+**Audience:** customer Data Protection Officer, Data Importer (Bema managed-cloud entity), enterprise legal counsel.
 
-> **Status — TEMPLATE.** This file is a processor-supplied pre-fill of the Commission SCCs Module Two with a parallel TIA and DPF self-certification plan. It is **not** a substitute for the official text published in the Official Journal of the European Union (OJ L 199, 7.6.2021). The official text governs in the event of any conflict; this pre-fill records the **deal-specific selections** Bematist makes when concluding SCCs with a Controller customer. Customer counsel reviews and signs.
+> **Status — TEMPLATE.** This file is a processor-supplied pre-fill of the Commission SCCs Module Two with a parallel TIA and DPF self-certification plan. It is **not** a substitute for the official text published in the Official Journal of the European Union (OJ L 199, 7.6.2021). The official text governs in the event of any conflict; this pre-fill records the **deal-specific selections** Bema makes when concluding SCCs with a Controller customer. Customer counsel reviews and signs.
 
 ---
 
@@ -18,16 +18,16 @@
 
 | Role | Pre-filled identity |
 |---|---|
-| **Data exporter (Controller)** | {{CONTROLLER_LEGAL_NAME}}, established at {{CONTROLLER_ADDRESS}}, represented by {{CONTROLLER_SIGNATORY}} ({{CONTROLLER_TITLE}}), Data Protection Officer {{DPO_NAME}} ({{DPO_EMAIL}}). Activities relevant to the transfer: engagement of Bematist managed-cloud for AI-engineering analytics over the Controller's developer workforce. |
-| **Data importer (Processor)** | Bematist legal entity providing managed-cloud services as identified in the executed Master Services Agreement; Data Protection contact: {{IMPORTER_DPO_EMAIL}}; supervisory contact: {{IMPORTER_PRIVACY_CONTACT}}. Activities relevant to the transfer: hosted ingestion, processing, storage, and dashboard rendering of Bematist telemetry per Section 1 of the Bematist Data Processing Agreement (DPA) and per Annex I.B below. |
+| **Data exporter (Controller)** | {{CONTROLLER_LEGAL_NAME}}, established at {{CONTROLLER_ADDRESS}}, represented by {{CONTROLLER_SIGNATORY}} ({{CONTROLLER_TITLE}}), Data Protection Officer {{DPO_NAME}} ({{DPO_EMAIL}}). Activities relevant to the transfer: engagement of Bema managed-cloud for AI-engineering analytics over the Controller's developer workforce. |
+| **Data importer (Processor)** | Bema legal entity providing managed-cloud services as identified in the executed Master Services Agreement; Data Protection contact: {{IMPORTER_DPO_EMAIL}}; supervisory contact: {{IMPORTER_PRIVACY_CONTACT}}. Activities relevant to the transfer: hosted ingestion, processing, storage, and dashboard rendering of Bema telemetry per Section 1 of the Bema Data Processing Agreement (DPA) and per Annex I.B below. |
 
-> **Self-host carve-out.** Where the Controller deploys Bematist as self-hosted infrastructure (the default mode per CLAUDE.md §"Product shape"), Bematist is **not** a data importer of any user telemetry — telemetry remains within the Controller's own infrastructure and no SCCs are required for that data flow. These SCCs apply only to the **managed-cloud** product mode.
+> **Self-host carve-out.** Where the Controller deploys Bema as self-hosted infrastructure (the default mode per CLAUDE.md §"Product shape"), Bema is **not** a data importer of any user telemetry — telemetry remains within the Controller's own infrastructure and no SCCs are required for that data flow. These SCCs apply only to the **managed-cloud** product mode.
 
 ### A.2 Description of the transfer
 
 > Annex I.B of the SCCs.
 
-- **Categories of data subjects.** Employees and contractors of the Controller who use Bematist-supported coding agents (Claude Code, Codex, Cursor, Continue.dev, GitHub Copilot, Cline/Roo/Kilo, OpenCode, post-Phase-2 Goose) on work machines.
+- **Categories of data subjects.** Employees and contractors of the Controller who use Bema-supported coding agents (Claude Code, Codex, Cursor, Continue.dev, GitHub Copilot, Cline/Roo/Kilo, OpenCode, post-Phase-2 Goose) on work machines.
 - **Categories of personal data.** At Tier B (the shipped default): pseudonymized engineer identifier (`HMAC(SSO_subject, tenant_salt)`), hashed session identifier, redacted event envelope (event type, hashed file path, error class, duration, prompt length without content, diff line-count without body), redacted abstract from the on-device Clio pipeline (Decision D27), tokens, cost, model identifier, timestamps. At Tier C (where opted-in per the three named exceptions of the DPA): raw user-prompt text, raw tool-result text, file paths, diff bodies. Forbidden-field rejection at ingest enforces server-side that fields outside this enumeration are 400-rejected.
 - **Special categories of personal data.** None by design. Secret-scanning + forbidden-field rejection block accidental capture. Where Art. 9 GDPR data is nonetheless captured (e.g., a developer pastes health data into a prompt), the Controller initiates Art. 33 breach response and the Importer cooperates per SCC Clause 8.6.
 - **Frequency of the transfer.** Continuous (event-stream).
@@ -42,14 +42,14 @@
 
 | Selection | Pre-filled |
 |---|---|
-| Selected supervisory authority | The supervisory authority of the EU/EEA Member State in which the Controller has its main establishment, or — where the Controller has multiple establishments and the transfer is to a single Bematist legal entity — the lead supervisory authority designated under GDPR Art. 56(1). |
+| Selected supervisory authority | The supervisory authority of the EU/EEA Member State in which the Controller has its main establishment, or — where the Controller has multiple establishments and the transfer is to a single Bema legal entity — the lead supervisory authority designated under GDPR Art. 56(1). |
 | Identification | {{COMPETENT_SA}} (e.g., CNIL for FR-led; Datenschutzkonferenz / BfDI for DE-led; Garante for IT-led; Datatilsynet for DK-led; Datainspektionen for SE-led; ICO for UK-only deployments under UK Addendum). |
 
 For UK-only Controller deployments, the **UK International Data Transfer Addendum** (issued by the ICO, in force from 21 March 2022) supplements these SCCs; the ICO is the competent authority.
 
 ### A.4 Technical and organisational measures
 
-> Annex II of the SCCs. Module Two requires the importer to describe the technical and organisational security measures it applies. Bematist managed-cloud applies the measures enumerated below; these are descriptive of the shipped product per CLAUDE.md and PRD §5 / §6 / §8.
+> Annex II of the SCCs. Module Two requires the importer to describe the technical and organisational security measures it applies. Bema managed-cloud applies the measures enumerated below; these are descriptive of the shipped product per CLAUDE.md and PRD §5 / §6 / §8.
 
 #### A.4.1 Pseudonymisation and encryption
 
@@ -138,7 +138,7 @@ The current sub-processor list is the DPA Sub-Processor Schedule (a Phase-2 deli
 
 ### A.8 Order of precedence within the contractual stack
 
-These SCCs are appended as Annex {{ANNEX_LETTER}} to the Bematist Data Processing Agreement and indirectly to the Master Services Agreement. In the event of conflict between these SCCs and the DPA / MSA, **these SCCs prevail** as to matters within their scope (Clause 5(b)).
+These SCCs are appended as Annex {{ANNEX_LETTER}} to the Bema Data Processing Agreement and indirectly to the Master Services Agreement. In the event of conflict between these SCCs and the DPA / MSA, **these SCCs prevail** as to matters within their scope (Clause 5(b)).
 
 ---
 
@@ -153,7 +153,7 @@ The Controller remains responsible for the final TIA, including any decision to 
 | Element | Description |
 |---|---|
 | Categories of data | Per A.2 above. Tier-B default minimises exposure; Tier-C only under three named exceptions. |
-| Recipient | Bematist managed-cloud Importer per A.1; sub-processors per A.5. |
+| Recipient | Bema managed-cloud Importer per A.1; sub-processors per A.5. |
 | Country of destination | {{IMPORTER_COUNTRY}} — Phase-1 posture: United States (under DPF, see Part C). Phase-2 posture: Frankfurt EU region available; Controller may select EU-region at provisioning time. |
 | Transfer means | Continuous event-stream over TLS 1.3. |
 
@@ -169,18 +169,18 @@ This step focuses on whether the third country's law and practice impinge on the
 
 The CJEU in *Schrems II* (judgment of 16 July 2020, Case C-311/18) found Section 702 of the Foreign Intelligence Surveillance Act (FISA 702) and Executive Order 12333 to be in conflict with Art. 47 of the Charter of Fundamental Rights of the EU as transposed via the GDPR Art. 45 adequacy mechanism. Following the Trans-Atlantic Data Privacy Framework Executive Order (EO 14086 of 7 October 2022), the Commission adopted the EU-US DPF Adequacy Decision on 10 July 2023, which established (i) signals-intelligence necessity-and-proportionality safeguards under EO 14086, (ii) the Data Protection Review Court (DPRC), and (iii) an annual joint review by the EU and US.
 
-**Risk profile of US surveillance laws relevant to Bematist data:**
+**Risk profile of US surveillance laws relevant to Bema data:**
 
-| Law / power | Bematist exposure | Mitigation |
+| Law / power | Bema exposure | Mitigation |
 |---|---|---|
-| FISA 702 ("electronic communications service providers") | Bematist managed-cloud may, depending on the legal classification of its services, fall within the FISA 702 ECSP definition. | Tier-B default minimises content; on-device Clio pipeline ensures prompt text never leaves the endpoint absent a banner; redaction at ingest replaces secrets and PII before storage; strong encryption at rest reduces the value of any compelled access. |
+| FISA 702 ("electronic communications service providers") | Bema managed-cloud may, depending on the legal classification of its services, fall within the FISA 702 ECSP definition. | Tier-B default minimises content; on-device Clio pipeline ensures prompt text never leaves the endpoint absent a banner; redaction at ingest replaces secrets and PII before storage; strong encryption at rest reduces the value of any compelled access. |
 | EO 12333 (signals intelligence outside the US) | Cross-border transit is in principle exposed. | TLS 1.3 transit; cert-pinning egress allowlist on the collector; Phase-2 Frankfurt EU region eliminates trans-Atlantic transit for opt-in customers. |
 | US CLOUD Act (Stored Communications Act §2713) | A US-headquartered Importer is subject to extraterritorial production orders. | DPA contains a CLOUD Act resistance clause: the Importer commits to (i) challenge orders that conflict with EU law; (ii) notify the Controller of any compelled disclosure to the maximum extent legally permitted; (iii) provide the Controller with sufficient information to seek injunctive relief. |
 | Section 215 PATRIOT Act ("business records") | Lapsed in 2020 (Section 215 expired 15 March 2020); no renewal. | No active exposure. |
 
 #### Phase-2 posture — Frankfurt EU region
 
-When the Controller selects the Phase-2 Frankfurt region at provisioning time, the data importer becomes the EU-region Bematist legal entity and processing infrastructure remains within the EU. Cross-border transfers under these SCCs cease to apply for that customer's tenant. Sub-processor sub-transfers (e.g., to a US-based LLM provider for the Insight Engine) remain subject to their own SCCs / DPF coverage.
+When the Controller selects the Phase-2 Frankfurt region at provisioning time, the data importer becomes the EU-region Bema legal entity and processing infrastructure remains within the EU. Cross-border transfers under these SCCs cease to apply for that customer's tenant. Sub-processor sub-transfers (e.g., to a US-based LLM provider for the Insight Engine) remain subject to their own SCCs / DPF coverage.
 
 #### Phase-1 posture — Other recipient jurisdictions
 
@@ -188,7 +188,7 @@ For non-US, non-EU/EEA Importers or sub-processors (where applicable), the Contr
 
 ### B.4 Step 4 — Identify and adopt supplementary measures
 
-Where Step 3 concludes that the third-country law impinges on the transfer tool's effectiveness, supplementary measures are adopted per EDPB Recommendations 01/2020 §52 et seq. Measures applied by Bematist managed-cloud (cumulative):
+Where Step 3 concludes that the third-country law impinges on the transfer tool's effectiveness, supplementary measures are adopted per EDPB Recommendations 01/2020 §52 et seq. Measures applied by Bema managed-cloud (cumulative):
 
 | Measure type | Concrete measure | Reference |
 |---|---|---|
@@ -206,17 +206,17 @@ Where Step 3 concludes that the third-country law impinges on the transfer tool'
 
 | Step | Procedure |
 |---|---|
-| Reassessment trigger | Material change to recipient law or practice (e.g., DPRC ruling adverse to a customer; enactment of a new surveillance law); change of recipient country; change of sub-processors; change of Bematist privacy tier default. |
+| Reassessment trigger | Material change to recipient law or practice (e.g., DPRC ruling adverse to a customer; enactment of a new surveillance law); change of recipient country; change of sub-processors; change of Bema privacy tier default. |
 | Reassessment cadence | At least annually; on each material change. |
 | Documentation | TIA outcome documented and retained by the Controller for the duration of the transfer plus three years. |
 
 ### B.6 Step 6 — Re-evaluation
 
-The Controller re-evaluates the TIA on the schedule above. Bematist supplies updated technical-and-organisational facts to support each re-evaluation.
+The Controller re-evaluates the TIA on the schedule above. Bema supplies updated technical-and-organisational facts to support each re-evaluation.
 
 ### B.7 TIA conclusion (template)
 
-> **Drafting note for the Controller DPO.** Customise per the Controller's specific deployment selections. The default text below assumes Phase-1 US Importer with Bematist managed-cloud applying the supplementary measures of Step 4.
+> **Drafting note for the Controller DPO.** Customise per the Controller's specific deployment selections. The default text below assumes Phase-1 US Importer with Bema managed-cloud applying the supplementary measures of Step 4.
 
 The Controller, having considered (i) the categories of data transferred (Tier-B default; minimised by design); (ii) the recipient's location and applicable surveillance laws (US — FISA 702, EO 12333, CLOUD Act); (iii) the supplementary measures applied by the Importer (Step 4); and (iv) the EU-US DPF as a complementary basis to the extent the recipient is DPF-self-certified, concludes that the transfer ensures a level of protection essentially equivalent to that guaranteed within the EU. The Controller will reassess this conclusion on the schedule of B.5 and will suspend transfers under Clause 14(f) if a material adverse change occurs.
 
@@ -230,9 +230,9 @@ For so long as the Importer or any sub-processor is established in the United St
 
 | Item | Pre-fill |
 |---|---|
-| Self-certifying entity | The US-incorporated Bematist legal entity that holds the managed-cloud Importer role. |
+| Self-certifying entity | The US-incorporated Bema legal entity that holds the managed-cloud Importer role. |
 | Coverage | All personal data processed by the entity within the scope of the executed DPA, on behalf of the Controller. |
-| HR data coverage | Bematist data is in-scope as HR-data under the DPF principles where the data subject is an employee of the Controller. The Importer self-certifies for HR data (additional principles apply). |
+| HR data coverage | Bema data is in-scope as HR-data under the DPF principles where the data subject is an employee of the Controller. The Importer self-certifies for HR data (additional principles apply). |
 | Annual recertification | Within 12 months of each previous certification anniversary, per the Department of Commerce administrative procedure. |
 
 ### C.2 Self-certification checklist
@@ -273,9 +273,9 @@ The DPF Adequacy Decision is subject to ongoing legal challenge. The Importer an
 
 ## Part D — Operational appendices
 
-### D.1 Mapping table — SCC clause to Bematist control
+### D.1 Mapping table — SCC clause to Bema control
 
-| SCC clause | Bematist control / commitment | Verification |
+| SCC clause | Bema control / commitment | Verification |
 |---|---|---|
 | Clause 1 (purpose) | DPA recital + Annex I.B above | DPA §1 |
 | Clause 2 (third-party beneficiaries) | Acknowledged; Clause 3 enumerates the third-party-beneficiary clauses | SCC text |
@@ -309,8 +309,8 @@ The parties reassess these SCCs and the TIA on any of the following events:
 - Material change to recipient-country law or practice affecting effectiveness of the transfer tool (per B.5).
 - Invalidation or suspension of the EU-US DPF Adequacy Decision.
 - Change of Importer or addition / removal of any sub-processor with cross-border processing.
-- Change of Bematist privacy-tier default.
-- Adoption by Bematist of a new technical or organisational measure relevant to Annex II.
+- Change of Bema privacy-tier default.
+- Adoption by Bema of a new technical or organisational measure relevant to Annex II.
 - Any data breach involving cross-border data flows.
 
 ### D.3 Document retention

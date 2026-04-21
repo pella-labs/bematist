@@ -105,7 +105,7 @@ export function OgFrame({ eyebrow, children }: { eyebrow: string; children: Reac
           >
             B
           </div>
-          <span style={{ color: OG_COLORS.ink, letterSpacing: "0.22em" }}>bematist</span>
+          <span style={{ color: OG_COLORS.ink, letterSpacing: "0.22em" }}>bema</span>
         </div>
         <span>{eyebrow}</span>
       </div>
@@ -130,7 +130,7 @@ export function OgFrame({ eyebrow, children }: { eyebrow: string; children: Reac
         }}
       >
         <span>open-source · apache 2.0</span>
-        <span>bematist.dev</span>
+        <span>bema.tools</span>
       </div>
     </div>
   );

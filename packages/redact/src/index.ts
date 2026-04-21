@@ -1,4 +1,4 @@
-// Bematist — @bematist/redact.
+// Bema — @bematist/redact.
 //
 // Sprint 2 surfaces:
 //   - RedactStage interface + noopRedactStage (stage.ts) — used by tests as a

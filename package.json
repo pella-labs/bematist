@@ -2,7 +2,7 @@
   "name": "bematist",
   "version": "0.0.0",
   "private": true,
-  "description": "Bematist — open-source AI-engineering analytics platform.",
+  "description": "Bema — open-source AI-engineering analytics platform.",
   "license": "Apache-2.0",
   "packageManager": "bun@1.3.4",
   "workspaces": [

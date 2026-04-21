@@ -7,7 +7,7 @@ import { assertAllowedChannel, sseResponse } from "../_lib/stream";
  * Hourly anomaly detector feed (Workstream H + A11 wire-up).
  *
  * Live source: the worker's `apps/worker/src/jobs/anomaly/pg_notifier.ts`
- * INSERTs into `alerts` and fires `pg_notify('bematist_alerts', '<row_json>')`.
+ * INSERTs into `alerts` and fires `pg_notify('bema_alerts', '<row_json>')`.
  * This route opens a dedicated Postgres connection, `LISTEN`s on that channel,
  * and pushes each payload — filtered to the caller's `tenant_id` — onto the
  * SSE stream. Hourly cadence (per CLAUDE.md §AI Rules — never per-session).
@@ -26,7 +26,7 @@ export const dynamic = "force-dynamic";
 // at deploy time with "Module not found: 'net'".
 export const runtime = "nodejs";
 
-const ANOMALY_CHANNEL = "bematist_alerts";
+const ANOMALY_CHANNEL = "bema_alerts";
 
 interface NotifyPayload {
   id: string;
@@ -45,7 +45,7 @@ export async function GET() {
   const ctx = await getSessionCtx();
   return sseResponse((push) => {
     const sql = postgres(
-      process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5433/bematist",
+      process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5433/bema",
       { max: 1, idle_timeout: 0, connect_timeout: 5 },
     );
 

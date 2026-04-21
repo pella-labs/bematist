@@ -2,7 +2,7 @@
 
 **Status:** skeleton (Sprint-1 Phase 4). Owner: **Workstream D — Jorge**.
 
-This is the **Plan-B ClickHouse writer** for Bematist ingest. It exists so we
+This is the **Plan-B ClickHouse writer** for Bema ingest. It exists so we
 have a ready-to-deploy escape hatch if the Bun `@clickhouse/client` path flakes
 during production load.
 

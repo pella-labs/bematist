@@ -1,10 +1,10 @@
-# Bematist — Project Conventions
+# Bema — Project Conventions
 
 > **Read this first.** These rules are LOCKED from `dev-docs/PRD.md` and `dev-docs/summary.md`. Do not change without updating those docs first and flagging the decision explicitly. The PRD is the consolidated union of five parallel research artifacts (see `dev-docs/archived/` for the originals); every rule here traces back to a numbered Decision (D1–D32) or locked constraint in that PRD.
 
 ## Independence statement (D1)
 
-Bematist is a **new, independent project**. It is NOT a feature of, child of, or extension to Pharos. Grammata (the NPM package) is a building block whose field-level parsers may be reused or superseded, but Pharos / Electron / `pharos-ade.com` are not product surfaces. Any appearance of `pharos link`, Pharos IPC, `pharos-ade.com` upload, or Pharos-hosted UI components in a plan or PR is a bug from a superseded research artifact — strip it.
+Bema is a **new, independent project**. It is NOT a feature of, child of, or extension to Pharos. Grammata (the NPM package) is a building block whose field-level parsers may be reused or superseded, but Pharos / Electron / `pharos-ade.com` are not product surfaces. Any appearance of `pharos link`, Pharos IPC, `pharos-ade.com` upload, or Pharos-hosted UI components in a plan or PR is a bug from a superseded research artifact — strip it.
 
 ## What this is
 
@@ -18,7 +18,7 @@ Open-source (Apache 2.0), self-hostable AI-engineering analytics platform. Auto-
 |---|---|---|---|
 | **Solo / embedded** | Individual dev, ≤5 engineers | Single binary bundling Postgres + TimescaleDB (NOT DuckDB — §6.3 G6 / challenger A4) | Local web at `:9873` |
 | **Team self-host** | Org 5–500 devs | `docker compose up` — web + ingest + worker + Postgres + ClickHouse + Redis | On-prem web; OAuth login |
-| **Team managed** | SaaS (Phase 4+) | Hosted multi-tenant, ClickHouse row policies | Hosted web at `bematist.dev` |
+| **Team managed** | SaaS (Phase 4+) | Hosted multi-tenant, ClickHouse row policies | Hosted web at `bema.tools` |
 
 Same agent binary runs in all three. `BEMATIST_ENDPOINT=<url>` is the only switch.
 
@@ -284,7 +284,7 @@ bematist serve --embedded
 
 Three layers, most-reliable-first:
 1. **`code_edit_tool.decision=accept` event** as primary attribution anchor (rebase/squash-resilient; accepted-hunk hash is the join key).
-2. **Opt-in `AI-Assisted:` commit trailer (D29)** — when enabled via `bematist policy set ai-assisted-trailer=on`, a local `post-commit` git hook appends `AI-Assisted: bematist-<sessionId>` to the last commit. GitHub App webhook parses trailer → joins session → outcome. Works across Claude Code, Codex, Cursor, Continue, Cline, Roo, Kilo; TOS-compatible for personal keys; sidesteps Copilot Metrics API org-gating.
+2. **Opt-in `AI-Assisted:` commit trailer (D29)** — when enabled via `bematist policy set ai-assisted-trailer=on`, a local `post-commit` git hook appends `AI-Assisted: bema-<sessionId>` to the last commit. GitHub App webhook parses trailer → joins session → outcome. Works across Claude Code, Codex, Cursor, Continue, Cline, Roo, Kilo; TOS-compatible for personal keys; sidesteps Copilot Metrics API org-gating.
 3. **`git log --merges` + `gh pr list --state merged`** + denormalized `pr_number` / `commit_sha` / `branch` onto ClickHouse `events` as fallback for ICs who haven't opted into the trailer.
 
 **GitHub App** (`bematist-github`) subscribes to `pull_request`, `pull_request_review`, `workflow_run`, `push`, `check_suite`. Validates webhook HMAC. Reconciliation cron: daily GET of last 7 days of PRs to detect missed webhooks.
@@ -431,13 +431,13 @@ BEMATIST_DRY_RUN                          # 1 = log what would be sent, send not
   - `presearch.md` — full pre-implementation research (Loops 0–6)
   - `research-brief.md` — Loop 0 competitive landscape
   - `challenger-loop2-critique.md` — Opus 4.6 Challenger critique that drove amendments
-  - `PRD.old.md` — earlier PRD (pre-consolidation; dates from before the Bematist rename)
+  - `PRD.old.md` — earlier PRD (pre-consolidation; dates from before the Bema rename)
   - `CLAUDE.old.md` — earlier CLAUDE.md (pre-consolidation; notably had Tier C as default — superseded by D7)
 - `WORKSTREAMS.md` — per-workstream README + contract index (contracts live in `contracts/01…09`)
 
 ## Related prior work (in this user's portfolio)
 
-- `~/dev/gauntlet/knowledge-graph` (= `@pella-labs/pinakes`) — proven multi-IDE npx install pattern, local SQLite + Drizzle, MCP server, privacy adversarial test culture. Pinakes uses Node 24 + pnpm; Bematist uses Bun. Don't share code; do mine patterns.
+- `~/dev/gauntlet/knowledge-graph` (= `@pella-labs/pinakes`) — proven multi-IDE npx install pattern, local SQLite + Drizzle, MCP server, privacy adversarial test culture. Pinakes uses Node 24 + pnpm; Bema uses Bun. Don't share code; do mine patterns.
 - `https://github.com/pella-labs/grammata` — local LLM session reader library. Building block, not the product. The collector adapters (Workstream B) replace and supersede grammata for the daemon's needs; field-level parsers may be reused.
 
 ## When in doubt

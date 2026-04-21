@@ -1,4 +1,4 @@
-# Bematist — multi-stage Dockerfile stub.
+# Bema — multi-stage Dockerfile stub.
 # Real app builds land with workstream owners in Sprint 1+.
 # Security rule (CLAUDE.md): crash dumps disabled via ulimit -c 0 + RLIMIT_CORE=0.
 

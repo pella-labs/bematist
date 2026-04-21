@@ -6,7 +6,7 @@ import { BILL_OF_RIGHTS, BILL_OF_RIGHTS_VERSION } from "./bill-of-rights";
 export const metadata: Metadata = {
   title: "Bill of Rights",
   description:
-    "The six guarantees Bematist makes to every engineer whose machine runs the collector.",
+    "The six guarantees Bema makes to every engineer whose machine runs the collector.",
 };
 
 export default function BillOfRightsPage() {
@@ -15,7 +15,7 @@ export default function BillOfRightsPage() {
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 py-12">
       <header className="flex flex-col gap-2">
         <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
-          Bematist · Bill of Rights ·{" "}
+          Bema · Bill of Rights ·{" "}
           <span data-version={BILL_OF_RIGHTS_VERSION}>{BILL_OF_RIGHTS_VERSION}</span>
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">What we promise every engineer</h1>

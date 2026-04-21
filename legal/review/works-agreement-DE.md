@@ -14,14 +14,14 @@ PRD §10.1, action E-1).**
 
 **Who uses this file.** The customer's `{{ARBEITGEBER}}` (employer) and
 `{{BETRIEBSRAT_VORSITZ}}` (works-council chair) execute this Betriebsvereinbarung
-covering a Bematist deployment. Bematist (the vendor) does NOT sign this
+covering a Bema deployment. Bema (the vendor) does NOT sign this
 agreement — the signatories are employer and Betriebsrat. Vendor-side
 commitments are covered by a separate DPA (Phase 2).
 
 **Statutory trigger.** **BetrVG §87(1) Nr. 6** — mandatory works-council
 co-determination on any technical system objectively suitable to monitor
 employee performance or behavior. Per EDPB Opinion 2/2017, intent is
-irrelevant. Bematist is suitable by construction; co-determination applies in
+irrelevant. Bema is suitable by construction; co-determination applies in
 German operations with a works council. Collateral: BDSG §26; DSGVO Art. 5 / 6
 / 13 / 15 / 17 / 20 / 25 / 30 / 35.
 
@@ -29,7 +29,7 @@ German operations with a works council. Collateral: BDSG §26; DSGVO Art. 5 / 6
 - `{{ARBEITGEBER}}` — employer legal name.
 - `{{BETRIEBSRAT_VORSITZ}}` — works-council chair name.
 - `{{EFFECTIVE_DATE}}` — ISO date (YYYY-MM-DD).
-- `{{PRODUCTION_VERSION}}` — Bematist release tag.
+- `{{PRODUCTION_VERSION}}` — Bema release tag.
 - `{{TENANT_ID}}` — tenant identifier.
 - `{{DPO_EMAIL}}` — customer DPO mailbox.
 - `{{ESCALATION_CONTACT}}` — vendor escalation contact.
@@ -54,7 +54,7 @@ controls.
 ================================================================================
 -->
 
-# Betriebsvereinbarung über den Einsatz von Bematist
+# Betriebsvereinbarung über den Einsatz von Bema
 
 **zwischen**
 
@@ -75,7 +75,7 @@ gemeinsam die "Parteien".
 ## §1 Präambel
 
 (1) Die Parteien schließen diese Betriebsvereinbarung im Hinblick auf die
-Einführung und Nutzung des technischen Systems "Bematist" (im Folgenden das
+Einführung und Nutzung des technischen Systems "Bema" (im Folgenden das
 "System") im Betrieb des Arbeitgebers. Das System dient der Erfassung, Auswertung
 und Darstellung von Nutzungsdaten KI-gestützter Entwicklungswerkzeuge
 (insbesondere Claude Code, Codex, Cursor, Continue.dev, GitHub Copilot und

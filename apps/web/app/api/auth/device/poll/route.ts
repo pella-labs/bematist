@@ -43,7 +43,7 @@ function randomSecret(): string {
 }
 
 function ingestPublicUrl(): string {
-  return process.env.BEMATIST_INGEST_PUBLIC_URL ?? "https://ingest.bematist.dev";
+  return process.env.BEMATIST_INGEST_PUBLIC_URL ?? "https://ingest.bema.tools";
 }
 
 interface DeviceCodeRow {

@@ -30,7 +30,7 @@ export function DemoVideo() {
   return (
     <section className="mk-demo-section" aria-label="Watch the demo">
       <div className="mk-section-header">
-        <span className="mk-mono mk-xs">00 / See Bematist in 30 seconds</span>
+        <span className="mk-mono mk-xs">00 / See Bema in 30 seconds</span>
       </div>
       <div className="mk-demo-wrap">
         <div className="mk-demo-lede">
@@ -57,7 +57,7 @@ export function DemoVideo() {
             loop
             playsInline
             preload="metadata"
-            aria-label="Bematist product demo"
+            aria-label="Bema product demo"
           />
           <div className="mk-demo-controls">
             <button

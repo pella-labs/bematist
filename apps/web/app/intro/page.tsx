@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 export const FOUNDERS_CALENDAR = "https://calendar.app.google/VrY8s3Ho5Ldd4Wb66";
 
 const TITLE =
-  "Build Bematist with us · 30-minute intro with the founding team";
+  "Build Bema with us · 30-minute intro with the founding team";
 const DESCRIPTION =
   "Measure AI-assisted engineering. See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack.";
 
@@ -20,13 +20,13 @@ export const metadata: Metadata = {
     url: "/intro",
     title: TITLE,
     description: DESCRIPTION,
-    siteName: "Bematist",
+    siteName: "Bema",
   },
   twitter: {
     card: "summary_large_image",
     title: TITLE,
     description: DESCRIPTION,
-    site: "@bematist_dev",
+    site: "@bema_dev",
   },
 };
 

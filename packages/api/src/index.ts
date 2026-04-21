@@ -1,4 +1,4 @@
-// @bematist/api — server-side data-access layer for the Bematist dashboard.
+// @bematist/api — server-side data-access layer for the Bema dashboard.
 //
 // Pure functions: each query/mutation takes a `Ctx` (auth + clients) and a
 // zod-validated input, returns a typed output. No HTTP transport lives here;

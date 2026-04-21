@@ -1,12 +1,12 @@
 # M4 — Team Demo Plan
 
-> **Goal:** every teammate runs the Bematist collector on their own machine, sees their real Claude Code activity in a shared dashboard, without us deploying to a public VM yet. This is the **dress rehearsal before prod deploy** — if this works, prod is the same stack on a real domain with TLS.
+> **Goal:** every teammate runs the Bema collector on their own machine, sees their real Claude Code activity in a shared dashboard, without us deploying to a public VM yet. This is the **dress rehearsal before prod deploy** — if this works, prod is the same stack on a real domain with TLS.
 > **Status:** drafted 2026-04-18 · not started
 > **Strategy:** three real code PRs to close the unknowns, then Tailscale-tunnel + seed + onboard.
 
 ## Why this milestone
 
-M3 shipped every code gate — perf, privacy, scoring, outcomes, adapters, compliance docs, policy-flip, signed-config validator. But the team still can't actually use Bematist because three load-bearing flows are either stubs or missing:
+M3 shipped every code gate — perf, privacy, scoring, outcomes, adapters, compliance docs, policy-flip, signed-config validator. But the team still can't actually use Bema because three load-bearing flows are either stubs or missing:
 
 1. **No real signup.** Better Auth's session-cookie validation landed in PR #56, but there's no signup route, no GitHub OAuth, no magic-link flow — a teammate who visits the dashboard can't log in without us editing the DB.
 2. **No real collector daemon.** `apps/collector/` has six adapter parsers but the entry point at `src/index.ts` has never been run against a live ingest. We don't know if the compiled binary actually polls, batches, retries, or persists an egress journal.
@@ -155,7 +155,7 @@ Expected: within 60s, `/dashboard/sessions` shows your last Claude Code sessions
 
 ### B.2 — Tailscale for multi-machine (~15min)
 
-1. Install Tailscale on Sebastian's Mac. Auth via the Bematist-Labs org account.
+1. Install Tailscale on Sebastian's Mac. Auth via the Bema-Labs org account.
 2. Note your tailnet IP (likely `100.x.y.z`) — this replaces `localhost` for teammates.
 3. Expose the docker-compose stack to the tailnet:
    - Ingest: `0.0.0.0:8000` (already the compose default)
@@ -213,7 +213,7 @@ If any of those fail, they become M4 follow-ups, not M5 blockers.
 | A.3 — Admin UI for keys | One PR, smallest | 2–3 hours |
 | B.1 → B.4 — run the rehearsal | manual, needs teammates available | ~2 hours including teammates' setup |
 | C — verify prod-readiness | manual checklist | 2 hours |
-| **Total to "team is using Bematist"** | — | **~1 full day if PRs run in parallel, ~2 days serial** |
+| **Total to "team is using Bema"** | — | **~1 full day if PRs run in parallel, ~2 days serial** |
 
 ---
 

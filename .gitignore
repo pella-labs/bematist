@@ -52,7 +52,7 @@ tests/perf/.ingest-bearer
 tests/perf/.dev-tenant-id
 tests/soak/out/
 
-# Local data (Bematist-specific)
+# Local data (Bema-specific)
 .bematist/
 *.sqlite
 *.sqlite-shm

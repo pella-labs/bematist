@@ -1,12 +1,12 @@
-# Shared Assessments SIG Lite 2024 — Bematist pre-fill
+# Shared Assessments SIG Lite 2024 — Bema pre-fill
 
 **Questionnaire version:** Shared Assessments SIG Lite 2024 (Standardized Information Gathering, Lite tier, 2024 release).
 **Template version:** 1.0.0-draft
-**Maintained by:** Bematist Workstream I (Compliance).
+**Maintained by:** Bema Workstream I (Compliance).
 **Audience:** third-party risk management (TPRM) teams; procurement security reviews.
-**Applicability:** Bematist **managed-cloud** product mode. Self-host deployments: most SIG Lite items become the Controller's responsibility on Controller infrastructure; Bematist's scope is the shipped binaries + supply-chain controls.
+**Applicability:** Bema **managed-cloud** product mode. Self-host deployments: most SIG Lite items become the Controller's responsibility on Controller infrastructure; Bema's scope is the shipped binaries + supply-chain controls.
 
-> **Status — DRAFT.** SIG Lite 2024 is a ~350-question subset of the full SIG (≈ 1,800 questions) organised across 18 control domains. Bematist pre-fills each question with (answer, compensating control if any, evidence pointer). Answers are processor-self-attested; independent audit (SOC 2 Type II) is a Phase-3 deliverable. Read alongside `CAIQ-v4.0.3.md`, `SCCs-module-2.md`, `DPIA.md`, `cyclone-dx-SBOM.md`, and `SOC2-prep.md`.
+> **Status — DRAFT.** SIG Lite 2024 is a ~350-question subset of the full SIG (≈ 1,800 questions) organised across 18 control domains. Bema pre-fills each question with (answer, compensating control if any, evidence pointer). Answers are processor-self-attested; independent audit (SOC 2 Type II) is a Phase-3 deliverable. Read alongside `CAIQ-v4.0.3.md`, `SCCs-module-2.md`, `DPIA.md`, `cyclone-dx-SBOM.md`, and `SOC2-prep.md`.
 
 > **Note on question numbering.** The 2024 release renumbered several controls compared with 2023. This pre-fill uses the 2024 scheme; where ambiguity is possible, the control intent is paraphrased in the question column.
 
@@ -16,7 +16,7 @@
 
 | Attribute | Value |
 |---|---|
-| Respondent | Bematist — managed-cloud legal entity per executed MSA |
+| Respondent | Bema — managed-cloud legal entity per executed MSA |
 | Service offering | AI-engineering analytics — event ingest, ClickHouse analytics, Postgres control-plane, Next.js dashboard |
 | Release tag at assessment | {{VERSION_LOGICIELLE}} |
 | Data classification handled | Internal / Confidential / Personal (GDPR scope); not Regulated Special (PCI / HIPAA) without an addendum |
@@ -217,7 +217,7 @@
 | # | Question | Answer | Evidence |
 |---|---|---|---|
 | P.1.1 | Is a privacy policy documented? | Y | `/privacy` (customer deployments); DPA |
-| P.1.2 | Is a Data Protection Officer appointed? | Y | {{DPO_NAME}} — customer-DPO for managed-cloud deployments; vendor-DPO contact at Bematist |
+| P.1.2 | Is a Data Protection Officer appointed? | Y | {{DPO_NAME}} — customer-DPO for managed-cloud deployments; vendor-DPO contact at Bema |
 | P.2.1 | Is a privacy-impact-assessment process in place? | Y | `legal/review/DPIA.md`; per-release re-review |
 | P.3.1 | Are data-subject rights procedures documented? | Y | `bematist export` + `bematist erase`; 7-day SLA |
 | P.4.1 | Are data-retention and disposal procedures documented? | Y | Per tier; partition-drop atomic |

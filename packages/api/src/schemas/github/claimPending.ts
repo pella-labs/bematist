@@ -4,7 +4,7 @@ import { z } from "zod";
  * PRD §17 B1 — admin claim of a `github_pending_installations` row.
  * Promotes the pending row into a tenant-bound `github_installations`
  * active row, records the webhook_secret / token refs the admin wants
- * Bematist to use, and marks the pending row claimed.
+ * Bema to use, and marks the pending row claimed.
  */
 export const ClaimPendingInstallationInput = z.object({
   pending_id: z.string().min(1),

@@ -3,7 +3,7 @@ import { getAuth } from "@/lib/auth";
 import { getDbClients } from "@/lib/db";
 
 /**
- * POST /api/card/star-repo — star pella-labs/bematist on behalf of the
+ * POST /api/card/star-repo — star pella-labs/bema on behalf of the
  * signed-in user. The GitHub access_token is stored server-side in
  * `better_auth_account.access_token` by Better Auth; the star goes out
  * from here rather than the browser.
@@ -13,7 +13,7 @@ import { getDbClients } from "@/lib/db";
  * repo is a 204 no-op on GitHub's side.
  */
 const OWNER = "pella-labs";
-const REPO = "bematist";
+const REPO = "bema";
 
 export async function POST(req: Request) {
   const session = await getAuth().api.getSession({ headers: req.headers });
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
       Authorization: `Bearer ${accessToken}`,
       Accept: "application/vnd.github+json",
       "Content-Length": "0",
-      "User-Agent": "bematist-card-flow",
+      "User-Agent": "bema-card-flow",
     },
   });
 

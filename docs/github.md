@@ -8,7 +8,7 @@
 
 ## Summary
 
-GitHub becomes Bematist's first authoritative repo-attribution backend AND the primary outcome-signal source for manager-facing analytics. The plan is not only "persist repo identity and gate reads" — it captures the high-value GitHub signals (CI green-on-first-push, deployments, PR size, review timing, security alerts, CODEOWNERS ownership) that move Bematist from spend analytics to outcome analytics.
+GitHub becomes Bema's first authoritative repo-attribution backend AND the primary outcome-signal source for manager-facing analytics. The plan is not only "persist repo identity and gate reads" — it captures the high-value GitHub signals (CI green-on-first-push, deployments, PR size, review timing, security alerts, CODEOWNERS ownership) that move Bema from spend analytics to outcome analytics.
 
 Scope: full v1 feature set. Demo-path scaffolding exists to prove wire-up today, but demo-path stubs are **never** shipped to production — production paths fail closed.
 
@@ -34,7 +34,7 @@ Scope: full v1 feature set. Demo-path scaffolding exists to prove wire-up today,
 - Tracked-repo scope applies to manager/team-facing surfaces: Sessions, Outcomes, Insights, Clusters, `/repos/:id`.
 - IC-private `/me` and direct session detail are NOT auto-filtered by tracked-repo scope (by design — engineer sees their own work end-to-end).
 - `branch` is stored and shown; branch-only never makes a session eligible.
-- "Connected GitHub org" = an active GitHub App installation persisted against a Bematist org; never an in-memory token cache.
+- "Connected GitHub org" = an active GitHub App installation persisted against a Bema org; never an in-memory token cache.
 - Repo identity survives rename/transfer; `full_name` is display-only.
 - Production boot fails closed if any GitHub persistence wiring is missing (Postgres-backed stores, installation state, repo registry resolver, reconciliation runner).
 - Webhook HMAC (`X-Hub-Signature-256`) validation is mandatory; a missing/invalid signature → 401 + audit log entry. CLAUDE.md Outcome Attribution §8.5 is load-bearing here.
@@ -62,10 +62,10 @@ We are not standing up a tunnel for a one-off demo. Path is: build and validate 
 **Production cutover (same code, no demo flag):**
 
 1. Deploy the branch to the production ingest URL (already has public HTTPS — that is the only "tunnel" we need).
-2. Register the production GitHub App against the real Bematist GitHub org with scopes: `pull_request`, `pull_request_review`, `push`, `check_suite`, `workflow_run`, `deployment`, `deployment_status`, `repository`, read-only metadata, read-only contents (CODEOWNERS), read-only workflows, read-only secret-scanning-alerts.
+2. Register the production GitHub App against the real Bema GitHub org with scopes: `pull_request`, `pull_request_review`, `push`, `check_suite`, `workflow_run`, `deployment`, `deployment_status`, `repository`, read-only metadata, read-only contents (CODEOWNERS), read-only workflows, read-only secret-scanning-alerts.
 3. Point the App's webhook URL at the production ingest endpoint; store webhook secret in the platform secrets store (never in `.env` for prod).
 4. Install on the dev org's repos. Fail-closed boot guarantees persistence is healthy before traffic arrives; the initial `GET /installation/repositories` sync populates the registry; webhooks start landing.
-5. Watch `bematist_github_webhook_received_total{status}` and `bematist_github_reconciliation_gap_seconds` for the first 24h. Replay any missed deliveries with `POST /api/admin/github/redeliver`.
+5. Watch `bema_github_webhook_received_total{status}` and `bema_github_reconciliation_gap_seconds` for the first 24h. Replay any missed deliveries with `POST /api/admin/github/redeliver`.
 
 **No demo-path stubs.** No `BEMATIST_DEMO_MODE` flag, no hard-coded repo hash, no HMAC bypass, no in-memory store fallback. Local dev uses real Postgres + captured fixtures; production uses real Postgres + real webhooks. Same code, same paths, no special-casing.
 
@@ -81,7 +81,7 @@ We are not standing up a tunnel for a one-off demo. Path is: build and validate 
 
 ### Product model
 
-- First-class GitHub connection per Bematist org (1:N — one Bematist org can connect multiple GitHub installations; one GitHub installation belongs to exactly one Bematist org).
+- First-class GitHub connection per Bema org (1:N — one Bema org can connect multiple GitHub installations; one GitHub installation belongs to exactly one Bema org).
 - Tracked-repo scope at org level with two modes:
   - `all`: every discovered repo in every connected installation is in scope.
   - `selected`: only explicitly included repos are in scope.
@@ -105,7 +105,7 @@ We are not standing up a tunnel for a one-off demo. Path is: build and validate 
 ### GitHub tenancy and repo registry
 
 - Persist GitHub installation metadata in a new org-scoped control-plane table `github_installations`:
-  - `bematist_org_id`, `installation_id`, `github_org_id`, `github_org_login`, `status` (`active` | `suspended` | `uninstalled`), `installed_at`, `suspended_at`, `uninstalled_at`, `last_repo_sync_at`, `webhook_secret_ref` (pointer into the secrets store, never plaintext), `app_id`, `permissions_snapshot` (JSON).
+  - `bema_org_id`, `installation_id`, `github_org_id`, `github_org_login`, `status` (`active` | `suspended` | `uninstalled`), `installed_at`, `suspended_at`, `uninstalled_at`, `last_repo_sync_at`, `webhook_secret_ref` (pointer into the secrets store, never plaintext), `app_id`, `permissions_snapshot` (JSON).
 - Persisted installation record IS the definition of "connected GitHub org". No in-memory token cache survives restart.
 - Installation lifecycle:
   - `installation.created` → upsert + initial repo sync (see below)
@@ -189,7 +189,7 @@ If profiling shows the IN-list join is slow, we introduce a ClickHouse dictionar
 
 ### Outcome signal capture (the core upgrade)
 
-These signals are what turn Bematist from "spend analytics" into "outcome analytics." Each is its own parser + Postgres cache + scoring-layer feed. All signals default ON — US market focus, no per-signal capture-flag plumbing in v1. (If/when an EU customer surfaces, an env-flagged kill-switch can be layered in without schema change; the EU compliance surface is being managed by a separate workstream.)
+These signals are what turn Bema from "spend analytics" into "outcome analytics." Each is its own parser + Postgres cache + scoring-layer feed. All signals default ON — US market focus, no per-signal capture-flag plumbing in v1. (If/when an EU customer surfaces, an env-flagged kill-switch can be layered in without schema change; the EU compliance surface is being managed by a separate workstream.)
 
 1. **First-push-green-rate** — from `check_suite.conclusion` joined to `push.head_commit.id`. Metric: of AI-assisted sessions that produced a push, what fraction had all check suites green on the first completion? Feeds `outcome_quality_v1` sub-score. `bematist outcomes` CLI surfaces this per-session.
 2. **Deployment-as-outcome** — from `deployment` + `deployment_status` events. Metric: deployed-per-dollar, time-to-first-deploy after merge, deploy success rate. Feeds `outcome_quality_v1`. Many orgs deploy via GitHub Environments; for those that don't, the signal is absent and the metric is suppressed (never zero-filled).
@@ -197,7 +197,7 @@ These signals are what turn Bematist from "spend analytics" into "outcome analyt
 4. **Review timing + churn** — from `pull_request_review` events. Metrics: time-to-first-review, time-to-first-approval, `changes_requested` count per PR. Earlier cleaner signal than the 24h revert penalty in `useful_output_v1` (D12). Feeds `outcome_quality_v1`.
 5. **Issue-to-merge cycle time** — parse `closes #123` / `fixes #456` / `resolves #789` from PR body on `pull_request.opened` and `pull_request.edited`. No separate issue-tracker adapter needed. Feeds a new `issue_cycle_time` insight tile.
 6. **CODEOWNERS-derived ownership** — parse `.github/CODEOWNERS` (or `CODEOWNERS` / `docs/CODEOWNERS`) on `push` to the default branch. Gives automatic team/directory ownership without manager configuration. Feeds the 2×2 manager view's cohort stratification.
-7. **Security-alert correlation** — from `secret_scanning_alert`, `code_scanning_alert`, `dependabot_alert` events. Metric: did an AI-assisted session introduce a flagged finding? Direct trust/safety signal that reinforces Bematist's privacy posture. Suppressed for orgs without alert scope granted.
+7. **Security-alert correlation** — from `secret_scanning_alert`, `code_scanning_alert`, `dependabot_alert` events. Metric: did an AI-assisted session introduce a flagged finding? Direct trust/safety signal that reinforces Bema's privacy posture. Suppressed for orgs without alert scope granted.
 8. **Copilot Metrics API** (if `copilot` scope granted) — pulls org-level Copilot usage data on a daily cron. Gives an upper-bound baseline for the Copilot adapter that's scheduled for Phase 2 in CLAUDE.md — Phase 2 implementation replaces this but doesn't invalidate it.
 
 Each signal has a contract test against a captured webhook fixture in `packages/fixtures/github/<event>/`. Each feeds scoring via an additive `packages/scoring/src/v1/signals/github_*.ts` module with a versioned `_v1` name.
@@ -214,7 +214,7 @@ Each signal has a contract test against a captured webhook fixture in `packages/
 
 ### Derived linkage surface (`session_repo_links`)
 
-- Keyed by `(bematist_org_id, session_id, repo_id_hash, match_reason)`.
+- Keyed by `(bema_org_id, session_id, repo_id_hash, match_reason)`.
 - `match_reason ∈ {direct_repo, commit_link, pr_link, deployment_link}`.
 - Optional evidence fields: `commit_sha`, `pr_number`, `deployment_id`, `branch`.
 - `computed_at`, `stale_at` (null = fresh).
@@ -234,7 +234,7 @@ Each signal has a contract test against a captured webhook fixture in `packages/
 - One canonical inclusion rule for manager-facing repo-scoped surfaces:
   - include a session if any `session_repo_links` row matches a tracked repo by `direct_repo`, `commit_link`, `pr_link`, or `deployment_link`.
 - Branch-only excluded from v1 eligibility (but branch still surfaces as evidence).
-- Eligibility is materialized on `session_repo_eligibility(bematist_org_id, session_id, effective_at)`, recomputed from `session_repo_links` on trigger, not on every read.
+- Eligibility is materialized on `session_repo_eligibility(bema_org_id, session_id, effective_at)`, recomputed from `session_repo_links` on trigger, not on every read.
 
 ### Read path and settings APIs
 
@@ -266,7 +266,7 @@ Each signal has a contract test against a captured webhook fixture in `packages/
   - `BEMATIST_DEMO_MODE=1` is present (demo mode is rejected in prod builds)
 - Runtime health: separate liveness check for webhook-processor lag (alert if `MAX(now() - webhook.received_at) > 5min` with a backlog > 100).
 - Logging makes the failure mode explicit: missing-config errors are structured, redacted of secrets, and distinct from runtime errors.
-- Metrics (Prometheus): `bematist_github_webhook_received_total{event,status}`, `bematist_github_reconciliation_gap_seconds`, `bematist_github_token_refresh_failures_total`, `bematist_github_installation_status{status}`.
+- Metrics (Prometheus): `bema_github_webhook_received_total{event,status}`, `bema_github_reconciliation_gap_seconds`, `bema_github_token_refresh_failures_total`, `bema_github_installation_status{status}`.
 
 ## Edge cases and invariants
 
@@ -279,7 +279,7 @@ Enumerated so `/research-and-plan` can validate coverage.
 - **Fork PRs** → base repo is tracked; head repo is not auto-tracked.
 - **Installation suspension** vs **uninstall** vs **deleted** — three distinct webhooks, three distinct states.
 - **Webhook secret rotation** — dual-accept 10-min window.
-- **Repo transfer across GitHub orgs** — `provider_repo_id` stable; `github_org_id` changes; Bematist `org_id` binding re-evaluated with admin confirmation.
+- **Repo transfer across GitHub orgs** — `provider_repo_id` stable; `github_org_id` changes; Bema `org_id` binding re-evaluated with admin confirmation.
 - **Repo rename** — `full_name` changes, `provider_repo_id` stable, `repo_id_hash` stable, history intact.
 - **Repo archive** / **delete** / **restore** — lifecycle fields capture all three; restored repos re-enter eligibility.
 - **5000-repo initial sync** — paginated, rate-limit-aware, backgrounded, surfaced in UI.
@@ -377,7 +377,7 @@ Ordered by expected impact on v1.
 - GitHub-first attribution/settings pass, not a removal of existing provider-agnostic schema.
 - Admin-only writes for tracked-repo settings; RBAC unchanged.
 - Stable GitHub repo identity = provider repo ID, not repo full name.
-- "Connected GitHub org" = active persisted GitHub App installation bound to a Bematist org.
+- "Connected GitHub org" = active persisted GitHub App installation bound to a Bema org.
 - Direct repo attribution may require additive local git-context enrichment.
 - Raw ClickHouse event columns remain best-effort acceleration/evidence fields; `session_repo_links` is authoritative for manager-facing repo relevance.
 - `/research-and-plan` will ratify scope and score upgrades by effort before significant coding begins. Demo-path and red-green test infrastructure can start in parallel.

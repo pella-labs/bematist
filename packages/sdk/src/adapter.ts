@@ -109,7 +109,7 @@ export interface Logger {
 // ────────────────────────────────────────────────────────────────────────────
 // VS Code generic extension seam (A5) — additive.
 //
-// Community authors who want to ship a Bematist adapter for their VS Code
+// Community authors who want to ship a Bema adapter for their VS Code
 // extension implement `VSCodeExtensionHandler` and register it via
 // `registerVSCodeExtension()`. The generic adapter walks every discovered VS
 // Code profile (Code / Code - Insiders / VSCodium / Cursor-VSC-lineage) and

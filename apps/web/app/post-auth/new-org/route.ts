@@ -205,7 +205,7 @@ async function resolveGithubLogin(
     const res = await fetch(`https://api.github.com/user/${accountId}`, {
       headers: {
         Accept: "application/vnd.github+json",
-        "User-Agent": "bematist-new-org-flow",
+        "User-Agent": "bema-new-org-flow",
       },
     });
     if (!res.ok) return null;

@@ -1,7 +1,7 @@
 # TICKET-ID Primer: [Title]
 
 **For:** Fresh Claude Code / Cursor session resuming Jorge's work
-**Project:** bematist (DevMetrics) — open-source AI-engineering analytics
+**Project:** bema (DevMetrics) — open-source AI-engineering analytics
 **Workstream:** D (Storage & Schema) or H-AI (AI pipeline)
 **Date:** [YYYY-MM-DD]
 **Previous work:** [Prerequisites]. See `docs/DEVLOG.md`.

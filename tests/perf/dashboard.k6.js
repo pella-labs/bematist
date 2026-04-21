@@ -1,5 +1,5 @@
 /*
- * Bematist dashboard perf harness.
+ * Bema dashboard perf harness.
  *
  * Run with:   k6 run tests/perf/dashboard.k6.js
  *             K6_GATE_M2=0 k6 run tests/perf/dashboard.k6.js   # warn-only

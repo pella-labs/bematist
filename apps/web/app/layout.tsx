@@ -14,29 +14,29 @@ import "./globals.css";
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ??
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
-  "https://bematist.dev";
+  "https://bema.tools";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Bematist",
-    template: "%s · Bematist",
+    default: "Bema",
+    template: "%s · Bema",
   },
   description:
     "Measure agentic engineering output. See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack.",
-  applicationName: "Bematist",
+  applicationName: "Bema",
   openGraph: {
     type: "website",
-    siteName: "Bematist",
+    siteName: "Bema",
     locale: "en_US",
     url: "/",
-    title: "Bematist · Measure agentic engineering output",
+    title: "Bema · Measure agentic engineering output",
     description:
       "See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Bematist · Measure agentic engineering output",
+    title: "Bema · Measure agentic engineering output",
     description:
       "See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack.",
   },

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-const TITLE = "Install Bematist · Self-host the analytics platform for AI-assisted engineering";
+const TITLE = "Install Bema · Self-host the analytics platform for AI-assisted engineering";
 const DESCRIPTION =
   "Stand up the backend with docker compose, drop the signed collector on every engineer's machine, and open the dashboard. Apache 2.0, runs offline, five minutes to first event.";
 
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: TITLE,
     description: DESCRIPTION,
-    site: "@bematist_dev",
+    site: "@bema_dev",
   },
 };
 
@@ -27,7 +27,7 @@ const PREREQS = [
   {
     name: "Docker 24+ with compose",
     detail:
-      "The self-host stack is three containers — Postgres, ClickHouse, Redis — behind the Bematist web and ingest services. One `compose up -d` is the whole backend.",
+      "The self-host stack is three containers — Postgres, ClickHouse, Redis — behind the Bema web and ingest services. One `compose up -d` is the whole backend.",
   },
   {
     name: "macOS, Linux, or Windows + WSL2",
@@ -75,7 +75,7 @@ const MODES: Mode[] = [
     label: "Managed",
     title: "We run it (coming)",
     body: "Hosted multi-tenant with SSO and SCIM. Tenant isolation at the database row level. Same binary on every engineer's machine — it just points at our endpoint instead of yours.",
-    command: "BEMATIST_ENDPOINT=https://ingest.bematist.dev",
+    command: "BEMATIST_ENDPOINT=https://ingest.bema.tools",
     who: "When you'd rather not run infra",
   },
 ];
@@ -313,9 +313,9 @@ export default function InstallPage() {
           ))}
         </div>
         <p className="mk-license-body" style={{ padding: "24px" }} id="prereqs">
-          Bematist never asks for your model API keys and never proxies model requests. It reads the
+          Bema never asks for your model API keys and never proxies model requests. It reads the
           session files that your agents already write to disk. If your engineers are running any of
-          the agents below, the data is already on their machines — Bematist just makes it legible.
+          the agents below, the data is already on their machines — Bema just makes it legible.
         </p>
       </section>
 
@@ -365,13 +365,13 @@ export default function InstallPage() {
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">
-              curl -fsSL https://get.bematist.dev/compose.yml {">"} docker-compose.yml
+              curl -fsSL https://get.bema.tools/compose.yml {">"} docker-compose.yml
             </span>
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">
-              curl -fsSL https://get.bematist.dev/env.example {">"} .env
+              curl -fsSL https://get.bema.tools/env.example {">"} .env
             </span>
           </div>
           <div className="mk-term-comment">
@@ -416,21 +416,21 @@ export default function InstallPage() {
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">
-              gh release download --repo pella-labs/bematist --pattern 'bematist-darwin-arm64'
+              gh release download --repo pella-labs/bema --pattern 'bematist-darwin-arm64'
             </span>
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">
               cosign verify-blob bematist-darwin-arm64 --certificate-identity-regexp
-              'pella-labs/bematist' --certificate-oidc-issuer
+              'pella-labs/bema' --certificate-oidc-issuer
               'https://token.actions.githubusercontent.com'
             </span>
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">
-              sudo install bematist-darwin-arm64 /usr/local/bin/bematist
+              sudo install bematist-darwin-arm64 /usr/local/bin/bema
             </span>
           </div>
           <br />
@@ -439,22 +439,22 @@ export default function InstallPage() {
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">brew install pella-labs/bematist/bematist</span>
+            <span className="mk-term-cmd">brew install pella-labs/bema/bema</span>
             <span className="mk-term-comment">&nbsp;&nbsp;# macOS</span>
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">sudo apt install bematist</span>
+            <span className="mk-term-cmd">sudo apt install bema</span>
             <span className="mk-term-comment">&nbsp;&nbsp;# Debian / Ubuntu</span>
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">yay -S bematist</span>
+            <span className="mk-term-cmd">yay -S bema</span>
             <span className="mk-term-comment">&nbsp;&nbsp;# Arch / AUR</span>
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">choco install bematist</span>
+            <span className="mk-term-cmd">choco install bema</span>
             <span className="mk-term-comment">&nbsp;&nbsp;# Windows via WSL2</span>
           </div>
           <br />
@@ -463,7 +463,7 @@ export default function InstallPage() {
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">curl -fsSL https://get.bematist.dev/install.sh | sh</span>
+            <span className="mk-term-cmd">curl -fsSL https://get.bema.tools/install.sh | sh</span>
           </div>
         </div>
       </section>
@@ -662,7 +662,7 @@ export default function InstallPage() {
           <li>
             <span style={{ color: "var(--mk-ink)" }}>Self-host on your infra</span>
             <span className="mk-muted">
-              Docker compose stack — Postgres, ClickHouse, Redis — behind Bematist's web and ingest.
+              Docker compose stack — Postgres, ClickHouse, Redis — behind Bema's web and ingest.
             </span>
           </li>
           <li>
@@ -686,7 +686,7 @@ export default function InstallPage() {
           <li>
             <span style={{ color: "var(--mk-ink)" }}>Local egress journal</span>
             <span className="mk-muted">
-              Every byte that leaves the machine is logged on the machine. Tailed with `bematist
+              Every byte that leaves the machine is logged on the machine. Tailed with `bema
               audit`.
             </span>
           </li>
@@ -779,7 +779,7 @@ export default function InstallPage() {
             <span className="mk-feature-index">01</span>
             <h3 style={{ fontSize: 18 }}>Doctor reports crash dumps enabled</h3>
             <p>
-              Bematist disables crash dumps on the collector process by design — they can contain
+              Bema disables crash dumps on the collector process by design — they can contain
               whatever was in memory. If doctor complains, another hardening script on your system
               re-enabled them. Fix that first; we refuse to run otherwise.
             </p>

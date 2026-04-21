@@ -37,7 +37,7 @@
 {"id":"id-037","label":"identifying","category":"ticket_id","text":"Reopen INFRA-90210 and link it to the parent epic about cost tracking."}
 {"id":"id-038","label":"identifying","category":"firstlast_name","text":"Add Pat O'Brien to the reviewers list on the auth refactor."}
 {"id":"id-039","label":"identifying","category":"home_path","text":"Resolve permissions on /home/build/.cache/pip after switching CI runners."}
-{"id":"id-040","label":"identifying","category":"proper_noun_company","text":"Migrating from Postgres on Heroku to a Supabase project owned by Bematist."}
+{"id":"id-040","label":"identifying","category":"proper_noun_company","text":"Migrating from Postgres on Heroku to a Supabase project owned by Bema."}
 {"id":"id-041","label":"identifying","category":"git_sha","text":"Cherry-pick 1234567890abcdef1234567890abcdef12345678 into the release branch."}
 {"id":"id-042","label":"identifying","category":"ip","text":"Developer needs to allowlist 203.0.113.55 in the egress firewall to fetch the manifest."}
 {"id":"id-043","label":"identifying","category":"firstlast_name","text":"Emily Chen asked whether the rollback playbook still works after the etcd upgrade."}

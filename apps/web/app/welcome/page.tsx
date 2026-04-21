@@ -22,19 +22,19 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export const metadata: Metadata = {
-  title: "Welcome to Bematist",
-  description: "Install the Bematist collector and authorize your first device.",
+  title: "Welcome to Bema",
+  description: "Install the Bema collector and authorize your first device.",
   robots: { index: false, follow: false },
 };
 
-const INGEST_PUBLIC_URL = process.env.BEMATIST_INGEST_PUBLIC_URL ?? "https://ingest.bematist.dev";
+const INGEST_PUBLIC_URL = process.env.BEMATIST_INGEST_PUBLIC_URL ?? "https://ingest.bema.tools";
 
 export default async function WelcomePage() {
   return (
     <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 py-16">
       <header className="flex flex-col gap-3">
         <Badge tone="neutral">Setup</Badge>
-        <h1 className="text-3xl font-semibold tracking-tight">Welcome to Bematist</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Welcome to Bema</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           Your org is live. Install the collector on any machine running Claude Code, Codex, or
           Continue.dev — it ships tokens and outcomes to{" "}
@@ -107,10 +107,10 @@ export default async function WelcomePage() {
   );
 }
 
-// bematist.dev/install.sh 302s to the GH release `latest/download/install.sh`
+// bema.tools/install.sh 302s to the GH release `latest/download/install.sh`
 // so this resolves to the newest signed script + binary. `bematist login`
 // auto-starts the daemon as of v0.1.7 — no separate `bematist start` needed.
-const INSTALL_LINE = "curl -fsSL https://bematist.dev/install.sh | sh && bematist login";
+const INSTALL_LINE = "curl -fsSL https://bema.tools/install.sh | sh && bematist login";
 
 function InstallCard() {
   return (

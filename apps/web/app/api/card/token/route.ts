@@ -78,7 +78,7 @@ async function resolveGithubUsernameForUser(userId: string): Promise<string | nu
     const res = await fetch(`https://api.github.com/user/${accountId}`, {
       headers: {
         Accept: "application/vnd.github+json",
-        "User-Agent": "bematist-card-flow",
+        "User-Agent": "bema-card-flow",
       },
     });
     if (!res.ok) return null;

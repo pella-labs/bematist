@@ -3,11 +3,11 @@
 import { CardMount } from "../../(marketing)/_card/CardMount";
 import { DEMO_CARD } from "../../(marketing)/_card/demo-data";
 
-// `bematist.dev/intro` is a 302 to the founders' Google Calendar booking
+// `bema.tools/intro` is a 302 to the founders' Google Calendar booking
 // page. Going through our own domain keeps the slide URL short + memorable
 // and lets us swap the destination later without re-printing anything.
-const SCHEDULE_LINK = "https://bematist.dev/intro";
-const CARD_LINK = "https://bematist.dev/card";
+const SCHEDULE_LINK = "https://bema.tools/intro";
+const CARD_LINK = "https://bema.tools/card";
 
 /**
  * Closing slide — unified "let's build this together" pitch.
@@ -26,7 +26,7 @@ export function Slide12ClosingCta(_props: { totalPages: number }) {
 
       <div className="chrome-row">
         <div className="wordmark">
-          <span className="wordmark-dot" /> bematist
+          <span className="wordmark-dot" /> bema
         </div>
         <div className="chrome-right">05 / GET STARTED</div>
       </div>
@@ -102,13 +102,13 @@ export function Slide12ClosingCta(_props: { totalPages: number }) {
           >
             <CtaButton
               href={CARD_LINK}
-              label="bematist.dev/card →"
+              label="bema.tools/card →"
               description="For Claude Code and Codex users: claim your card today."
               tone="warm"
             />
             <CtaButton
               href={SCHEDULE_LINK}
-              label="bematist.dev/intro →"
+              label="bema.tools/intro →"
               description="For engineering leaders: map bottlenecks, workflows, and AI spend."
               tone="ghost"
             />

@@ -61,7 +61,7 @@ export function SignInClient({ showBillOfRightsLink = false }: { showBillOfRight
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle className="text-base text-foreground">Sign in to Bematist</CardTitle>
+        <CardTitle className="text-base text-foreground">Sign in to Bema</CardTitle>
         <p className="text-xs text-muted-foreground">
           We only read your GitHub email + handle. No repo access.
         </p>

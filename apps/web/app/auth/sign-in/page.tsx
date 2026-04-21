@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Sign in",
-  description: "Sign in to Bematist",
+  description: "Sign in to Bema",
   robots: { index: false, follow: false },
 };
 

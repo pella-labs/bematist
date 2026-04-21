@@ -28,7 +28,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export const metadata: Metadata = {
-  title: "Join on Bematist",
+  title: "Join on Bema",
   robots: { index: false, follow: false },
 };
 
@@ -54,7 +54,7 @@ export default async function JoinInvitePage({ params }: { params: Promise<{ tok
             className="flex cursor-pointer items-center gap-2 text-sm font-semibold tracking-tight"
           >
             <span aria-hidden className="inline-block h-6 w-6 rounded-md bg-primary" />
-            bematist
+            bema
           </Link>
         </header>
 
@@ -86,7 +86,7 @@ function ActiveInvite({
           You're invited
         </span>
         <h1 className="text-2xl font-semibold tracking-tight">
-          Join <span className="text-primary">{preview.org_name}</span> on Bematist
+          Join <span className="text-primary">{preview.org_name}</span> on Bema
         </h1>
         <p className="text-sm text-muted-foreground">
           {alreadySignedIn ? (
@@ -156,13 +156,13 @@ function InactiveInvite({
           href="/auth/sign-in"
           className="inline-flex w-full cursor-pointer items-center justify-center rounded-md border border-border bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
         >
-          Sign in to Bematist →
+          Sign in to Bema →
         </Link>
         <Link
           href="/home"
           className="cursor-pointer text-center text-xs text-muted-foreground hover:text-foreground"
         >
-          Or learn more about Bematist
+          Or learn more about Bema
         </Link>
       </div>
     </div>

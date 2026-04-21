@@ -1,6 +1,6 @@
 # GitHub webhook fixtures — Phase G0
 
-These fixtures are the golden wire-shape payloads the Bematist ingest
+These fixtures are the golden wire-shape payloads the Bema ingest
 server will ever see from `github.com`. They drive:
 
 1. The fixture-redaction CI gate (`fixtures.redaction.test.ts`) — merge

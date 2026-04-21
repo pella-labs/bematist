@@ -1,4 +1,4 @@
-# Bematist worker — Railway deployment Dockerfile (single-stage).
+# Bema worker — Railway deployment Dockerfile (single-stage).
 #
 # Mirrors apps/ingest/Dockerfile — single-stage so Bun workspace symlinks
 # stay intact. The worker has no public HTTP surface; it runs:

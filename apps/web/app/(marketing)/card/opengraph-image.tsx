@@ -9,7 +9,7 @@ import {
 } from "../_og/chrome";
 
 export const runtime = "nodejs";
-export const alt = "Bematist — generate your eight share cards from local agent history";
+export const alt = "Bema — generate your eight share cards from local agent history";
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 

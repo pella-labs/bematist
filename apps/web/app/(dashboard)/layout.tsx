@@ -8,12 +8,12 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const ctx = await getSessionCtx();
   const isAdmin = ctx.role === "admin";
   return (
-    <div className="bematist-dashboard">
+    <div className="bema-dashboard">
       <div className="dash-shell">
         <aside aria-label="Primary navigation" className="dash-side">
           <Link href="/home" className="dash-wordmark">
             <span className="dash-wordmark-dot" aria-hidden />
-            bematist
+            bema
           </Link>
           <DashboardNav isAdmin={isAdmin} />
         </aside>

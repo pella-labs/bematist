@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// Bematist — CLI entrypoint (bun --compile target). Binary name: bematist.
+// Bema — CLI entrypoint (bun --compile target). Binary name: bematist.
 // Commands per CLAUDE.md §Commands:
 //   status, audit --tail, dry-run, doctor, serve, --version.
 import { runAudit } from "./commands/audit";
@@ -76,7 +76,7 @@ function printHelp() {
   console.log(`bematist ${COLLECTOR_VERSION} — collector CLI
 
 Commands:
-  login               Authorize this machine against your Bematist org (browser flow)
+  login               Authorize this machine against your Bema org (browser flow)
   logout              Clear credentials from ~/.bematist/config.env
   start               Install + start the OS service (launchd / systemd / schtasks)
   stop                Stop the OS service

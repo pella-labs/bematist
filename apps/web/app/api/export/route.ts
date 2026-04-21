@@ -12,7 +12,7 @@ import { getSessionCtx } from "@/lib/session";
  *
  * With `?include_prompts=true`:
  *   Requires a 2FA challenge completed within the last 5 minutes (tracked via
- *   an `x-bematist-2fa` header populated by the client after WebAuthn/TOTP)
+ *   an `x-bema-2fa` header populated by the client after WebAuthn/TOTP)
  *   AND writes an `audit_log` row per exported session with prompt content.
  *   Today the 2FA plumbing is not wired — the route returns 403 with a
  *   `2fa_required` code so the UI renders the right prompt flow.
@@ -61,10 +61,10 @@ export async function GET(req: NextRequest) {
   const ctx = await getSessionCtx();
 
   if (includePrompts) {
-    // 2FA verification hook — the real implementation reads `x-bematist-2fa`,
+    // 2FA verification hook — the real implementation reads `x-bema-2fa`,
     // looks up the challenge token in Redis with a 5-minute TTL, and requires
     // the actor role to be `auditor` OR the IC owner of the session.
-    const twoFa = req.headers.get("x-bematist-2fa");
+    const twoFa = req.headers.get("x-bema-2fa");
     if (!twoFa) {
       return NextResponse.json(
         {
@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
   const scrubbed = includePrompts ? rows : rows.map((r) => stripPromptColumns(r));
 
   const csv = writeCsv(columns, scrubbed);
-  const filename = `bematist-sessions-${new Date().toISOString().slice(0, 10)}.csv`;
+  const filename = `bema-sessions-${new Date().toISOString().slice(0, 10)}.csv`;
 
   return new Response(csv, {
     headers: {

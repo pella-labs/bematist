@@ -49,7 +49,7 @@ export function DashboardShot() {
           <span style={{ background: "#ff5f57" }} />
           <span style={{ background: "#febc2e" }} />
           <span style={{ background: "#28c840" }} />
-          <span className="dot-url">bematist.yourteam.internal / summary</span>
+          <span className="dot-url">bema.yourteam.internal / summary</span>
         </div>
         <div className="mk-dashboard-shot-body">
           <div className="mk-dashboard-shot-side">

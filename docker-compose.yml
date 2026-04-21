@@ -1,4 +1,4 @@
-# Bematist — production self-host template (team tenant default).
+# Bema — production self-host template (team tenant default).
 # Reference: CLAUDE.md §"Self-host stack (prod template)" and §"Product shape (D2)".
 #
 # Environment is driven by a .env file. Use .env.example as the template.

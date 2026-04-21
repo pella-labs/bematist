@@ -1,4 +1,4 @@
-# Bematist — Contracts
+# Bema — Contracts
 
 > **Read this first.** These contracts are a **guide, not a lock.** They exist so 4 people can build in parallel without colliding at the seams. If a contract turns out to be wrong, change it — just ping the consumers in the PR. The goal is unblocking work, not freezing the design.
 >

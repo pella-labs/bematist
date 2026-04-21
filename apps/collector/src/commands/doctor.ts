@@ -2,7 +2,7 @@
 //
 // Checks:
 //   - ulimit -c (core dumps) — must be 0 per CLAUDE.md §Security Rules.
-//     Bematist's hardening sets RLIMIT_CORE=0 at startup, but if the binary
+//     Bema's hardening sets RLIMIT_CORE=0 at startup, but if the binary
 //     is run under a parent that re-raised it, we report the real effective
 //     value.
 //   - Ingest reachability — GET /health.
@@ -39,7 +39,7 @@ async function binarySha256(path: string): Promise<string | null> {
 }
 
 async function reachable(endpoint: string): Promise<Check> {
-  // Bematist ingest exposes `/healthz` (not `/health`) per contract 02 and
+  // Bema ingest exposes `/healthz` (not `/health`) per contract 02 and
   // apps/ingest/src/server.ts. Probing the wrong path returned 404 and
   // rendered a misleading "warn" on every doctor run — M4 Windows
   // onboarding flagged the spurious warning.

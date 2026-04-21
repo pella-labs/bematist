@@ -1,9 +1,9 @@
-# Bematist — Product Requirements Document
+# Bema — Product Requirements Document
 
 **Version:** 1.0 (consolidated from `research.md`, `analytics_gpt_research.md`, `PRD-team-visibility.md`, `analytics-research/PRD.md`, `analytics-research/dev-docs/*`, `grammata-audit.md`)
 **Date:** 2026-04-16
 **Status:** Draft for implementation. Locks the union of the best ideas across five parallel research artifacts.
-**Independence statement:** Bematist is a new, independent project. It is **not** a feature of, child of, or extension to Pharos. Grammata (the NPM package) is a building block whose field-level parsers may be reused or superseded, but Pharos / Electron / `pharos-ade.com` are not product surfaces.
+**Independence statement:** Bema is a new, independent project. It is **not** a feature of, child of, or extension to Pharos. Grammata (the NPM package) is a building block whose field-level parsers may be reused or superseded, but Pharos / Electron / `pharos-ade.com` are not product surfaces.
 
 ---
 
@@ -45,7 +45,7 @@
 |---|---|---|---|
 | **Solo / embedded** | Individual dev, ≤5 engineers | Single binary bundling Postgres+TimescaleDB (not DuckDB — single-writer contention in challenger A4) | Local web at `:9873` |
 | **Team self-host** | Org 5–500 devs | `docker compose up` — web + ingest + worker + Postgres + ClickHouse + Redis | On-prem web; OAuth login |
-| **Team managed** | SaaS tier (Phase 4+) | Hosted multi-tenant, ClickHouse row-policy isolation | Hosted web at `bematist.dev` |
+| **Team managed** | SaaS tier (Phase 4+) | Hosted multi-tenant, ClickHouse row-policy isolation | Hosted web at `bema.tools` |
 
 The same agent binary runs in all three. `BEMATIST_ENDPOINT=<url>` is the only switch.
 
@@ -788,7 +788,7 @@ Anchor: Helicone $20 / seat, Langfuse $59 / mo, Anthropic Team Analytics bundled
 
 | # | Decision | Rationale |
 |---|---|---|
-| D1 | Bematist is an independent project, not tied to Pharos. | Brief; repeated plan mistake in 3 of 5 research artifacts. |
+| D1 | Bema is an independent project, not tied to Pharos. | Brief; repeated plan mistake in 3 of 5 research artifacts. |
 | D2 | Single-binary agent runs in solo / team-self-host / team-hosted modes. | Preserves solo UX on day 1; env-var flip unlocks team mode; no re-install. |
 | D3 | Claude Code capture = native OTEL first, hook/JSONL fallback. | Anthropic ships the schema; avoid drift. |
 | D4 | Other agents = adapter shims re-emitting a canonical event schema. | Single downstream storage shape. |
@@ -819,7 +819,7 @@ Anchor: Helicone $20 / seat, Langfuse $59 / mo, Anthropic Team Analytics bundled
 | D29 | **`AI-Assisted:` commit trailer is the primary opt-in attribution path for non-Claude-Code agents.** Avoids Copilot Metrics API (org-gated, Enterprise-only). Local `post-commit` git hook appends `AI-Assisted: bematist-<sessionId>`. | Works across every agent (Claude, Codex, Cursor, Continue, Cline, Roo, Kilo); TOS-compatible for personal API keys; merges cleanly with `code_edit_tool.decision=accept` primary anchor + `git log` fallback. |
 | D30 | **Developer notified of every manager view of their drill page.** Audit-log row at view-time; daily digest by default; immediate-notification option available. | Transparency primitive from `analytics-product/`. Turns the audit-log from a passive compliance artifact into an active trust signal for the IC. |
 | D31 | **Promote-to-Playbook is the Team Impact subscore's primary signal source.** | Without explicit positive-consent sharing, Team Impact has no non-gameable data source. Clio clustering + IC promotion + downstream cluster-membership adoption closes the loop. |
-| D32 | **Single name everywhere: Bematist.** Repo, product, CLI binary, env var prefix, package namespace, UI copy, marketing. Workspace packages `@bematist/*`; CLI binary `bematist`; env var prefix `BEMATIST_*`; ingest bearer prefix `bm_`. One name across every surface, no translation layer. Also: ClickHouse events engine is `ReplacingMergeTree(ts)` not `(client_event_id)` — CH 25+ rejects UUID as the version column. See `contracts/09-storage-schema.md` Changelog. | Single name removes a class of bugs (which surface gets which name) and matches the GitHub URL contributors see. An earlier version of this entry split repo slug from product name; that split was superseded 2026-04-16 and retrofitted across docs and code. |
+| D32 | **Single name everywhere: Bema.** Repo, product, CLI binary, env var prefix, package namespace, UI copy, marketing. Workspace packages `@bematist/*`; CLI binary `bematist`; env var prefix `BEMATIST_*`; ingest bearer prefix `bm_`. One name across every surface, no translation layer. Also: ClickHouse events engine is `ReplacingMergeTree(ts)` not `(client_event_id)` — CH 25+ rejects UUID as the version column. See `contracts/09-storage-schema.md` Changelog. | Single name removes a class of bugs (which surface gets which name) and matches the GitHub URL contributors see. An earlier version of this entry split repo slug from product name; that split was superseded 2026-04-16 and retrofitted across docs and code. |
 
 ---
 

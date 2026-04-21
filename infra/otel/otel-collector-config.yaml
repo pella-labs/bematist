@@ -1,4 +1,4 @@
-# Bematist — OTel collector config (OPTIONAL sidecar; CLAUDE.md Arch Rule #5).
+# Bema — OTel collector config (OPTIONAL sidecar; CLAUDE.md Arch Rule #5).
 # Default deploys skip this and hit Bun ingest's native OTLP HTTP receiver on :4318.
 receivers:
   otlp:

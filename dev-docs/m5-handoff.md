@@ -1,4 +1,4 @@
-# Bematist — M5 handoff (2026-04-19)
+# Bema — M5 handoff (2026-04-19)
 
 Resume-from-clean-context doc for the cutover work that started the night of 2026-04-18. Read `m5-installer-plan.md` for the primary tomorrow-deliverable (Level 1 / 2 / 3 installer work). This file gives you everything to pick up where we left off.
 

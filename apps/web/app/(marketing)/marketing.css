@@ -1,9 +1,9 @@
 /*
  * Marketing-only design tokens + primitives.
- * Scoped under .bematist-marketing so the dashboard theme is untouched.
+ * Scoped under .bema-marketing so the dashboard theme is untouched.
  */
 
-.bematist-marketing {
+.bema-marketing {
   --mk-bg: #0a0b0d;
   --mk-bg-elevated: #111316;
   --mk-bg-terminal: #050506;
@@ -25,19 +25,19 @@
   -webkit-font-smoothing: antialiased;
 }
 
-.bematist-marketing h1,
-.bematist-marketing h2,
-.bematist-marketing h3,
-.bematist-marketing h4 {
+.bema-marketing h1,
+.bema-marketing h2,
+.bema-marketing h3,
+.bema-marketing h4 {
   font-weight: 500;
   letter-spacing: -0.03em;
 }
 
-.bematist-marketing .mk-mono {
+.bema-marketing .mk-mono {
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
 }
 
-.bematist-marketing .mk-sys {
+.bema-marketing .mk-sys {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-size: 10px;
   text-transform: uppercase;
@@ -45,7 +45,7 @@
   color: var(--mk-ink-muted);
 }
 
-.bematist-marketing .mk-h3 {
+.bema-marketing .mk-h3 {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-size: 12px;
   font-weight: 500;
@@ -55,24 +55,24 @@
   margin: 32px 0 12px;
 }
 
-.bematist-marketing .mk-xs {
+.bema-marketing .mk-xs {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
-.bematist-marketing .mk-muted {
+.bema-marketing .mk-muted {
   color: var(--mk-ink-muted);
 }
-.bematist-marketing .mk-accent {
+.bema-marketing .mk-accent {
   color: var(--mk-accent);
 }
-.bematist-marketing .mk-warm {
+.bema-marketing .mk-warm {
   color: var(--mk-warm);
 }
 
 /* ─── Container + section scaffolding ───────────────────────────── */
-.bematist-marketing .mk-container {
+.bema-marketing .mk-container {
   max-width: 1200px;
   margin: 0 auto;
   border-left: 1px solid var(--mk-border);
@@ -82,21 +82,21 @@
   z-index: 10;
 }
 
-.bematist-marketing .mk-section-header {
+.bema-marketing .mk-section-header {
   padding: var(--mk-grid-size);
   border-bottom: 1px solid var(--mk-border);
 }
 
-.bematist-marketing .mk-section-header .mk-mono {
+.bema-marketing .mk-section-header .mk-mono {
   color: var(--mk-ink-muted);
 }
 
-.bematist-marketing section {
+.bema-marketing section {
   border-bottom: 1px solid var(--mk-border);
 }
 
 /* ─── Nav ───────────────────────────────────────────────────────── */
-.bematist-marketing .mk-nav {
+.bema-marketing .mk-nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -110,7 +110,7 @@
   z-index: 50;
 }
 
-.bematist-marketing .mk-wordmark {
+.bema-marketing .mk-wordmark {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-weight: 700;
   font-size: 16px;
@@ -122,13 +122,13 @@
   gap: 10px;
 }
 
-.bematist-marketing .mk-nav-links {
+.bema-marketing .mk-nav-links {
   display: flex;
   align-items: center;
   gap: 24px;
 }
 
-.bematist-marketing .mk-nav-link {
+.bema-marketing .mk-nav-link {
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
   font-size: 12px;
   color: var(--mk-ink-muted);
@@ -139,12 +139,12 @@
   transition: color 0.15s;
 }
 
-.bematist-marketing .mk-nav-link:hover {
+.bema-marketing .mk-nav-link:hover {
   color: var(--mk-ink);
 }
 
 /* ─── Buttons ──────────────────────────────────────────────────── */
-.bematist-marketing .mk-btn {
+.bema-marketing .mk-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -160,39 +160,39 @@
   border: 1px solid transparent;
 }
 
-.bematist-marketing .mk-btn-primary {
+.bema-marketing .mk-btn-primary {
   background: var(--mk-accent);
   color: var(--mk-bg);
 }
 
-.bematist-marketing .mk-btn-primary:hover {
+.bema-marketing .mk-btn-primary:hover {
   background: var(--mk-ink);
 }
 
-.bematist-marketing .mk-btn-ghost {
+.bema-marketing .mk-btn-ghost {
   background: transparent;
   color: var(--mk-ink);
   border-color: var(--mk-border);
 }
 
-.bematist-marketing .mk-btn-ghost:hover {
+.bema-marketing .mk-btn-ghost:hover {
   border-color: var(--mk-border-hover);
   background: var(--mk-bg-elevated);
 }
 
-.bematist-marketing .mk-btn-icon {
+.bema-marketing .mk-btn-icon {
   gap: 8px;
   padding: 0 14px;
 }
 
-.bematist-marketing .mk-btn-icon-label {
+.bema-marketing .mk-btn-icon-label {
   font-size: inherit;
   letter-spacing: inherit;
   text-transform: inherit;
 }
 
 /* ─── Hero ─────────────────────────────────────────────────────── */
-.bematist-marketing .mk-hero {
+.bema-marketing .mk-hero {
   position: relative;
   overflow: hidden;
   padding: 120px var(--mk-grid-size) 96px;
@@ -200,7 +200,7 @@
   isolation: isolate;
 }
 
-.bematist-marketing .mk-hero-grid {
+.bema-marketing .mk-hero-grid {
   position: relative;
   z-index: 2;
   display: grid;
@@ -211,20 +211,20 @@
   margin: 0 auto;
 }
 
-.bematist-marketing .mk-hero-content {
+.bema-marketing .mk-hero-content {
   position: relative;
   z-index: 2;
   max-width: 640px;
 }
 
-.bematist-marketing .mk-hero h1 {
+.bema-marketing .mk-hero h1 {
   font-size: clamp(36px, 5vw, 64px);
   line-height: 1.05;
   letter-spacing: -0.04em;
   margin-bottom: 28px;
 }
 
-.bematist-marketing .mk-hero p {
+.bema-marketing .mk-hero p {
   font-size: 18px;
   color: var(--mk-ink-muted);
   margin-bottom: 40px;
@@ -232,13 +232,13 @@
   line-height: 1.55;
 }
 
-.bematist-marketing .mk-hero-actions {
+.bema-marketing .mk-hero-actions {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
 }
 
-.bematist-marketing .mk-hero-canvas {
+.bema-marketing .mk-hero-canvas {
   position: absolute;
   inset: 0;
   z-index: 0;
@@ -259,7 +259,7 @@
 }
 
 /* ─── Hero card slot — holds the interactive demo card ────────── */
-.bematist-marketing .mk-hero-card-slot {
+.bema-marketing .mk-hero-card-slot {
   position: relative;
   width: 100%;
   /* Matches .card-root[data-compact] min-height so the hero grid row
@@ -269,21 +269,21 @@
 }
 
 /* ─── Adapters table ───────────────────────────────────────────── */
-.bematist-marketing .mk-table {
+.bema-marketing .mk-table {
   width: 100%;
   border-collapse: collapse;
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
   font-size: 13px;
 }
 
-.bematist-marketing .mk-table th,
-.bematist-marketing .mk-table td {
+.bema-marketing .mk-table th,
+.bema-marketing .mk-table td {
   padding: 16px var(--mk-grid-size);
   text-align: left;
   border-bottom: 1px solid var(--mk-border);
 }
 
-.bematist-marketing .mk-table th {
+.bema-marketing .mk-table th {
   color: var(--mk-ink-muted);
   font-weight: 400;
   text-transform: uppercase;
@@ -291,11 +291,11 @@
   letter-spacing: 0.05em;
 }
 
-.bematist-marketing .mk-table tbody tr:hover td {
+.bema-marketing .mk-table tbody tr:hover td {
   background: var(--mk-bg-elevated);
 }
 
-.bematist-marketing .mk-badge {
+.bema-marketing .mk-badge {
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
@@ -306,27 +306,27 @@
   letter-spacing: 0.04em;
 }
 
-.bematist-marketing .mk-badge.full {
+.bema-marketing .mk-badge.full {
   border-color: var(--mk-accent);
   color: var(--mk-accent);
 }
-.bematist-marketing .mk-badge.est {
+.bema-marketing .mk-badge.est {
   border-color: var(--mk-ink-muted);
   color: var(--mk-ink-muted);
 }
-.bematist-marketing .mk-badge.warn {
+.bema-marketing .mk-badge.warn {
   border-color: var(--mk-warm);
   color: var(--mk-warm);
 }
 
 /* ─── Metric block ─────────────────────────────────────────────── */
-.bematist-marketing .mk-metric {
+.bema-marketing .mk-metric {
   display: grid;
   grid-template-columns: 1fr 1fr;
   border-bottom: 1px solid var(--mk-border);
 }
 
-.bematist-marketing .mk-metric-visual {
+.bema-marketing .mk-metric-visual {
   padding: calc(var(--mk-grid-size) * 2) var(--mk-grid-size);
   border-right: 1px solid var(--mk-border);
   display: flex;
@@ -335,7 +335,7 @@
   gap: 16px;
 }
 
-.bematist-marketing .mk-metric-value {
+.bema-marketing .mk-metric-value {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-size: clamp(56px, 7vw, 96px);
   line-height: 1;
@@ -343,7 +343,7 @@
   letter-spacing: -0.04em;
 }
 
-.bematist-marketing .mk-metric-label {
+.bema-marketing .mk-metric-label {
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
   font-size: 13px;
   color: var(--mk-ink-muted);
@@ -351,17 +351,17 @@
   letter-spacing: 0;
 }
 
-.bematist-marketing .mk-metric-label strong {
+.bema-marketing .mk-metric-label strong {
   color: var(--mk-ink);
   font-weight: 500;
 }
 
-.bematist-marketing .mk-metric-details {
+.bema-marketing .mk-metric-details {
   padding: calc(var(--mk-grid-size) * 2) var(--mk-grid-size);
   background: var(--mk-bg-elevated);
 }
 
-.bematist-marketing .mk-kv {
+.bema-marketing .mk-kv {
   list-style: none;
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
   font-size: 12px;
@@ -374,41 +374,41 @@
   column-gap: 48px;
 }
 
-.bematist-marketing .mk-kv li {
+.bema-marketing .mk-kv li {
   display: contents;
 }
-.bematist-marketing .mk-kv li > * {
+.bema-marketing .mk-kv li > * {
   padding: 10px 0;
   border-bottom: 1px dashed var(--mk-border);
 }
-.bematist-marketing .mk-kv li:last-child > * {
+.bema-marketing .mk-kv li:last-child > * {
   border-bottom: none;
 }
-.bematist-marketing .mk-kv li span:first-child {
+.bema-marketing .mk-kv li span:first-child {
   color: var(--mk-ink-muted);
 }
 
 @media (max-width: 640px) {
-  .bematist-marketing .mk-kv {
+  .bema-marketing .mk-kv {
     grid-template-columns: 1fr;
     row-gap: 0;
   }
-  .bematist-marketing .mk-kv li > *:first-child {
+  .bema-marketing .mk-kv li > *:first-child {
     padding-bottom: 2px;
     border-bottom: none;
   }
-  .bematist-marketing .mk-kv li > *:last-child {
+  .bema-marketing .mk-kv li > *:last-child {
     padding-top: 0;
   }
 }
 
 /* ─── Privacy tiers ────────────────────────────────────────────── */
-.bematist-marketing .mk-tiers {
+.bema-marketing .mk-tiers {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
 }
 
-.bematist-marketing .mk-tier {
+.bema-marketing .mk-tier {
   padding: calc(var(--mk-grid-size) * 1.5) var(--mk-grid-size);
   border-right: 1px solid var(--mk-border);
   display: flex;
@@ -417,38 +417,38 @@
   min-height: 220px;
 }
 
-.bematist-marketing .mk-tier:last-child {
+.bema-marketing .mk-tier:last-child {
   border-right: none;
 }
 
-.bematist-marketing .mk-tier.active {
+.bema-marketing .mk-tier.active {
   background: var(--mk-accent-muted);
   box-shadow: inset 0 0 0 1px var(--mk-accent);
 }
 
-.bematist-marketing .mk-tier h3 {
+.bema-marketing .mk-tier h3 {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-size: 20px;
   letter-spacing: -0.02em;
 }
 
-.bematist-marketing .mk-tier-label {
+.bema-marketing .mk-tier-label {
   font-size: 12px;
   color: var(--mk-ink-muted);
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
 }
-.bematist-marketing .mk-tier.active .mk-tier-label {
+.bema-marketing .mk-tier.active .mk-tier-label {
   color: var(--mk-accent);
 }
 
-.bematist-marketing .mk-tier p {
+.bema-marketing .mk-tier p {
   color: var(--mk-ink-muted);
   font-size: 13px;
   flex: 1;
 }
 
 /* ─── Brand monolith (ring + monogram) ─────────────────────────── */
-.bematist-marketing .mk-monolith {
+.bema-marketing .mk-monolith {
   position: relative;
   padding: 120px var(--mk-grid-size);
   display: flex;
@@ -458,7 +458,7 @@
   min-height: 720px;
 }
 
-.bematist-marketing .mk-monolith-stage {
+.bema-marketing .mk-monolith-stage {
   position: relative;
   width: 100%;
   max-width: 720px;
@@ -475,13 +475,13 @@
   min-height: 0;
 }
 
-.bematist-marketing .mk-monogram-frame {
+.bema-marketing .mk-monogram-frame {
   position: absolute;
   inset: 18%;
   z-index: 2;
 }
 
-.bematist-marketing .mk-ring {
+.bema-marketing .mk-ring {
   position: absolute;
   inset: 8%;
   z-index: 1;
@@ -490,7 +490,7 @@
   animation: mk-ring-spin 120s linear infinite;
 }
 
-.bematist-marketing .mk-ring-outer {
+.bema-marketing .mk-ring-outer {
   animation-direction: reverse;
   animation-duration: 180s;
   opacity: 0.35;
@@ -506,7 +506,7 @@
   }
 }
 
-.bematist-marketing .mk-monolith-copy {
+.bema-marketing .mk-monolith-copy {
   position: absolute;
   bottom: 48px;
   left: 50%;
@@ -518,28 +518,28 @@
 }
 
 /* ─── Split lists (bill of rights / not) ───────────────────────── */
-.bematist-marketing .mk-split {
+.bema-marketing .mk-split {
   display: grid;
   grid-template-columns: 1fr 1fr;
 }
 
-.bematist-marketing .mk-split-col {
+.bema-marketing .mk-split-col {
   padding: calc(var(--mk-grid-size) * 1.5) var(--mk-grid-size);
 }
 
-.bematist-marketing .mk-split-col.right {
+.bema-marketing .mk-split-col.right {
   border-left: 1px solid var(--mk-border);
   background: var(--mk-bg-elevated);
 }
 
-.bematist-marketing .mk-numbered {
+.bema-marketing .mk-numbered {
   list-style: none;
   counter-reset: mk-counter;
   margin: 24px 0 0;
   padding: 0;
 }
 
-.bematist-marketing .mk-numbered li {
+.bema-marketing .mk-numbered li {
   position: relative;
   padding-left: 40px;
   margin-bottom: 18px;
@@ -547,7 +547,7 @@
   line-height: 1.5;
 }
 
-.bematist-marketing .mk-numbered li::before {
+.bema-marketing .mk-numbered li::before {
   counter-increment: mk-counter;
   content: "0" counter(mk-counter);
   position: absolute;
@@ -558,47 +558,47 @@
   color: var(--mk-ink-muted);
 }
 
-.bematist-marketing .mk-numbered.mk-not li {
+.bema-marketing .mk-numbered.mk-not li {
   color: var(--mk-ink-muted);
   text-decoration: line-through;
 }
 
-.bematist-marketing .mk-numbered.mk-not li::before {
+.bema-marketing .mk-numbered.mk-not li::before {
   color: var(--mk-ink-faint);
   text-decoration: none;
 }
 
 /* ─── Terminal block ───────────────────────────────────────────── */
-.bematist-marketing .mk-terminal-wrap {
+.bema-marketing .mk-terminal-wrap {
   padding: calc(var(--mk-grid-size) * 1.5) var(--mk-grid-size);
   background: var(--mk-bg-terminal);
 }
 
-.bematist-marketing .mk-terminal {
+.bema-marketing .mk-terminal {
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
   font-size: 13px;
   color: var(--mk-ink-muted);
   line-height: 1.9;
 }
 
-.bematist-marketing .mk-term-prompt {
+.bema-marketing .mk-term-prompt {
   color: var(--mk-accent);
   margin-right: 10px;
 }
-.bematist-marketing .mk-term-cmd {
+.bema-marketing .mk-term-cmd {
   color: var(--mk-ink);
 }
-.bematist-marketing .mk-term-comment {
+.bema-marketing .mk-term-comment {
   color: #5c6370;
 }
 
 /* ─── AI Leverage Score grid ───────────────────────────────────── */
-.bematist-marketing .mk-score-grid {
+.bema-marketing .mk-score-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
 }
 
-.bematist-marketing .mk-score-cell {
+.bema-marketing .mk-score-cell {
   padding: calc(var(--mk-grid-size) * 1.5) var(--mk-grid-size);
   border-right: 1px solid var(--mk-border);
   border-bottom: 1px solid var(--mk-border);
@@ -608,11 +608,11 @@
   min-height: 200px;
 }
 
-.bematist-marketing .mk-score-cell:nth-child(3n) {
+.bema-marketing .mk-score-cell:nth-child(3n) {
   border-right: none;
 }
 
-.bematist-marketing .mk-score-cell h3 {
+.bema-marketing .mk-score-cell h3 {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-size: 20px;
   letter-spacing: -0.02em;
@@ -620,53 +620,53 @@
   color: var(--mk-ink);
 }
 
-.bematist-marketing .mk-score-cell p {
+.bema-marketing .mk-score-cell p {
   color: var(--mk-ink-muted);
   font-size: 14px;
   line-height: 1.55;
   flex: 1;
 }
 
-.bematist-marketing .mk-score-weight {
+.bema-marketing .mk-score-weight {
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
   font-size: 12px;
   color: var(--mk-accent);
   letter-spacing: 0.06em;
 }
 
-.bematist-marketing .mk-score-gate {
+.bema-marketing .mk-score-gate {
   background: var(--mk-bg-elevated);
   grid-column: 1 / -1;
   border-right: none;
   border-bottom: none;
 }
 
-.bematist-marketing .mk-score-gate .mk-score-weight {
+.bema-marketing .mk-score-gate .mk-score-weight {
   color: var(--mk-warm);
 }
 
 @media (max-width: 860px) {
-  .bematist-marketing .mk-score-grid {
+  .bema-marketing .mk-score-grid {
     grid-template-columns: 1fr;
   }
-  .bematist-marketing .mk-score-cell {
+  .bema-marketing .mk-score-cell {
     border-right: none;
     border-bottom: 1px solid var(--mk-border);
   }
-  .bematist-marketing .mk-score-cell:last-child {
+  .bema-marketing .mk-score-cell:last-child {
     border-bottom: none;
   }
 }
 
 /* ─── Closing quote ────────────────────────────────────────────── */
-.bematist-marketing .mk-closing {
+.bema-marketing .mk-closing {
   padding: calc(var(--mk-grid-size) * 3) var(--mk-grid-size);
   background: var(--mk-bg-elevated);
   display: flex;
   justify-content: center;
 }
 
-.bematist-marketing .mk-closing-inner {
+.bema-marketing .mk-closing-inner {
   max-width: 720px;
   display: flex;
   flex-direction: column;
@@ -674,7 +674,7 @@
   text-align: center;
 }
 
-.bematist-marketing .mk-closing-quote {
+.bema-marketing .mk-closing-quote {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-size: clamp(22px, 2.6vw, 32px);
   line-height: 1.25;
@@ -682,7 +682,7 @@
   color: var(--mk-ink);
 }
 
-.bematist-marketing .mk-closing-body {
+.bema-marketing .mk-closing-body {
   font-size: 15px;
   line-height: 1.6;
   color: var(--mk-ink-muted);
@@ -690,7 +690,7 @@
   margin: 0 auto;
 }
 
-.bematist-marketing .mk-closing-actions {
+.bema-marketing .mk-closing-actions {
   display: flex;
   gap: 12px;
   justify-content: center;
@@ -699,11 +699,11 @@
 }
 
 /* ─── License + footer ─────────────────────────────────────────── */
-.bematist-marketing .mk-license {
+.bema-marketing .mk-license {
   padding: calc(var(--mk-grid-size) * 1.5) var(--mk-grid-size);
 }
 
-.bematist-marketing .mk-license-body {
+.bema-marketing .mk-license-body {
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
   font-size: 13px;
   margin-top: 12px;
@@ -711,12 +711,12 @@
   color: var(--mk-ink-muted);
 }
 
-.bematist-marketing .mk-license-body strong {
+.bema-marketing .mk-license-body strong {
   color: var(--mk-ink);
   font-weight: 500;
 }
 
-.bematist-marketing footer.mk-footer {
+.bema-marketing footer.mk-footer {
   padding: var(--mk-grid-size);
   display: flex;
   flex-wrap: wrap;
@@ -730,42 +730,42 @@
   border-top: 1px solid var(--mk-border);
 }
 
-.bematist-marketing footer.mk-footer .mk-footer-copy {
+.bema-marketing footer.mk-footer .mk-footer-copy {
   display: flex;
   flex-direction: column;
   gap: 4px;
   max-width: 540px;
 }
 
-.bematist-marketing footer.mk-footer .mk-footer-line {
+.bema-marketing footer.mk-footer .mk-footer-line {
   color: var(--mk-ink);
   font-size: 13px;
 }
 
-.bematist-marketing footer.mk-footer .mk-footer-sub {
+.bema-marketing footer.mk-footer .mk-footer-sub {
   color: var(--mk-ink-muted);
   font-size: 11px;
   line-height: 1.6;
 }
 
-.bematist-marketing footer.mk-footer a {
+.bema-marketing footer.mk-footer a {
   color: var(--mk-ink-muted);
   text-decoration: none;
   margin-left: 18px;
   cursor: pointer;
 }
 
-.bematist-marketing footer.mk-footer a:hover {
+.bema-marketing footer.mk-footer a:hover {
   color: var(--mk-ink);
 }
 
 /* ─── Features grid ────────────────────────────────────────────── */
-.bematist-marketing .mk-features {
+.bema-marketing .mk-features {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
 }
 
-.bematist-marketing .mk-feature {
+.bema-marketing .mk-feature {
   padding: calc(var(--mk-grid-size) * 1.75) var(--mk-grid-size);
   border-right: 1px solid var(--mk-border);
   display: flex;
@@ -774,25 +774,25 @@
   min-height: 240px;
 }
 
-.bematist-marketing .mk-feature:last-child {
+.bema-marketing .mk-feature:last-child {
   border-right: none;
 }
 
-.bematist-marketing .mk-feature h3 {
+.bema-marketing .mk-feature h3 {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-size: 22px;
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
 
-.bematist-marketing .mk-feature p {
+.bema-marketing .mk-feature p {
   color: var(--mk-ink-muted);
   font-size: 14px;
   line-height: 1.55;
   flex: 1;
 }
 
-.bematist-marketing .mk-feature-index {
+.bema-marketing .mk-feature-index {
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
   font-size: 11px;
   color: var(--mk-ink-faint);
@@ -800,7 +800,7 @@
 }
 
 /* ─── WrappedCard (hero right) ────────────────────────────────── */
-.bematist-marketing .wrapped-card-wrap {
+.bema-marketing .wrapped-card-wrap {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -810,7 +810,7 @@
   max-width: 440px;
 }
 
-.bematist-marketing .wrapped-card {
+.bema-marketing .wrapped-card {
   --mx: 50%;
   --my: 50%;
   --tx: 0deg;
@@ -832,7 +832,7 @@
   cursor: crosshair;
 }
 
-.bematist-marketing .wrapped-card-shine {
+.bema-marketing .wrapped-card-shine {
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -845,7 +845,7 @@
   opacity: 0.9;
 }
 
-.bematist-marketing .wrapped-card-inner {
+.bema-marketing .wrapped-card-inner {
   position: relative;
   z-index: 1;
   height: 100%;
@@ -856,7 +856,7 @@
   color: var(--mk-ink);
 }
 
-.bematist-marketing .wrapped-card-top {
+.bema-marketing .wrapped-card-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -865,11 +865,11 @@
   letter-spacing: 0.18em;
 }
 
-.bematist-marketing .wrapped-card-brand {
+.bema-marketing .wrapped-card-brand {
   color: var(--mk-ink);
   font-weight: 700;
 }
-.bematist-marketing .wrapped-card-tier {
+.bema-marketing .wrapped-card-tier {
   color: var(--mk-warm);
   border: 1px solid rgba(176, 123, 62, 0.4);
   padding: 2px 8px;
@@ -877,13 +877,13 @@
   font-size: 9px;
 }
 
-.bematist-marketing .wrapped-card-hero {
+.bema-marketing .wrapped-card-hero {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.bematist-marketing .wrapped-card-label {
+.bema-marketing .wrapped-card-label {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-size: 10px;
   letter-spacing: 0.18em;
@@ -891,32 +891,32 @@
   text-transform: uppercase;
 }
 
-.bematist-marketing .wrapped-card-title {
+.bema-marketing .wrapped-card-title {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-size: 28px;
   letter-spacing: -0.02em;
   line-height: 1.1;
 }
 
-.bematist-marketing .wrapped-card-sub {
+.bema-marketing .wrapped-card-sub {
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
   font-size: 12px;
   color: var(--mk-ink-muted);
 }
 
-.bematist-marketing .wrapped-card-sub strong {
+.bema-marketing .wrapped-card-sub strong {
   color: var(--mk-ink);
   font-weight: 500;
 }
 
-.bematist-marketing .wrapped-card-grid {
+.bema-marketing .wrapped-card-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-top: auto;
 }
 
-.bematist-marketing .wrapped-stat {
+.bema-marketing .wrapped-stat {
   padding: 12px;
   border: 1px solid rgba(237, 232, 222, 0.08);
   background: rgba(237, 232, 222, 0.02);
@@ -926,7 +926,7 @@
   gap: 4px;
 }
 
-.bematist-marketing .wrapped-stat-label {
+.bema-marketing .wrapped-stat-label {
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
   font-size: 10px;
   letter-spacing: 0.06em;
@@ -934,27 +934,27 @@
   text-transform: uppercase;
 }
 
-.bematist-marketing .wrapped-stat-value {
+.bema-marketing .wrapped-stat-value {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-size: 20px;
   letter-spacing: -0.02em;
 }
 
-.bematist-marketing .wrapped-card-bars {
+.bema-marketing .wrapped-card-bars {
   display: flex;
   align-items: flex-end;
   gap: 3px;
   height: 40px;
 }
 
-.bematist-marketing .wrapped-card-bar {
+.bema-marketing .wrapped-card-bar {
   flex: 1;
   background: linear-gradient(180deg, var(--mk-accent), rgba(110, 138, 111, 0.3));
   border-radius: 2px 2px 0 0;
   min-height: 4px;
 }
 
-.bematist-marketing .wrapped-card-foot {
+.bema-marketing .wrapped-card-foot {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -965,18 +965,18 @@
   border-top: 1px dashed rgba(237, 232, 222, 0.1);
 }
 
-.bematist-marketing .wrapped-card-link {
+.bema-marketing .wrapped-card-link {
   color: var(--mk-accent);
   text-decoration: none;
   cursor: pointer;
   transition: color 0.15s;
 }
 
-.bematist-marketing .wrapped-card-link:hover {
+.bema-marketing .wrapped-card-link:hover {
   color: var(--mk-ink);
 }
 
-.bematist-marketing .wrapped-card-caption p {
+.bema-marketing .wrapped-card-caption p {
   font-size: 13px;
   color: var(--mk-ink-muted);
   line-height: 1.55;
@@ -984,7 +984,7 @@
 }
 
 /* ─── GetStarted flow ──────────────────────────────────────────── */
-.bematist-marketing .mk-getstarted {
+.bema-marketing .mk-getstarted {
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -992,21 +992,21 @@
   width: 100%;
 }
 
-.bematist-marketing .mk-getstarted-note {
+.bema-marketing .mk-getstarted-note {
   padding: 14px 18px;
   border: 1px dashed var(--mk-border);
   border-radius: 8px;
   background: rgba(176, 123, 62, 0.06);
 }
 
-.bematist-marketing .mk-getstarted-note p {
+.bema-marketing .mk-getstarted-note p {
   font-size: 12px;
   color: var(--mk-ink-muted);
   line-height: 1.5;
   margin-top: 4px;
 }
 
-.bematist-marketing .mk-getstarted-panel {
+.bema-marketing .mk-getstarted-panel {
   padding: 32px;
   border: 1px solid var(--mk-border);
   border-radius: 10px;
@@ -1016,19 +1016,19 @@
   gap: 16px;
 }
 
-.bematist-marketing .mk-getstarted-panel h3 {
+.bema-marketing .mk-getstarted-panel h3 {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-size: 20px;
   letter-spacing: -0.02em;
 }
 
-.bematist-marketing .mk-getstarted-panel p {
+.bema-marketing .mk-getstarted-panel p {
   color: var(--mk-ink-muted);
   font-size: 13px;
   line-height: 1.55;
 }
 
-.bematist-marketing .mk-getstarted-btn {
+.bema-marketing .mk-getstarted-btn {
   align-self: flex-start;
   height: 44px;
   gap: 10px;
@@ -1037,12 +1037,12 @@
   margin-top: 8px;
 }
 
-.bematist-marketing .mk-getstarted-star-wrap {
+.bema-marketing .mk-getstarted-star-wrap {
   position: relative;
   padding: 20px 0;
 }
 
-.bematist-marketing .mk-getstarted-username {
+.bema-marketing .mk-getstarted-username {
   display: flex;
   gap: 10px;
   align-items: stretch;
@@ -1050,7 +1050,7 @@
   flex-wrap: wrap;
 }
 
-.bematist-marketing .mk-getstarted-username-input {
+.bema-marketing .mk-getstarted-username-input {
   flex: 1 1 220px;
   min-width: 0;
   height: 44px;
@@ -1065,25 +1065,25 @@
   transition: border-color 0.15s ease;
 }
 
-.bematist-marketing .mk-getstarted-username-input::placeholder {
+.bema-marketing .mk-getstarted-username-input::placeholder {
   color: var(--mk-ink-faint);
 }
 
-.bematist-marketing .mk-getstarted-username-input:focus {
+.bema-marketing .mk-getstarted-username-input:focus {
   border-color: var(--mk-accent);
 }
 
-.bematist-marketing .mk-getstarted-username-input:disabled {
+.bema-marketing .mk-getstarted-username-input:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.bematist-marketing .mk-getstarted-username .mk-getstarted-btn {
+.bema-marketing .mk-getstarted-username .mk-getstarted-btn {
   margin-top: 0;
   align-self: stretch;
 }
 
-.bematist-marketing .mk-getstarted-cmd {
+.bema-marketing .mk-getstarted-cmd {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1094,7 +1094,7 @@
   min-width: 0;
 }
 
-.bematist-marketing .mk-getstarted-cmd pre {
+.bema-marketing .mk-getstarted-cmd pre {
   flex: 1;
   min-width: 0;
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
@@ -1108,29 +1108,29 @@
   -ms-overflow-style: none;
 }
 
-.bematist-marketing .mk-getstarted-cmd pre::-webkit-scrollbar {
+.bema-marketing .mk-getstarted-cmd pre::-webkit-scrollbar {
   display: none;
 }
 
-.bematist-marketing .mk-getstarted-cmd .mk-btn {
+.bema-marketing .mk-getstarted-cmd .mk-btn {
   flex-shrink: 0;
   min-width: 84px;
   justify-content: center;
 }
 
-.bematist-marketing .mk-getstarted-finefoot {
+.bema-marketing .mk-getstarted-finefoot {
   font-size: 11px;
   color: var(--mk-ink-faint);
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
 }
 
-.bematist-marketing .mk-getstarted-entry {
+.bema-marketing .mk-getstarted-entry {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.bematist-marketing .mk-getstarted-entry-card {
+.bema-marketing .mk-getstarted-entry-card {
   text-align: left;
   padding: 18px 20px;
   border: 1px solid var(--mk-border);
@@ -1148,22 +1148,22 @@
   font-family: inherit;
 }
 
-.bematist-marketing .mk-getstarted-entry-card > svg {
+.bema-marketing .mk-getstarted-entry-card > svg {
   flex-shrink: 0;
 }
 
-.bematist-marketing .mk-getstarted-entry-card > div:not(.mk-getstarted-entry-chevron) {
+.bema-marketing .mk-getstarted-entry-card > div:not(.mk-getstarted-entry-chevron) {
   flex: 1;
   min-width: 0;
 }
 
-.bematist-marketing .mk-getstarted-entry-card:hover {
+.bema-marketing .mk-getstarted-entry-card:hover {
   border-color: rgba(110, 138, 111, 0.45);
   background: var(--mk-bg);
   transform: translateY(-1px);
 }
 
-.bematist-marketing .mk-getstarted-entry-primary {
+.bema-marketing .mk-getstarted-entry-primary {
   border-color: rgba(110, 138, 111, 0.55);
   background: linear-gradient(
     135deg,
@@ -1173,7 +1173,7 @@
   );
 }
 
-.bematist-marketing .mk-getstarted-entry-primary:hover {
+.bema-marketing .mk-getstarted-entry-primary:hover {
   border-color: rgba(110, 138, 111, 0.8);
   background: linear-gradient(
     135deg,
@@ -1183,31 +1183,31 @@
   );
 }
 
-.bematist-marketing .mk-getstarted-entry-primary > svg {
+.bema-marketing .mk-getstarted-entry-primary > svg {
   color: var(--mk-accent);
 }
 
-.bematist-marketing .mk-getstarted-entry-alt {
+.bema-marketing .mk-getstarted-entry-alt {
   padding: 14px 18px;
   background: transparent;
 }
 
-.bematist-marketing .mk-getstarted-entry-alt .mk-getstarted-entry-title {
+.bema-marketing .mk-getstarted-entry-alt .mk-getstarted-entry-title {
   font-size: 14px;
   color: var(--mk-ink-muted);
 }
 
-.bematist-marketing .mk-getstarted-entry-alt:hover .mk-getstarted-entry-title {
+.bema-marketing .mk-getstarted-entry-alt:hover .mk-getstarted-entry-title {
   color: var(--mk-ink);
 }
 
-.bematist-marketing .mk-getstarted-entry-alt > svg {
+.bema-marketing .mk-getstarted-entry-alt > svg {
   color: var(--mk-ink-faint);
   width: 16px;
   height: 16px;
 }
 
-.bematist-marketing .mk-getstarted-entry-divider {
+.bema-marketing .mk-getstarted-entry-divider {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1219,15 +1219,15 @@
   margin: 2px 0;
 }
 
-.bematist-marketing .mk-getstarted-entry-divider::before,
-.bematist-marketing .mk-getstarted-entry-divider::after {
+.bema-marketing .mk-getstarted-entry-divider::before,
+.bema-marketing .mk-getstarted-entry-divider::after {
   content: "";
   flex: 1;
   height: 1px;
   background: var(--mk-border);
 }
 
-.bematist-marketing .mk-getstarted-entry-chevron {
+.bema-marketing .mk-getstarted-entry-chevron {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-size: 18px;
   color: var(--mk-accent);
@@ -1236,35 +1236,35 @@
   transition: transform 0.18s;
 }
 
-.bematist-marketing .mk-getstarted-entry-primary:hover .mk-getstarted-entry-chevron {
+.bema-marketing .mk-getstarted-entry-primary:hover .mk-getstarted-entry-chevron {
   transform: translateX(2px);
 }
 
-.bematist-marketing .mk-getstarted-entry-title {
+.bema-marketing .mk-getstarted-entry-title {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-size: 16px;
   letter-spacing: -0.02em;
   margin-bottom: 4px;
 }
 
-.bematist-marketing .mk-getstarted-entry-sub {
+.bema-marketing .mk-getstarted-entry-sub {
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
   font-size: 12px;
   color: var(--mk-ink-muted);
   line-height: 1.45;
 }
 
-.bematist-marketing .mk-getstarted-link {
+.bema-marketing .mk-getstarted-link {
   color: var(--mk-accent);
   text-decoration: none;
   cursor: pointer;
 }
 
-.bematist-marketing .mk-getstarted-link:hover {
+.bema-marketing .mk-getstarted-link:hover {
   color: var(--mk-ink);
 }
 
-.bematist-marketing .mk-getstarted-error {
+.bema-marketing .mk-getstarted-error {
   font-size: 12px;
   color: #e07b7b;
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
@@ -1272,32 +1272,32 @@
 }
 
 @media (max-width: 600px) {
-  .bematist-marketing .mk-getstarted-entry-card {
+  .bema-marketing .mk-getstarted-entry-card {
     padding: 14px 16px;
     gap: 12px;
   }
-  .bematist-marketing .mk-getstarted-entry-title {
+  .bema-marketing .mk-getstarted-entry-title {
     font-size: 14px;
   }
-  .bematist-marketing .mk-getstarted-entry-sub {
+  .bema-marketing .mk-getstarted-entry-sub {
     font-size: 11px;
   }
 }
 
 /* ─── Shared-card page (/card/[id]) ────────────────────────────── */
-.bematist-marketing .mk-card-by-id {
+.bema-marketing .mk-card-by-id {
   padding: 40px 24px;
   min-height: 80vh;
 }
 
 @media (max-width: 640px) {
-  .bematist-marketing .mk-card-by-id {
+  .bema-marketing .mk-card-by-id {
     padding: 16px 0;
   }
 }
 
 /* ─── Demo page ────────────────────────────────────────────────── */
-.bematist-marketing .mk-demo {
+.bema-marketing .mk-demo {
   padding: 80px var(--mk-grid-size);
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
@@ -1305,7 +1305,7 @@
   align-items: start;
 }
 
-.bematist-marketing .mk-demo-card-host {
+.bema-marketing .mk-demo-card-host {
   position: relative;
   min-height: 720px;
   aspect-ratio: 5 / 7;
@@ -1322,13 +1322,13 @@
 /* Constrain the card wrapper to the demo host — `card-root`'s default
    `min-height: max(900px, calc(100vh - 100px))` overflows the 5:7 host
    and pushes the page dots below the `overflow: hidden` clip. */
-.bematist-marketing .mk-demo-card-host .card-root {
+.bema-marketing .mk-demo-card-host .card-root {
   min-height: 0;
   height: 100%;
 }
 
 /* Embed the shareable card inside the demo column (originally position:fixed) */
-.bematist-marketing .mk-demo-card-host .card-scene {
+.bema-marketing .mk-demo-card-host .card-scene {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -1338,56 +1338,56 @@
   z-index: 1;
 }
 
-.bematist-marketing .mk-demo-card-host .card-nav-side {
+.bema-marketing .mk-demo-card-host .card-nav-side {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
 }
 
-.bematist-marketing .mk-demo-card-host .card-nav-left {
+.bema-marketing .mk-demo-card-host .card-nav-left {
   left: 12px;
 }
-.bematist-marketing .mk-demo-card-host .card-nav-right {
+.bema-marketing .mk-demo-card-host .card-nav-right {
   right: 12px;
 }
 
-.bematist-marketing .mk-demo-card-host .card-page-dots {
+.bema-marketing .mk-demo-card-host .card-page-dots {
   position: absolute;
   bottom: 68px;
   left: 50%;
   transform: translateX(-50%);
 }
 
-.bematist-marketing .mk-demo-card-host .share-bar {
+.bema-marketing .mk-demo-card-host .share-bar {
   position: absolute;
   bottom: 18px;
   left: 50%;
   transform: translateX(-50%);
 }
 
-.bematist-marketing .mk-demo-card-host .flip-hint,
-.bematist-marketing .mk-demo-card-host .global-toggle {
+.bema-marketing .mk-demo-card-host .flip-hint,
+.bema-marketing .mk-demo-card-host .global-toggle {
   display: none;
 }
 
-/* Tone down the holo shimmer to fit the Bematist aesthetic */
-.bematist-marketing .mk-demo-card-host .card-holo {
+/* Tone down the holo shimmer to fit the Bema aesthetic */
+.bema-marketing .mk-demo-card-host .card-holo {
   --card-opacity: 0.35;
 }
-.bematist-marketing .mk-demo-card-host .card-holo-shine {
+.bema-marketing .mk-demo-card-host .card-holo-shine {
   opacity: 0.35;
 }
-.bematist-marketing .mk-demo-card-host .card-holo-glare {
+.bema-marketing .mk-demo-card-host .card-holo-glare {
   opacity: 0.35;
 }
 
-.bematist-marketing .mk-demo h1 {
+.bema-marketing .mk-demo h1 {
   font-size: clamp(28px, 3.4vw, 40px);
   letter-spacing: -0.03em;
   line-height: 1.1;
 }
 
-.bematist-marketing .mk-demo > div:first-child > p {
+.bema-marketing .mk-demo > div:first-child > p {
   color: var(--mk-ink-muted);
   font-size: 15px;
   line-height: 1.55;
@@ -1397,7 +1397,7 @@
 }
 
 /* ─── Dashboard screenshot section ─────────────────────────────── */
-.bematist-marketing .mk-dashboard-shot {
+.bema-marketing .mk-dashboard-shot {
   position: relative;
   padding: 96px var(--mk-grid-size);
   display: flex;
@@ -1406,7 +1406,7 @@
   align-items: center;
 }
 
-.bematist-marketing .mk-dashboard-shot-frame {
+.bema-marketing .mk-dashboard-shot-frame {
   width: 100%;
   max-width: 1080px;
   border: 1px solid var(--mk-border);
@@ -1416,7 +1416,7 @@
   box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.9);
 }
 
-.bematist-marketing .mk-dashboard-shot-chrome {
+.bema-marketing .mk-dashboard-shot-chrome {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1425,14 +1425,14 @@
   background: #0d0f12;
 }
 
-.bematist-marketing .mk-dashboard-shot-chrome span {
+.bema-marketing .mk-dashboard-shot-chrome span {
   width: 9px;
   height: 9px;
   border-radius: 50%;
   background: rgba(237, 232, 222, 0.18);
 }
 
-.bematist-marketing .mk-dashboard-shot-chrome .dot-url {
+.bema-marketing .mk-dashboard-shot-chrome .dot-url {
   width: auto;
   flex: 1;
   height: 22px;
@@ -1448,13 +1448,13 @@
   letter-spacing: 0.02em;
 }
 
-.bematist-marketing .mk-dashboard-shot-body {
+.bema-marketing .mk-dashboard-shot-body {
   display: grid;
   grid-template-columns: 220px 1fr;
   min-height: 520px;
 }
 
-.bematist-marketing .mk-dashboard-shot-side {
+.bema-marketing .mk-dashboard-shot-side {
   border-right: 1px solid var(--mk-border);
   padding: 20px;
   display: flex;
@@ -1462,7 +1462,7 @@
   gap: 6px;
 }
 
-.bematist-marketing .mk-dashboard-shot-side-item {
+.bema-marketing .mk-dashboard-shot-side-item {
   padding: 6px 10px;
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
   font-size: 12px;
@@ -1470,25 +1470,25 @@
   border-radius: 4px;
 }
 
-.bematist-marketing .mk-dashboard-shot-side-item.active {
+.bema-marketing .mk-dashboard-shot-side-item.active {
   background: rgba(110, 138, 111, 0.12);
   color: var(--mk-ink);
 }
 
-.bematist-marketing .mk-dashboard-shot-main {
+.bema-marketing .mk-dashboard-shot-main {
   padding: 28px;
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-.bematist-marketing .mk-dashboard-shot-kpis {
+.bema-marketing .mk-dashboard-shot-kpis {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
 
-.bematist-marketing .mk-dashboard-shot-kpi {
+.bema-marketing .mk-dashboard-shot-kpi {
   padding: 16px;
   border: 1px solid var(--mk-border);
   border-radius: 6px;
@@ -1498,7 +1498,7 @@
   gap: 6px;
 }
 
-.bematist-marketing .mk-dashboard-shot-kpi-label {
+.bema-marketing .mk-dashboard-shot-kpi-label {
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
   font-size: 10px;
   letter-spacing: 0.06em;
@@ -1506,13 +1506,13 @@
   text-transform: uppercase;
 }
 
-.bematist-marketing .mk-dashboard-shot-kpi-value {
+.bema-marketing .mk-dashboard-shot-kpi-value {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-size: 22px;
   letter-spacing: -0.02em;
 }
 
-.bematist-marketing .mk-dashboard-shot-chart {
+.bema-marketing .mk-dashboard-shot-chart {
   flex: 1;
   border: 1px solid var(--mk-border);
   border-radius: 6px;
@@ -1525,7 +1525,7 @@
   gap: 6px;
 }
 
-.bematist-marketing .mk-dashboard-shot-chart-bar {
+.bema-marketing .mk-dashboard-shot-chart-bar {
   flex: 1;
   background: linear-gradient(180deg, var(--mk-accent), rgba(110, 138, 111, 0.2));
   border-radius: 3px 3px 0 0;
@@ -1533,59 +1533,59 @@
 
 /* ─── Responsive ───────────────────────────────────────────────── */
 @media (max-width: 860px) {
-  .bematist-marketing .mk-metric,
-  .bematist-marketing .mk-tiers,
-  .bematist-marketing .mk-split,
-  .bematist-marketing .mk-features {
+  .bema-marketing .mk-metric,
+  .bema-marketing .mk-tiers,
+  .bema-marketing .mk-split,
+  .bema-marketing .mk-features {
     grid-template-columns: 1fr;
   }
-  .bematist-marketing .mk-metric-visual,
-  .bematist-marketing .mk-tier,
-  .bematist-marketing .mk-feature,
-  .bematist-marketing .mk-split-col.right {
+  .bema-marketing .mk-metric-visual,
+  .bema-marketing .mk-tier,
+  .bema-marketing .mk-feature,
+  .bema-marketing .mk-split-col.right {
     border-right: none;
     border-bottom: 1px solid var(--mk-border);
     border-left: none;
   }
-  .bematist-marketing .mk-hero {
+  .bema-marketing .mk-hero {
     padding: 96px var(--mk-grid-size) 72px;
   }
-  .bematist-marketing .mk-hero-grid,
-  .bematist-marketing .mk-demo {
+  .bema-marketing .mk-hero-grid,
+  .bema-marketing .mk-demo {
     grid-template-columns: 1fr;
     gap: 48px;
   }
-  .bematist-marketing .mk-hero-card-slot {
+  .bema-marketing .mk-hero-card-slot {
     min-height: 720px;
   }
-  .bematist-marketing .wrapped-card-wrap {
+  .bema-marketing .wrapped-card-wrap {
     justify-self: center;
     max-width: 360px;
   }
-  .bematist-marketing .mk-dashboard-shot {
+  .bema-marketing .mk-dashboard-shot {
     padding: 72px var(--mk-grid-size);
     gap: 32px;
   }
-  .bematist-marketing .mk-dashboard-shot-body {
+  .bema-marketing .mk-dashboard-shot-body {
     grid-template-columns: 1fr;
   }
-  .bematist-marketing .mk-dashboard-shot-side {
+  .bema-marketing .mk-dashboard-shot-side {
     display: none;
   }
-  .bematist-marketing .mk-dashboard-shot-kpis {
+  .bema-marketing .mk-dashboard-shot-kpis {
     grid-template-columns: 1fr 1fr;
   }
-  .bematist-marketing .mk-dashboard-shot-main {
+  .bema-marketing .mk-dashboard-shot-main {
     padding: 20px;
   }
-  .bematist-marketing .mk-monolith {
+  .bema-marketing .mk-monolith {
     min-height: 480px;
     padding: 72px var(--mk-grid-size);
   }
-  .bematist-marketing .mk-demo {
+  .bema-marketing .mk-demo {
     padding: 48px var(--mk-grid-size);
   }
-  .bematist-marketing .mk-demo-card-host {
+  .bema-marketing .mk-demo-card-host {
     min-height: 640px;
     max-height: none;
     aspect-ratio: auto;
@@ -1594,34 +1594,34 @@
   /* Adapter table: stack as cards on narrow viewports. The three-column
      layout with long "captures" copy otherwise forces a horizontal scroll
      and breaks the dense grid aesthetic on mobile. */
-  .bematist-marketing .mk-table,
-  .bematist-marketing .mk-table thead,
-  .bematist-marketing .mk-table tbody,
-  .bematist-marketing .mk-table tr,
-  .bematist-marketing .mk-table th,
-  .bematist-marketing .mk-table td {
+  .bema-marketing .mk-table,
+  .bema-marketing .mk-table thead,
+  .bema-marketing .mk-table tbody,
+  .bema-marketing .mk-table tr,
+  .bema-marketing .mk-table th,
+  .bema-marketing .mk-table td {
     display: block;
     width: 100%;
   }
-  .bematist-marketing .mk-table thead {
+  .bema-marketing .mk-table thead {
     display: none;
   }
-  .bematist-marketing .mk-table tr {
+  .bema-marketing .mk-table tr {
     padding: 14px var(--mk-grid-size);
     border-bottom: 1px solid var(--mk-border);
   }
-  .bematist-marketing .mk-table tbody tr:hover td {
+  .bema-marketing .mk-table tbody tr:hover td {
     background: transparent;
   }
-  .bematist-marketing .mk-table td {
+  .bema-marketing .mk-table td {
     padding: 2px 0;
     border-bottom: none;
   }
-  .bematist-marketing .mk-table tr td:first-child {
+  .bema-marketing .mk-table tr td:first-child {
     font-size: 14px;
     margin-bottom: 4px;
   }
-  .bematist-marketing .mk-table tr td + td::before {
+  .bema-marketing .mk-table tr td + td::before {
     content: attr(data-label);
     display: inline-block;
     color: var(--mk-ink-faint);
@@ -1634,208 +1634,208 @@
 
 @media (max-width: 640px) {
   /* Tighten the default grid on phones so section padding feels right. */
-  .bematist-marketing {
+  .bema-marketing {
     --mk-grid-size: 18px;
   }
   /* Side container borders cost real estate on phones with zero visual
      benefit. Drop them to let content use the full viewport width. */
-  .bematist-marketing .mk-container {
+  .bema-marketing .mk-container {
     border-left: none;
     border-right: none;
   }
 
   /* Nav: drop middle links, tighten buttons */
-  .bematist-marketing .mk-nav {
+  .bema-marketing .mk-nav {
     padding: 12px 16px;
     gap: 8px;
   }
-  .bematist-marketing .mk-nav-link {
+  .bema-marketing .mk-nav-link {
     display: none;
   }
-  .bematist-marketing .mk-nav-links {
+  .bema-marketing .mk-nav-links {
     gap: 6px;
     flex-wrap: nowrap;
   }
-  .bematist-marketing .mk-wordmark {
+  .bema-marketing .mk-wordmark {
     font-size: 15px;
     flex-shrink: 0;
   }
-  .bematist-marketing .mk-btn {
+  .bema-marketing .mk-btn {
     height: 32px;
     padding: 0 10px;
     font-size: 11px;
     white-space: nowrap;
   }
-  .bematist-marketing .mk-btn-icon {
+  .bema-marketing .mk-btn-icon {
     padding: 0 10px;
     gap: 6px;
   }
 
   /* Hero + demo column center-align on small viewports */
-  .bematist-marketing .mk-hero {
+  .bema-marketing .mk-hero {
     padding: 48px 18px 40px;
     text-align: center;
   }
-  .bematist-marketing .mk-hero h1 {
+  .bema-marketing .mk-hero h1 {
     font-size: clamp(30px, 9vw, 44px);
     margin-bottom: 20px;
   }
-  .bematist-marketing .mk-hero p {
+  .bema-marketing .mk-hero p {
     font-size: 15px;
     margin-bottom: 28px;
   }
-  .bematist-marketing .mk-hero h1,
-  .bematist-marketing .mk-hero p {
+  .bema-marketing .mk-hero h1,
+  .bema-marketing .mk-hero p {
     margin-left: auto;
     margin-right: auto;
   }
-  .bematist-marketing .mk-hero-eyebrow,
-  .bematist-marketing .mk-hero-actions {
+  .bema-marketing .mk-hero-eyebrow,
+  .bema-marketing .mk-hero-actions {
     justify-content: center;
   }
-  .bematist-marketing .mk-hero-card-slot {
+  .bema-marketing .mk-hero-card-slot {
     min-height: 720px;
   }
-  .bematist-marketing .mk-getstarted {
+  .bema-marketing .mk-getstarted {
     align-items: stretch;
   }
-  .bematist-marketing .mk-getstarted-panel {
+  .bema-marketing .mk-getstarted-panel {
     padding: 22px 20px;
   }
-  .bematist-marketing .mk-getstarted-note,
-  .bematist-marketing .mk-getstarted-panel,
-  .bematist-marketing .mk-getstarted-entry-card {
+  .bema-marketing .mk-getstarted-note,
+  .bema-marketing .mk-getstarted-panel,
+  .bema-marketing .mk-getstarted-entry-card {
     text-align: left;
   }
-  .bematist-marketing .mk-getstarted-entry-card {
+  .bema-marketing .mk-getstarted-entry-card {
     justify-content: flex-start;
   }
 
   /* Section inner padding: knock it down a step on phones so cards
      aren't swimming in whitespace. */
-  .bematist-marketing .mk-section-header {
+  .bema-marketing .mk-section-header {
     padding: 16px 18px;
   }
-  .bematist-marketing .mk-feature,
-  .bematist-marketing .mk-score-cell,
-  .bematist-marketing .mk-tier {
+  .bema-marketing .mk-feature,
+  .bema-marketing .mk-score-cell,
+  .bema-marketing .mk-tier {
     padding: 28px 18px;
     min-height: auto;
   }
-  .bematist-marketing .mk-metric-visual,
-  .bematist-marketing .mk-metric-details {
+  .bema-marketing .mk-metric-visual,
+  .bema-marketing .mk-metric-details {
     padding: 36px 18px;
   }
-  .bematist-marketing .mk-license {
+  .bema-marketing .mk-license {
     padding: 28px 18px;
   }
-  .bematist-marketing .mk-closing {
+  .bema-marketing .mk-closing {
     padding: 56px 18px;
   }
-  .bematist-marketing .mk-closing-quote {
+  .bema-marketing .mk-closing-quote {
     font-size: clamp(20px, 6vw, 26px);
   }
-  .bematist-marketing .mk-closing-body {
+  .bema-marketing .mk-closing-body {
     font-size: 14px;
   }
 
   /* Demo page on phones: the card host must not enforce a huge aspect
      ratio, and the card scene inside it must fit the viewport. */
-  .bematist-marketing .mk-demo {
+  .bema-marketing .mk-demo {
     padding: 32px 18px 48px;
     gap: 32px;
   }
-  .bematist-marketing .mk-demo h1 {
+  .bema-marketing .mk-demo h1 {
     font-size: clamp(28px, 7vw, 36px);
   }
-  .bematist-marketing .mk-demo-card-host {
+  .bema-marketing .mk-demo-card-host {
     min-height: 720px;
     max-height: none;
     aspect-ratio: auto;
   }
-  .bematist-marketing .mk-demo-card-host .card-scene {
+  .bema-marketing .mk-demo-card-host .card-scene {
     top: 80px;
     bottom: auto;
     transform: translateX(-50%);
     width: min(360px, calc(100% - 24px));
     height: calc(100% - 136px);
   }
-  .bematist-marketing .mk-demo-card-host .card-page-dots {
+  .bema-marketing .mk-demo-card-host .card-page-dots {
     bottom: 24px;
   }
-  .bematist-marketing .mk-demo-card-host .share-bar {
+  .bema-marketing .mk-demo-card-host .share-bar {
     bottom: -24px;
   }
 
   /* Brand monolith: shrink so it fits in one viewport and the copy below
      breathes without forcing the user to scroll through dead space. */
-  .bematist-marketing .mk-monolith {
+  .bema-marketing .mk-monolith {
     min-height: 360px;
     padding: 48px 18px;
   }
-  .bematist-marketing .mk-monolith-stage {
+  .bema-marketing .mk-monolith-stage {
     max-width: 420px;
   }
-  .bematist-marketing .mk-monolith-copy {
+  .bema-marketing .mk-monolith-copy {
     bottom: 24px;
     padding: 0 16px;
   }
 
   /* Dashboard mockup: tighten chrome + chart on small viewports. */
-  .bematist-marketing .mk-dashboard-shot {
+  .bema-marketing .mk-dashboard-shot {
     padding: 48px 18px;
     gap: 24px;
   }
-  .bematist-marketing .mk-dashboard-shot-kpis {
+  .bema-marketing .mk-dashboard-shot-kpis {
     gap: 8px;
   }
-  .bematist-marketing .mk-dashboard-shot-kpi {
+  .bema-marketing .mk-dashboard-shot-kpi {
     padding: 12px;
   }
-  .bematist-marketing .mk-dashboard-shot-kpi-value {
+  .bema-marketing .mk-dashboard-shot-kpi-value {
     font-size: 18px;
   }
-  .bematist-marketing .mk-dashboard-shot-chart {
+  .bema-marketing .mk-dashboard-shot-chart {
     padding: 14px;
     min-height: 200px;
   }
-  .bematist-marketing .mk-dashboard-shot-main {
+  .bema-marketing .mk-dashboard-shot-main {
     padding: 16px;
   }
 
   /* Metric value: keep it from overflowing a 360px viewport */
-  .bematist-marketing .mk-metric-value {
+  .bema-marketing .mk-metric-value {
     font-size: clamp(48px, 14vw, 72px);
   }
 
   /* Terminal: allow horizontal scroll instead of overflowing the grid */
-  .bematist-marketing .mk-terminal-wrap {
+  .bema-marketing .mk-terminal-wrap {
     padding: 24px 18px;
   }
-  .bematist-marketing .mk-terminal {
+  .bema-marketing .mk-terminal {
     font-size: 12px;
     overflow-x: auto;
     white-space: nowrap;
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
-  .bematist-marketing .mk-terminal::-webkit-scrollbar {
+  .bema-marketing .mk-terminal::-webkit-scrollbar {
     display: none;
   }
 
   /* Footer stacks vertically, centered */
-  .bematist-marketing .mk-footer {
+  .bema-marketing .mk-footer {
     flex-direction: column;
     align-items: center;
     text-align: center;
     gap: 16px;
     padding: 32px 18px;
   }
-  .bematist-marketing .mk-footer > div {
+  .bema-marketing .mk-footer > div {
     justify-content: center;
     flex-wrap: wrap;
   }
-  .bematist-marketing footer.mk-footer a {
+  .bema-marketing footer.mk-footer a {
     margin-left: 10px;
     margin-right: 10px;
   }
@@ -1844,55 +1844,55 @@
 @media (max-width: 420px) {
   /* Very small phones — make the nav actually fit without clipping the
      wordmark. Ditch the follow button label and shrink GitHub to an icon
-     hit target so "bematist" stays on screen. */
-  .bematist-marketing .mk-nav-links {
+     hit target so "bema" stays on screen. */
+  .bema-marketing .mk-nav-links {
     gap: 4px;
   }
-  .bematist-marketing .mk-btn {
+  .bema-marketing .mk-btn {
     padding: 0 8px;
     font-size: 10px;
     height: 30px;
   }
-  .bematist-marketing .mk-btn-icon .mk-btn-icon-label {
+  .bema-marketing .mk-btn-icon .mk-btn-icon-label {
     display: none;
   }
-  .bematist-marketing .mk-wordmark {
+  .bema-marketing .mk-wordmark {
     font-size: 14px;
   }
 
-  .bematist-marketing .mk-hero {
+  .bema-marketing .mk-hero {
     padding: 40px 14px 32px;
   }
-  .bematist-marketing .mk-hero-card-slot {
+  .bema-marketing .mk-hero-card-slot {
     min-height: 720px;
   }
-  .bematist-marketing .mk-demo-card-host {
+  .bema-marketing .mk-demo-card-host {
     min-height: 680px;
   }
-  .bematist-marketing .mk-demo-card-host .card-scene {
+  .bema-marketing .mk-demo-card-host .card-scene {
     top: 72px;
     bottom: auto;
     transform: translateX(-50%);
     width: min(340px, calc(100% - 16px));
     height: calc(100% - 120px);
   }
-  .bematist-marketing .mk-monolith {
+  .bema-marketing .mk-monolith {
     min-height: 320px;
     padding: 40px 14px;
   }
-  .bematist-marketing .mk-monolith-stage {
+  .bema-marketing .mk-monolith-stage {
     max-width: 360px;
   }
-  .bematist-marketing .mk-hero h1 {
+  .bema-marketing .mk-hero h1 {
     font-size: 30px;
   }
-  .bematist-marketing .mk-hero p {
+  .bema-marketing .mk-hero p {
     font-size: 14px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bematist-marketing .mk-ring {
+  .bema-marketing .mk-ring {
     animation: none;
   }
 }

@@ -1,15 +1,15 @@
 # typed: false
 # frozen_string_literal: true
 
-# Bematist — Homebrew formula (rendered from template at release time).
+# Bema — Homebrew formula (rendered from template at release time).
 # See packaging/homebrew/bematist.rb.tmpl for the source and
 # packaging/homebrew/render.sh for the substitution step. The OS-block
 # placeholder below is replaced with zero or more on-macos / on-linux
 # blocks depending on which binaries were built for the release. See
 # tests/packaging/render-resilience.sh for coverage.
-class Bematist < Formula
+class Bema < Formula
   desc "Open-source, self-hostable AI-engineering analytics platform"
-  homepage "https://bematist.dev"
+  homepage "https://bema.tools"
   version "@VERSION@"
   license "Apache-2.0"
 
@@ -39,7 +39,7 @@ class Bematist < Formula
 
   def caveats
     <<~EOS
-      Bematist is installed but needs an ingest endpoint + bearer token before
+      Bema is installed but needs an ingest endpoint + bearer token before
       it can send events. One-time setup:
 
         bematist config set endpoint https://ingest.<your-domain>
@@ -53,7 +53,7 @@ class Bematist < Formula
       `bematist config set` to rotate values without restarting the service
       (send SIGHUP to pick up changes mid-run).
 
-      See https://bematist.dev/docs/install for details + troubleshooting.
+      See https://bema.tools/docs/install for details + troubleshooting.
     EOS
   end
 

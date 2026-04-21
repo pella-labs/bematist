@@ -418,7 +418,7 @@ jobs:
         run: |
           set -euo pipefail
           cat > release/NOTES.md <<EOF
-          ## Bematist ${{ needs.meta.outputs.tag }}
+          ## Bema ${{ needs.meta.outputs.tag }}
 
           Open-source, self-hostable AI-engineering analytics. Apache 2.0.
 
@@ -464,7 +464,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.meta.outputs.tag }}
-          name: Bematist ${{ needs.meta.outputs.tag }}
+          name: Bema ${{ needs.meta.outputs.tag }}
           body_path: release/NOTES.md
           draft: true
           prerelease: ${{ contains(needs.meta.outputs.tag, '-') }}
@@ -525,7 +525,7 @@ jobs:
           cp pkg/bematist.rb tap/Formula/bematist.rb
           cd tap
           git config user.name 'bematist-release-bot'
-          git config user.email 'release-bot@bematist.dev'
+          git config user.email 'release-bot@bema.tools'
           git add Formula/bematist.rb
           # Skip if the tag already landed (re-run safety).
           if git diff --cached --quiet; then

@@ -5,7 +5,7 @@
 
 **File:** `legal/review/cse-consultation-FR.md` — French Comité Social et
 Économique (CSE) consultation dossier + individual-notification template
-(Art. L1222-4) + projet d'accord de méthode for a Bematist deployment in a
+(Art. L1222-4) + projet d'accord de méthode for a Bema deployment in a
 French establishment. Authoritative body in French below; this preamble is
 advisory and non-binding. Owner: Workstream I (Compliance).
 
@@ -15,7 +15,7 @@ before use with any customer. Do NOT ship without external counsel sign-off
 
 **Who uses this file.** The customer's `{{EMPLOYEUR}}` (employer) and the
 `{{CSE_TITULAIRES}}` (elected CSE members) run the consultation and, where
-applicable, execute the method agreement. Bematist (the vendor) does NOT sign
+applicable, execute the method agreement. Bema (the vendor) does NOT sign
 this instrument — the parties are the employer and the CSE. Vendor-side
 commitments sit in a separate DPA (Phase 2).
 
@@ -52,7 +52,7 @@ pénal Art. 226-16 (criminal exposure for unlawful processing).
 
 - **TJ Nanterre, 29 janvier 2026 (ordonnance de référé)** — pilot / POC /
   expérimentation of an AI-adjacent workplace system is *not* exempt from
-  prior CSE consultation under L2312-8 4° + L2312-38. Bematist dev-opt-in
+  prior CSE consultation under L2312-8 4° + L2312-38. Bema dev-opt-in
   pilots in a French subsidiary still trigger full upfront CSE consultation
   before any bytes leave dev machines. Phrased verbatim in §7 Al. 2 below.
 - **TJ Paris, 2 septembre 2025 (France Télévisions)** — closes the "only an
@@ -73,7 +73,7 @@ pénal Art. 226-16 (criminal exposure for unlawful processing).
 - `{{EMPLOYEUR}}` — employer legal name and SIRET.
 - `{{CSE_TITULAIRES}}` — names of the elected CSE titulaires.
 - `{{DATE_EFFET}}` — ISO date (YYYY-MM-DD) of effect.
-- `{{VERSION_LOGICIELLE}}` — Bematist release tag.
+- `{{VERSION_LOGICIELLE}}` — Bema release tag.
 - `{{IDENT_LOCATAIRE}}` — tenant identifier.
 - `{{DPO_EMAIL}}` — customer DPO mailbox.
 - `{{CONTACT_ESCALADE}}` — vendor escalation contact.
@@ -107,7 +107,7 @@ bundles them so the cross-references are visible end-to-end.
 ================================================================================
 -->
 
-# Dossier de consultation du Comité Social et Économique — Déploiement de Bematist
+# Dossier de consultation du Comité Social et Économique — Déploiement de Bema
 
 **entre**
 
@@ -133,7 +133,7 @@ ensemble les « Parties ».
 (1) L'Employeur soumet à la consultation du CSE, en application des articles
 L2312-38 et L2312-8 4° du Code du travail ainsi que de l'article 88 du
 Règlement (UE) 2016/679 (ci-après le « RGPD »), le projet de mise en œuvre du
-système « Bematist » (ci-après le « Système ») au sein de {{ETABLISSEMENTS}}.
+système « Bema » (ci-après le « Système ») au sein de {{ETABLISSEMENTS}}.
 
 (2) Le Système a pour objet la collecte, l'analyse et la restitution de
 données d'utilisation des outils de développement assistés par intelligence
@@ -792,7 +792,7 @@ d'analyse des outils de développement assistés par IA**
 {{EMPLOYEUR}}, en qualité de responsable de traitement, vous informe, en
 application de l'article L1222-4 du Code du travail et des articles 13 et
 14 du Règlement général sur la protection des données (RGPD), de la mise
-en œuvre, à compter du {{DATE_EFFET}}, du système « Bematist » sur votre
+en œuvre, à compter du {{DATE_EFFET}}, du système « Bema » sur votre
 poste de travail ou dans votre environnement de développement.
 
 **1. Finalités.** Le système collecte des données d'utilisation des outils

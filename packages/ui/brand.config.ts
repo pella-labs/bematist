@@ -1,5 +1,5 @@
 /**
- * Bematist brand metadata.
+ * Bema brand metadata.
  *
  * Visual tokens (colors, radii, fonts) live in `src/styles/theme.css` as
  * OKLCH custom properties (shadcn base-lyra style, zinc base color). This
@@ -8,7 +8,7 @@
  */
 
 export const brand = {
-  name: "Bematist",
+  name: "Bema",
   tagline: "AI engineering analytics",
 
   /** Motion durations (ms) — all paired with `prefers-reduced-motion: reduce`. */

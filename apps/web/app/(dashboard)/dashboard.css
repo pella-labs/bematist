@@ -4,13 +4,13 @@
  * We reuse the marketing palette (sage + cream on near-black) so the product
  * surface feels continuous with /home and /card. The shadcn-style primitives
  * from @bematist/ui read their colors from the Tailwind v4 tokens below, so
- * re-binding the custom props inside .bematist-dashboard re-skins every
+ * re-binding the custom props inside .bema-dashboard re-skins every
  * Card/Badge/Chart without touching component code.
  */
 
-.bematist-dashboard {
+.bema-dashboard {
   /* Marketing palette primitives, re-declared so they are addressable inside
-     the dashboard subtree exactly like .bematist-marketing. */
+     the dashboard subtree exactly like .bema-marketing. */
   --mk-bg: #0a0b0d;
   --mk-bg-elevated: #111316;
   --mk-bg-terminal: #050506;
@@ -67,15 +67,15 @@
 }
 
 /* Display headings — Space Mono, matching marketing hero/sections. */
-.bematist-dashboard h1,
-.bematist-dashboard h2,
-.bematist-dashboard h3 {
+.bema-dashboard h1,
+.bema-dashboard h2,
+.bema-dashboard h3 {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   letter-spacing: -0.03em;
 }
 
 /* Small-caps labels that mirror marketing's `.mk-sys`. */
-.bematist-dashboard .dash-eyebrow {
+.bema-dashboard .dash-eyebrow {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-size: 10px;
   text-transform: uppercase;
@@ -84,7 +84,7 @@
 }
 
 /* ─── App shell ────────────────────────────────────────────────── */
-.bematist-dashboard .dash-shell {
+.bema-dashboard .dash-shell {
   display: grid;
   grid-template-columns: 220px 1fr;
   min-height: 100vh;
@@ -96,7 +96,7 @@
 }
 
 /* ─── Sidebar ──────────────────────────────────────────────────── */
-.bematist-dashboard .dash-side {
+.bema-dashboard .dash-side {
   border-right: 1px solid var(--mk-border);
   padding: 20px;
   display: flex;
@@ -105,7 +105,7 @@
   background: var(--mk-bg);
 }
 
-.bematist-dashboard .dash-wordmark {
+.bema-dashboard .dash-wordmark {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-weight: 700;
   font-size: 16px;
@@ -119,21 +119,21 @@
   margin-bottom: 20px;
 }
 
-.bematist-dashboard .dash-wordmark-dot {
+.bema-dashboard .dash-wordmark-dot {
   width: 10px;
   height: 10px;
   border-radius: 2px;
   background: var(--mk-accent);
 }
 
-.bematist-dashboard .dash-nav {
+.bema-dashboard .dash-nav {
   display: flex;
   flex-direction: column;
   gap: 2px;
   flex: 1;
 }
 
-.bematist-dashboard .dash-nav-section {
+.bema-dashboard .dash-nav-section {
   margin-top: 16px;
   padding: 6px 10px 4px;
   font-family: var(--font-mk-sys, "Space Mono", monospace);
@@ -144,7 +144,7 @@
   border-top: 1px solid var(--mk-border);
 }
 
-.bematist-dashboard .dash-nav-link {
+.bema-dashboard .dash-nav-link {
   padding: 6px 10px;
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
   font-size: 12px;
@@ -157,18 +157,18 @@
     background 0.15s;
 }
 
-.bematist-dashboard .dash-nav-link:hover {
+.bema-dashboard .dash-nav-link:hover {
   color: var(--mk-ink);
   background: rgba(237, 232, 222, 0.04);
 }
 
-.bematist-dashboard .dash-nav-link[aria-current="page"] {
+.bema-dashboard .dash-nav-link[aria-current="page"] {
   background: rgba(110, 138, 111, 0.15);
   color: var(--mk-ink);
   position: relative;
 }
 
-.bematist-dashboard .dash-nav-section {
+.bema-dashboard .dash-nav-section {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
   font-size: 10px;
   text-transform: uppercase;
@@ -177,12 +177,12 @@
   padding: 16px 10px 4px;
 }
 
-.bematist-dashboard .dash-nav-link-sub {
+.bema-dashboard .dash-nav-link-sub {
   padding-left: 18px;
 }
 
 /* Accent bar on the left edge of the active tab, matching the wordmark dot. */
-.bematist-dashboard .dash-nav-link[aria-current="page"]::before {
+.bema-dashboard .dash-nav-link[aria-current="page"]::before {
   content: "";
   position: absolute;
   left: 0;
@@ -194,7 +194,7 @@
 }
 
 /* ─── Main content ─────────────────────────────────────────────── */
-.bematist-dashboard .dash-main {
+.bema-dashboard .dash-main {
   padding: 32px;
   overflow-y: auto;
   min-width: 0; /* lets grid-child tables shrink below intrinsic width */
@@ -203,11 +203,11 @@
 
 /* ─── Responsive: stack sidebar above main under ~640px (true mobile) ─── */
 @media (max-width: 640px) {
-  .bematist-dashboard .dash-shell {
+  .bema-dashboard .dash-shell {
     grid-template-columns: 1fr;
   }
 
-  .bematist-dashboard .dash-side {
+  .bema-dashboard .dash-side {
     flex-direction: row;
     align-items: center;
     gap: 16px;
@@ -217,23 +217,23 @@
     overflow-x: auto;
     /* Collapse wordmark margin — no room for vertical stacking. */
   }
-  .bematist-dashboard .dash-wordmark {
+  .bema-dashboard .dash-wordmark {
     margin-bottom: 0;
     flex-shrink: 0;
   }
-  .bematist-dashboard .dash-nav {
+  .bema-dashboard .dash-nav {
     flex-direction: row;
     flex: 1 1 auto;
     overflow-x: auto;
     scrollbar-width: none; /* subtle; nav is short enough to fit usually */
   }
-  .bematist-dashboard .dash-nav::-webkit-scrollbar {
+  .bema-dashboard .dash-nav::-webkit-scrollbar {
     display: none;
   }
-  .bematist-dashboard .dash-nav-link {
+  .bema-dashboard .dash-nav-link {
     white-space: nowrap;
   }
-  .bematist-dashboard .dash-nav-link[aria-current="page"]::before {
+  .bema-dashboard .dash-nav-link[aria-current="page"]::before {
     left: 0;
     right: 0;
     top: auto;
@@ -242,40 +242,40 @@
     height: 2px;
   }
 
-  .bematist-dashboard .dash-main {
+  .bema-dashboard .dash-main {
     padding: 16px;
   }
 }
 
 /* ─── Custom scrollbars (matches the muted palette) ────────────── */
-.bematist-dashboard *::-webkit-scrollbar {
+.bema-dashboard *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
-.bematist-dashboard *::-webkit-scrollbar-track {
+.bema-dashboard *::-webkit-scrollbar-track {
   background: transparent;
 }
-.bematist-dashboard *::-webkit-scrollbar-thumb {
+.bema-dashboard *::-webkit-scrollbar-thumb {
   background: rgba(237, 232, 222, 0.08);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
-.bematist-dashboard *::-webkit-scrollbar-thumb:hover {
+.bema-dashboard *::-webkit-scrollbar-thumb:hover {
   background: rgba(237, 232, 222, 0.18);
   background-clip: padding-box;
   border: 2px solid transparent;
 }
-.bematist-dashboard *::-webkit-scrollbar-corner {
+.bema-dashboard *::-webkit-scrollbar-corner {
   background: transparent;
 }
-.bematist-dashboard {
+.bema-dashboard {
   scrollbar-color: rgba(237, 232, 222, 0.12) transparent;
   scrollbar-width: thin;
 }
 
 /* Make shadcn Card feel closer to marketing panels — slightly tighter
    borders + subtle elevation, using the retuned tokens above. */
-.bematist-dashboard [class*="rounded-xl border"][class*="bg-card"] {
+.bema-dashboard [class*="rounded-xl border"][class*="bg-card"] {
   border-radius: 8px;
 }

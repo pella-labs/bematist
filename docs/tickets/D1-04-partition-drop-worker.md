@@ -1,7 +1,7 @@
 # D1-04 Primer: GDPR partition-drop worker (7-d SLA)
 
 **For:** Fresh session implementing the GDPR erasure worker
-**Project:** bematist (DevMetrics)
+**Project:** bema (DevMetrics)
 **Workstream:** D (owns worker); I (audit/compliance) is the primary consumer
 **Date:** 2026-04-17 (planned)
 **Previous work:** `D1-00`, `D1-01`. Does NOT depend on `D1-02`/`D1-03` — can run in parallel. See `docs/DEVLOG.md`.

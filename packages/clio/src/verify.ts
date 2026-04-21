@@ -137,7 +137,7 @@ const PROPER_NOUNS: ReadonlySet<string> = new Set(
     "Microsoft",
     "Meta",
     "Pella",
-    "Bematist",
+    "Bema",
     "Acme",
     "Contoso",
     "Initech",

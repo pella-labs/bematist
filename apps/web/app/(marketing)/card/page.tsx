@@ -3,7 +3,7 @@ import { CardMount } from "../_card/CardMount";
 import { DEMO_CARD } from "../_card/demo-data";
 import { GetStarted } from "../_components/GetStarted";
 
-const CARD_TITLE = "Bematist · Get your card";
+const CARD_TITLE = "Bema · Get your card";
 const CARD_DESCRIPTION =
   "Plug in your Claude Code and Codex history. Parsed on your device — totals only, no prompts, no code. Get your shareable card.";
 
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: CARD_TITLE,
     description: CARD_DESCRIPTION,
-    site: "@bematist_dev",
+    site: "@bema_dev",
   },
 };
 

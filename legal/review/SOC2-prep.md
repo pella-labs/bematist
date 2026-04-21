@@ -1,9 +1,9 @@
-# SOC 2 Type I → Type II readiness — Bematist managed-cloud
+# SOC 2 Type I → Type II readiness — Bema managed-cloud
 
 **Audit framework:** AICPA Trust Services Criteria (TSP 100, 2017 revision with 2022 / 2023 / 2024 points-of-focus updates).
 **Trust service categories in scope:** Security (Common Criteria CC1–CC9) plus Confidentiality (C1) plus Privacy (P1–P8) plus Availability (A1). Processing Integrity (PI1) deferred to Phase 4 if customer demand emerges.
 **Template version:** 1.0.0-draft
-**Maintained by:** Bematist Workstream I (Compliance), in coordination with Workstream F (release tooling), Workstream D (storage), and Workstream G-back (server).
+**Maintained by:** Bema Workstream I (Compliance), in coordination with Workstream F (release tooling), Workstream D (storage), and Workstream G-back (server).
 **Audience:** internal security and engineering leads; future SOC 2 audit firm; procurement-security teams reviewing SOC 2 readiness.
 
 > **Status — DRAFT roadmap.** Type I (point-in-time design-only) is a Phase 2 deliverable (target M3 of Phase 2 calendar; ≈ 6 months post-PoC ship). Type II (period-of-time operating-effectiveness) is a Phase 3 deliverable (target M9–M12; ≈ 12 months post-PoC ship). This document specifies the scope, control catalogue, evidence-collection matrix, and milestone plan; it is not an attestation. Read alongside `CAIQ-v4.0.3.md` (CCM mapping) and `SIG-Lite-2024.md` (SIG mapping).
@@ -14,18 +14,18 @@
 
 ### 1.1 Objectives
 
-- **Phase 2 — SOC 2 Type I.** Confirm the design of controls as of a point-in-time. Customers can read the report to assess whether Bematist's described controls are designed appropriately to meet the Trust Services Criteria.
+- **Phase 2 — SOC 2 Type I.** Confirm the design of controls as of a point-in-time. Customers can read the report to assess whether Bema's described controls are designed appropriately to meet the Trust Services Criteria.
 - **Phase 3 — SOC 2 Type II.** Confirm both design **and** operating effectiveness over a period (typically 6 to 12 months of observation). This is the report most enterprise procurement teams require.
 
 ### 1.2 In-scope service / system
 
-- The Bematist managed-cloud product offering — ingest, ClickHouse analytics, Postgres control plane, Next.js dashboard, worker, gateway.
+- The Bema managed-cloud product offering — ingest, ClickHouse analytics, Postgres control plane, Next.js dashboard, worker, gateway.
 - The customer-data lifecycle from collector → ingest → storage → dashboard → erasure.
 - Supporting infrastructure: cloud-provider services (computing, storage, networking, KMS), CI/CD release pipeline, monitoring + alerting.
 
 ### 1.3 Out of scope
 
-- Self-host deployments (customer infrastructure; Bematist's role is product supplier, not service operator).
+- Self-host deployments (customer infrastructure; Bema's role is product supplier, not service operator).
 - Solo / embedded mode (no service relationship).
 - Sub-processors (their own SOC 2 reports inherited).
 
@@ -35,7 +35,7 @@
 |---|---|---|
 | **Security** | CC1–CC9 (Common Criteria) | Mandatory baseline |
 | **Availability** | A1.1, A1.2, A1.3 | Customer-SLA-relevant |
-| **Confidentiality** | C1.1, C1.2 | Personal-data and customer-IP confidentiality is core to Bematist's value proposition |
+| **Confidentiality** | C1.1, C1.2 | Personal-data and customer-IP confidentiality is core to Bema's value proposition |
 | **Privacy** | P1.1–P8.1 | GDPR / CCPA / EU AI Act overlap; works-council-instrument cross-reference |
 | **Processing Integrity** | PI1.1–PI1.5 | Deferred to Phase 4 unless customer demand surfaces; not required for typical TPRM uses |
 
@@ -43,11 +43,11 @@
 
 ## 2. Control catalogue
 
-The following catalogue maps Trust Services Criteria → Bematist controls → evidence sources. Controls are described per the AICPA TSP 100 numbering. Each row also lists the existing evidence in this repository / shipped product that the auditor will examine.
+The following catalogue maps Trust Services Criteria → Bema controls → evidence sources. Controls are described per the AICPA TSP 100 numbering. Each row also lists the existing evidence in this repository / shipped product that the auditor will examine.
 
 ### 2.1 Common Criteria — CC1 Control Environment
 
-| Criterion | Bematist control | Evidence |
+| Criterion | Bema control | Evidence |
 |---|---|---|
 | CC1.1 — Demonstrates commitment to integrity and ethical values | Code of Conduct; whistleblower channel; signed confidentiality + IP-assignment | Internal HR documents (NDA) |
 | CC1.2 — Board oversight of internal control | Quarterly security-and-compliance review at executive level | Board minutes (NDA) |
@@ -57,7 +57,7 @@ The following catalogue maps Trust Services Criteria → Bematist controls → e
 
 ### 2.2 CC2 Communication and Information
 
-| Criterion | Bematist control | Evidence |
+| Criterion | Bema control | Evidence |
 |---|---|---|
 | CC2.1 — Obtains or generates relevant, quality information to support internal control | Continuous metrics (privacy gates, scoring eval, perf gates); SLO dashboards; incident telemetry | CI artifacts; SLO dashboards |
 | CC2.2 — Internally communicates information to support internal control | All-hands; team-channel announcements; CHANGELOG per release; security-advisory mailing list | Internal channels |
@@ -65,7 +65,7 @@ The following catalogue maps Trust Services Criteria → Bematist controls → e
 
 ### 2.3 CC3 Risk Assessment
 
-| Criterion | Bematist control | Evidence |
+| Criterion | Bema control | Evidence |
 |---|---|---|
 | CC3.1 — Specifies suitable objectives | PRD §10 milestones; per-workstream PRDs; SLO definitions | PRD; workstream PRDs |
 | CC3.2 — Identifies risks to objectives | DPIA §4 risk register; per-PRD challenger review | DPIA; PRD challenger sections |
@@ -74,14 +74,14 @@ The following catalogue maps Trust Services Criteria → Bematist controls → e
 
 ### 2.4 CC4 Monitoring Activities
 
-| Criterion | Bematist control | Evidence |
+| Criterion | Bema control | Evidence |
 |---|---|---|
 | CC4.1 — Selects, develops, and performs ongoing and/or separate evaluations | Continuous CI gates; SOC 2 Type II observation; annual pen-test from Phase 3; quarterly internal review | CI artifacts; pen-test reports |
 | CC4.2 — Evaluates and communicates internal-control deficiencies | Internal tracker with severity-based SLAs; customer-notification SLA for SEV1/SEV2; audit-finding remediation plans | Internal tracker; customer notifications |
 
 ### 2.5 CC5 Control Activities
 
-| Criterion | Bematist control | Evidence |
+| Criterion | Bema control | Evidence |
 |---|---|---|
 | CC5.1 — Selects and develops control activities to mitigate risks | Per CLAUDE.md §Security Rules + §Database Rules + §Privacy Model Rules; DPIA §5 measures | CLAUDE.md; DPIA |
 | CC5.2 — Selects and develops general controls over technology | Tech-stack pinning; container hardening; secret-management; KMS | CLAUDE.md §Tech Stack; infra IaC (NDA) |
@@ -89,7 +89,7 @@ The following catalogue maps Trust Services Criteria → Bematist controls → e
 
 ### 2.6 CC6 Logical and Physical Access Controls
 
-| Criterion | Bematist control | Evidence |
+| Criterion | Bema control | Evidence |
 |---|---|---|
 | CC6.1 — Implements logical access security software, infrastructure, and architectures | Better Auth; SSO + WebAuthn / TOTP 2FA; Postgres RLS; ClickHouse row policies; JWT-derived identity (CLAUDE.md §Architecture Rules point 8) | `apps/web`; `apps/ingest`; `packages/schema` migrations |
 | CC6.2 — Authorizes prior to issuing system credentials | SSO + SCIM (Phase 4); manual provisioning before SCIM; CRO approval for privileged access | HR onboarding; SSO audit log |
@@ -102,7 +102,7 @@ The following catalogue maps Trust Services Criteria → Bematist controls → e
 
 ### 2.7 CC7 System Operations
 
-| Criterion | Bematist control | Evidence |
+| Criterion | Bema control | Evidence |
 |---|---|---|
 | CC7.1 — Detects and monitors changes (including unauthorized changes) | Append-only `audit_log`; SIEM ingestion (Phase 2+); anomaly detector (hourly) | `audit_log`; anomaly detector |
 | CC7.2 — Monitors the system and the operation of those controls | SLO dashboards; on-call rotation; pino structured logs to central pipeline | Internal dashboards |
@@ -112,20 +112,20 @@ The following catalogue maps Trust Services Criteria → Bematist controls → e
 
 ### 2.8 CC8 Change Management
 
-| Criterion | Bematist control | Evidence |
+| Criterion | Bema control | Evidence |
 |---|---|---|
 | CC8.1 — Authorizes, designs, develops, configures, documents, tests, approves, implements changes | GitHub PR; CODEOWNERS; branch protection on `main`; CI matrix (typecheck, lint, unit, privacy, scoring, perf); merge-blocking gates | `.github/workflows/`; PR history |
 
 ### 2.9 CC9 Risk Mitigation
 
-| Criterion | Bematist control | Evidence |
+| Criterion | Bema control | Evidence |
 |---|---|---|
 | CC9.1 — Identifies, selects, and develops risk-mitigation activities | DPIA §5 measures; per-PRD challenger review | DPIA; PRD challengers |
 | CC9.2 — Assesses and manages risks associated with vendors and business partners | Sub-processor questionnaires; DPA + SCCs per sub-processor; quarterly sub-processor review | DPA Sub-Processor Schedule |
 
 ### 2.10 Availability — A1
 
-| Criterion | Bematist control | Evidence |
+| Criterion | Bema control | Evidence |
 |---|---|---|
 | A1.1 — Manages capacity demand to enable availability commitments | Per-tenant quotas; Redpanda partition-by-tenant; capacity-planning monthly | Internal capacity reports |
 | A1.2 — Authorizes, designs, develops, implements, operates, approves, maintains environmental protections | Inherited from upstream cloud provider | Upstream attestations |
@@ -133,16 +133,16 @@ The following catalogue maps Trust Services Criteria → Bematist controls → e
 
 ### 2.11 Confidentiality — C1
 
-| Criterion | Bematist control | Evidence |
+| Criterion | Bema control | Evidence |
 |---|---|---|
 | C1.1 — Identifies and maintains confidential information | Tier classification A / B / C; data-flow diagrams in DPIA | DPIA §1 |
 | C1.2 — Disposes of confidential information | Partition-drop on `(tenant_id, engineer_id, day)`; KMS key destruction; 7-day erasure SLA | `apps/worker/src/jobs/partition_drop.ts`; CLAUDE.md §GDPR |
 
 ### 2.12 Privacy — P1 to P8
 
-The Privacy criteria require an extensive treatment because Bematist's product centre-of-gravity is workplace privacy. Cross-references to the DPIA and the Bill of Rights rider supply most of the depth; this section enumerates the SOC 2 control rows.
+The Privacy criteria require an extensive treatment because Bema's product centre-of-gravity is workplace privacy. Cross-references to the DPIA and the Bill of Rights rider supply most of the depth; this section enumerates the SOC 2 control rows.
 
-| Criterion | Bematist control | Evidence |
+| Criterion | Bema control | Evidence |
 |---|---|---|
 | P1.1 — Notice — provides notice to data subjects about its privacy practices | Bill of Rights at `/privacy`; version-pinned in `packages/config/src/bill-of-rights.ts`; works-council / CSE / union instruments where applicable | `packages/config/src/bill-of-rights.ts`; `legal/review/works-agreement-DE.md`; `legal/review/cse-consultation-FR.md`; `legal/review/union-agreement-IT.md` |
 | P2.1 — Choice and consent | Tier C requires per-IC project opt-in or signed Ed25519 tenant flip with cooldown + banner (D20); maturity-ladder is private to IC | `legal/review/bill-of-rights-rider.md` Rights 4 + 6 |
@@ -157,7 +157,7 @@ The Privacy criteria require an extensive treatment because Bematist's product c
 
 ## 3. Evidence-collection matrix
 
-For Type II observation, the auditor needs **operating-effectiveness evidence** — not just policy documents. The following matrix lists, per control area, what evidence Bematist commits to retain and the retention period.
+For Type II observation, the auditor needs **operating-effectiveness evidence** — not just policy documents. The following matrix lists, per control area, what evidence Bema commits to retain and the retention period.
 
 | Evidence class | Retention | Source |
 |---|---|---|
@@ -232,7 +232,7 @@ For Type II observation, the auditor needs **operating-effectiveness evidence** 
 
 ## 6. Alignment with other compliance programs
 
-Where customers also require ISO 27001, the SOC 2 control mapping aligns roughly with ISO 27001 Annex A controls. Bematist's Phase-3 roadmap includes an ISO 27001 readiness assessment in parallel with the SOC 2 Type II observation; many controls are dual-purpose:
+Where customers also require ISO 27001, the SOC 2 control mapping aligns roughly with ISO 27001 Annex A controls. Bema's Phase-3 roadmap includes an ISO 27001 readiness assessment in parallel with the SOC 2 Type II observation; many controls are dual-purpose:
 
 | SOC 2 area | ISO 27001 Annex A equivalent |
 |---|---|
@@ -243,7 +243,7 @@ Where customers also require ISO 27001, the SOC 2 control mapping aligns roughly
 | C1 (Confidentiality) | A.13 (Communications) + A.18 (Compliance) |
 | Privacy P1–P8 | ISO 27701 Privacy Information Management System |
 
-ISO 27701 (the privacy extension to 27001) is the cleanest companion to the SOC 2 Privacy criteria; Bematist plans 27701 inclusion in the Phase-3 27001 effort.
+ISO 27701 (the privacy extension to 27001) is the cleanest companion to the SOC 2 Privacy criteria; Bema plans 27701 inclusion in the Phase-3 27001 effort.
 
 ---
 
@@ -272,7 +272,7 @@ ISO 27701 (the privacy extension to 27001) is the cleanest companion to the SOC 
 | SR-4 | DR exercise skipped during the period — Type II qualified opinion | Medium | Calendar-locked annual exercise; on-call manager owns |
 | SR-5 | Pen-test postponed beyond the period — Type II qualified opinion | Low | Annual contract with CREST-accredited firm pre-booked for Phase 3 onward |
 | SR-6 | NDA-restricted policy library scope creep — auditor cannot examine | Low | Auditor-NDA template ready; single-point-of-contact for evidence requests |
-| SR-7 | Self-host customers expect Bematist to be responsible for their operating-effectiveness — scope confusion | Low | `legal/review/CAIQ-v4.0.3.md` and `legal/review/SIG-Lite-2024.md` clearly disclose the self-host carve-out; SOC 2 report scope clearly delineates managed-cloud only |
+| SR-7 | Self-host customers expect Bema to be responsible for their operating-effectiveness — scope confusion | Low | `legal/review/CAIQ-v4.0.3.md` and `legal/review/SIG-Lite-2024.md` clearly disclose the self-host carve-out; SOC 2 report scope clearly delineates managed-cloud only |
 
 ---
 

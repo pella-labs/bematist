@@ -1,4 +1,4 @@
-# Bematist — collector installer plan (M5, L3-first)
+# Bema — collector installer plan (M5, L3-first)
 
 The cutover the night of 2026-04-18 surfaced a real UX cliff: the `curl | sh` one-liner installs the binary but the shell-only env vars (`BEMATIST_ENDPOINT`, `BEMATIST_TOKEN`) evaporate the moment the installer exits. Users have to `export` them by hand and then `bematist serve` blocks a terminal for their whole session. A 100-dev rollout cannot ship on that baseline.
 
@@ -20,8 +20,8 @@ bematist config set token bm_orgslug_keyid_secret
 brew services start bematist
 
 # Ubuntu/Debian
-curl -fsSL https://bematist.dev/apt/public.gpg | sudo tee /etc/apt/trusted.gpg.d/bematist.gpg
-echo 'deb https://bematist.dev/apt stable main' | sudo tee /etc/apt/sources.list.d/bematist.list
+curl -fsSL https://bema.tools/apt/public.gpg | sudo tee /etc/apt/trusted.gpg.d/bematist.gpg
+echo 'deb https://bema.tools/apt stable main' | sudo tee /etc/apt/sources.list.d/bematist.list
 sudo apt update && sudo apt install bematist
 bematist config set endpoint ...
 bematist config set token ...
@@ -65,7 +65,7 @@ Distro packages' post-install hooks reference these unit files; the CLI wraps th
 - [ ] `packaging/launchd/dev.bematist.collector.plist.tmpl` — user LaunchAgent, `RunAtLoad=true`, `KeepAlive=true`, `SoftResourceLimits.Core=0` (CLAUDE.md §Security Rules requires no crash dumps). Logs to `~/.bematist/logs/{out,err}.log`.
 - [ ] `packaging/systemd/bematist.service.tmpl` — user unit, `Type=simple`, `Restart=on-failure`, `LimitCORE=0`, `EnvironmentFile=%h/.bematist/config.env`, `WantedBy=default.target`.
 - [ ] `packaging/windows/bematist.xml.tmpl` + `tools/chocolateyInstall.ps1` — Scheduled Task via `Register-ScheduledTask`, runs at logon, hidden, auto-restart on failure, working dir `%USERPROFILE%\.bematist`.
-- [ ] `bematist start` — dispatches to `launchctl bootstrap gui/$(id -u) …` / `systemctl --user enable --now bematist.service` / `Start-ScheduledTask Bematist`. Idempotent.
+- [ ] `bematist start` — dispatches to `launchctl bootstrap gui/$(id -u) …` / `systemctl --user enable --now bematist.service` / `Start-ScheduledTask Bema`. Idempotent.
 - [ ] `bematist stop` — mirror.
 - [ ] `bematist status` — reads launchd via `launchctl print`, systemd via `systemctl --user is-active`, Windows via `Get-ScheduledTask`. Surfaces: `running | stopped | not installed` + log-tail hint.
 - [ ] `bematist logs` — tails `~/.bematist/logs/*.log` (cross-platform; on Windows the Scheduled Task redirects stdout/stderr into those files).
@@ -133,14 +133,14 @@ Priority: **high** (primary Linux channel).
 | Option | Pros | Cons |
 |---|---|---|
 | **Cloudsmith** free dev tier | Clean URL, zero infra, signing baked in | Vendor lock-in, paid beyond free tier |
-| **Self-host on S3 + CloudFront** (`reprepro`/`aptly`) | Total control, clean `apt.bematist.dev` | AWS infra, GPG rotation, repo sync script |
+| **Self-host on S3 + CloudFront** (`reprepro`/`aptly`) | Total control, clean `apt.bema.tools` | AWS infra, GPG rotation, repo sync script |
 | **OBS (OpenSUSE Build Service)** | Free, GPG solved | Branding says OpenSUSE in URLs |
 
 **Recommend Cloudsmith** for fastest ship + cleanest URL; migrate to self-host when scale warrants.
 
 ### Code
 
-- [ ] Generate RSA 4096 GPG key for package signing. Store private key as GH secret `APT_SIGNING_KEY`. Publish public at `https://bematist.dev/apt/public.gpg` (or Cloudsmith's key URL until `bematist.dev` is hosting static assets).
+- [ ] Generate RSA 4096 GPG key for package signing. Store private key as GH secret `APT_SIGNING_KEY`. Publish public at `https://bema.tools/apt/public.gpg` (or Cloudsmith's key URL until `bema.tools` is hosting static assets).
 - [ ] `packaging/deb/build.sh` — already emits `.deb`. Confirm `postinst` script:
   - Installs `/etc/systemd/user/bematist.service` from F2 template.
   - Registers per-user via `systemctl --user daemon-reload` on first `systemctl --user start`.
@@ -160,7 +160,7 @@ echo 'deb https://dl.cloudsmith.io/public/pella-labs/bematist/deb/any-distro any
 sudo apt update && sudo apt install bematist
 ```
 
-Once `bematist.dev` is serving static assets we swap the `dl.cloudsmith.io` URL for our own redirect.
+Once `bema.tools` is serving static assets we swap the `dl.cloudsmith.io` URL for our own redirect.
 
 ### Acceptance
 
@@ -304,7 +304,7 @@ Windows users stay on the direct `install.ps1` download path documented in `/wel
 Kept for reference. If distro moderation stalls across *multiple* channels or Cloudsmith + tap provisioning drags past Day 2, bail out to the previous plan:
 
 1. **Week 1** — ship F1 standalone. Welcome-page one-liner becomes copy-paste self-contained via `curl | sh -- --endpoint … --token …`. `curl | sh` stays primary.
-2. **Week 2** — ship F2 standalone. One-liner ends with "Bematist is now running in background."
+2. **Week 2** — ship F2 standalone. One-liner ends with "Bema is now running in background."
 3. **Week 3+** — resume L3 as above.
 
 This is strictly the escape hatch. The `lets go for L3 from the getgo` decision stands unless provisioning blocks us twice in a week.

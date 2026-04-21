@@ -1,9 +1,9 @@
-# Data Protection Impact Assessment — Bematist Deployment
+# Data Protection Impact Assessment — Bema Deployment
 
 **Template version:** 1.0.0-draft
 **Statutory basis:** GDPR Art. 35 (Data Protection Impact Assessment); UK-GDPR Art. 35; ICO *Guidance on DPIAs*; CNIL *PIA methodology*; EDPB *Guidelines on DPIA* (WP248 rev.01).
-**Maintained by:** Bematist Workstream I (Compliance).
-**Not legal advice.** This is a processor-supplied *starting point* for the customer's Data Protection Officer. The customer is the **Controller** under GDPR Art. 4(7); Bematist operates as **Processor** under Art. 4(8) (or Joint Controller in limited managed-cloud features — see Appendix A). The customer DPO owns the final DPIA and any submission to a supervisory authority under Art. 36.
+**Maintained by:** Bema Workstream I (Compliance).
+**Not legal advice.** This is a processor-supplied *starting point* for the customer's Data Protection Officer. The customer is the **Controller** under GDPR Art. 4(7); Bema operates as **Processor** under Art. 4(8) (or Joint Controller in limited managed-cloud features — see Appendix A). The customer DPO owns the final DPIA and any submission to a supervisory authority under Art. 36.
 
 ---
 
@@ -11,14 +11,14 @@
 
 A DPIA is **mandatory** for this deployment under GDPR Art. 35(3) because the processing meets two independently-triggering conditions:
 
-1. **Art. 35(3)(a)** — systematic and extensive evaluation of personal aspects of natural persons based on automated processing, including profiling, on which decisions affecting those persons may be based. Bematist computes the **AI Leverage Score** (`ai_leverage_v1`), retry-pattern metrics, and maturity-ladder stages derived from engineering activity.
+1. **Art. 35(3)(a)** — systematic and extensive evaluation of personal aspects of natural persons based on automated processing, including profiling, on which decisions affecting those persons may be based. Bema computes the **AI Leverage Score** (`ai_leverage_v1`), retry-pattern metrics, and maturity-ladder stages derived from engineering activity.
 2. **Art. 35(3)(b)** — processing on a large scale. Day-one scale target: **10,000 developers / 8M events/day** per tenant.
 
 **Further independent triggers likely to apply:**
 
 - **EDPB Opinion 2/2017 on data processing at work** — any workplace technical system "suitable" to monitor employee performance triggers co-determination and a DPIA *regardless of the controller's intent*. Suitability, not intent, is the statutory test.
 - **ICO *Monitoring Workers* guidance (Oct 2023)** — employer monitoring of workers requires a DPIA + worker notification.
-- **EU AI Act (Reg. 2024/1689) Annex III(4)(b)** — employment-context scoring systems are high-risk; Phase 1 Bematist is designed to stay out via team-aggregate-only clustering, human-curated labels, and no automated worker decisions. If the customer deploys Phase 3 features (auto-coaching; per-session LLM judgment), fresh Art. 35 review is required.
+- **EU AI Act (Reg. 2024/1689) Annex III(4)(b)** — employment-context scoring systems are high-risk; Phase 1 Bema is designed to stay out via team-aggregate-only clustering, human-curated labels, and no automated worker decisions. If the customer deploys Phase 3 features (auto-coaching; per-session LLM judgment), fresh Art. 35 review is required.
 
 **Expected output.** A customer-completed DPIA suitable for (i) records under Art. 30, (ii) works-council review where jurisdictionally required (DE / FR / IT — see Appendix B), and (iii) prior consultation with the supervisory authority under Art. 36 if, after mitigation, residual risk remains high.
 
@@ -39,7 +39,7 @@ A DPIA is **mandatory** for this deployment under GDPR Art. 35(3) because the pr
 
 ### 1.2 Data categories by privacy tier
 
-Bematist ships **Tier B** (counters + redacted envelopes) as the default (Decision D7). A tier change requires an Ed25519-signed tenant policy, a 7-day cooldown, and an in-IDE banner to every IC (Decision D20).
+Bema ships **Tier B** (counters + redacted envelopes) as the default (Decision D7). A tier change requires an Ed25519-signed tenant policy, a 7-day cooldown, and an in-IDE banner to every IC (Decision D20).
 
 | Tier | What leaves the endpoint | Categories |
 |---|---|---|
@@ -78,7 +78,7 @@ Individual contributors may explicitly promote a workflow to a team-visible play
 
 ### 1.6 Sub-processors
 
-*Customer-specific; populated per deployment mode.* In **managed cloud**, probable sub-processors include: Anthropic (Insight-Engine LLM calls, redacted inputs only); OpenAI (default embedding provider — BYO key optional); embedding-model alternatives (Voyage, Ollama, Xenova — BYO); pricing-data source (LiteLLM pricing JSON); transit infrastructure (DNS, CDN). In **self-host**, Bematist is not a sub-processor of user data at all — the customer's own infrastructure is the processing environment. A full sub-processor list is a Phase-2 deliverable; link the customer's DPA sub-processor schedule here:
+*Customer-specific; populated per deployment mode.* In **managed cloud**, probable sub-processors include: Anthropic (Insight-Engine LLM calls, redacted inputs only); OpenAI (default embedding provider — BYO key optional); embedding-model alternatives (Voyage, Ollama, Xenova — BYO); pricing-data source (LiteLLM pricing JSON); transit infrastructure (DNS, CDN). In **self-host**, Bema is not a sub-processor of user data at all — the customer's own infrastructure is the processing environment. A full sub-processor list is a Phase-2 deliverable; link the customer's DPA sub-processor schedule here:
 
 > **Controller action:** attach sub-processor schedule from executed DPA as Annex 1.
 
@@ -104,7 +104,7 @@ Individual contributors may explicitly promote a workflow to a team-visible play
 | Basis | Applicability | Notes |
 |---|---|---|
 | **(b) Performance of a contract** | Applicable to engineers where employment contract or engagement contract explicitly provides for analytics processing | Narrow. Not a blanket basis for workplace monitoring. |
-| **(c) Legal obligation** | Typically **not applicable** to Bematist outputs themselves; may apply to audit-log retention where sectoral regulation (SOX, HIPAA) compels it | Document the specific statute if relied upon. |
+| **(c) Legal obligation** | Typically **not applicable** to Bema outputs themselves; may apply to audit-log retention where sectoral regulation (SOX, HIPAA) compels it | Document the specific statute if relied upon. |
 | **(f) Legitimate interests** | Most common basis; requires the three-part test below | Default basis; not available to public authorities acting in performance of public tasks. |
 
 **Consent under Art. 6(1)(a) is not recommended.** EDPB Opinion 2/2017 §3.1: the asymmetric power relationship between employer and employee means consent is "highly unlikely to be freely given" and therefore usually invalid. Use (f) with a rigorous balancing test, not (a).
@@ -137,14 +137,14 @@ Conclusion: {{LI_BALANCING_CONCLUSION}} — e.g., "LI override holds at Tier B i
 
 ### 2.3 Explicit unlawful purposes
 
-The following purposes are **excluded** by product design and customer contract. The Controller must **not** use Bematist outputs for these:
+The following purposes are **excluded** by product design and customer contract. The Controller must **not** use Bema outputs for these:
 
 - **Performance evaluation of individual employees.** The AI Leverage Score is a team-aggregate diagnostic. Maturity-ladder stages are private to the IC (D8). Contract template language declares these outputs non-use for performance review.
-- **Termination / promotion / compensation decisions.** Bematist outputs are not a permissible input under the DPIA's necessity test (Leg 2) — such decisions have traditional inputs (manager judgment, peer review, delivery outcomes) that do not require telemetry.
+- **Termination / promotion / compensation decisions.** Bema outputs are not a permissible input under the DPIA's necessity test (Leg 2) — such decisions have traditional inputs (manager judgment, peer review, delivery outcomes) that do not require telemetry.
 - **Public or intra-team rankings.** No "bottom-10%" lists. No public leaderboards. Product refuses to render these at any tier.
 - **Real-time intervention or blocking.** Out of scope forever (CLAUDE.md §Non-goals).
 
-If the Controller wishes to use Bematist outputs for any of the above, fresh lawful-basis analysis is required and the Bill of Rights rider is breached.
+If the Controller wishes to use Bema outputs for any of the above, fresh lawful-basis analysis is required and the Bill of Rights rider is breached.
 
 ---
 
@@ -247,7 +247,7 @@ Risks are rated on (likelihood × severity) on a 1–4 scale each. Impact classe
 
 ### R10 — Compromised binary exfiltration
 
-*Threat.* Tampered Bematist binary exfiltrates to attacker-controlled endpoint.
+*Threat.* Tampered Bema binary exfiltrates to attacker-controlled endpoint.
 *Mitigations.* Sigstore + cosign signature per release; SHA-256 in release notes; SLSA L3 attestation; distro-package primary distribution (`curl | sh` is fallback); `DEVMETRICS_INGEST_ONLY_TO` cert-pinned egress allowlist; per-dev binary SHA256 in manager dashboard with alert on non-canonical; `ulimit -c 0` + `RLIMIT_CORE=0` (crash dumps disabled); `bematist doctor` verifies.
 
 ---
@@ -282,8 +282,8 @@ Risks are rated on (likelihood × severity) on a 1–4 scale each. Impact classe
 | O2 | Works-council agreement executed before go-live (DE/FR/IT) | Controller | `works-agreement-DE.md`, `cse-consultation-FR.md`, `union-agreement-IT.md` |
 | O3 | DPO appointed (Art. 37–39) and this DPIA signed off | Controller DPO | {{DPO_NAME}} |
 | O4 | Employee notification before deployment (Art. 13) | Controller HR + DPO | Internal comms |
-| O5 | Role training for Team Leads, Managers, Admins | Controller | "Bematist for Managers" 30-minute module |
-| O6 | Data Processing Agreement (Art. 28) executed with Bematist | Controller + Processor | Phase-2 DPA template |
+| O5 | Role training for Team Leads, Managers, Admins | Controller | "Bema for Managers" 30-minute module |
+| O6 | Data Processing Agreement (Art. 28) executed with Bema | Controller + Processor | Phase-2 DPA template |
 | O7 | Sub-processor notification + 30-day objection window | Processor → Controller | DPA §Sub-processors |
 | O8 | Breach-notification runbook (Art. 33) | Controller + Processor | 72-hour SA notification path |
 | O9 | Regular DPIA re-review on material change | Controller DPO | Trigger list in Preamble |
@@ -291,7 +291,7 @@ Risks are rated on (likelihood × severity) on a 1–4 scale each. Impact classe
 
 ### 5.3 Demonstrating compliance with Art. 5(2)
 
-Controller retains: this completed DPIA + version history; executed DPA with Bematist; executed works-council / CSE / union agreement where jurisdictional; employee notification records; Art. 30 record of processing activities (separate document); sub-processor schedule (Annex 1 to DPA); SCCs Module 2 + TIA where cross-border; DPO sign-off (§6).
+Controller retains: this completed DPIA + version history; executed DPA with Bema; executed works-council / CSE / union agreement where jurisdictional; employee notification records; Art. 30 record of processing activities (separate document); sub-processor schedule (Annex 1 to DPA); SCCs Module 2 + TIA where cross-border; DPO sign-off (§6).
 
 ---
 
@@ -315,7 +315,7 @@ Trigger checklist — if **any** of these are true after §5 mitigation, the Con
 
 - ☐ Residual rating of any R1–R10 remains High (not Low or Medium-Low).
 - ☐ A works-council in DE / FR / IT has withheld consent and the Controller intends to proceed.
-- ☐ The Controller plans to use Bematist outputs for any §2.3 unlawful purpose.
+- ☐ The Controller plans to use Bema outputs for any §2.3 unlawful purpose.
 - ☐ The deployment involves special-category data under Art. 9 (unusual — investigate why).
 - ☐ Managed-cloud Tier C is enabled at tenant level without per-project IC opt-in.
 
@@ -331,15 +331,15 @@ Trigger checklist — if **any** of these are true after §5 mitigation, the Con
 
 ---
 
-## Appendix A — Bematist Processor disclosures
+## Appendix A — Bema Processor disclosures
 
 Processor-supplied facts; Controller verifies against the executed DPA.
 
 | Item | Value |
 |---|---|
 | **Controller identity** | {{CONTROLLER_LEGAL_NAME}}, {{CONTROLLER_ADDRESS}}, DPO: {{DPO_NAME}} ({{DPO_EMAIL}}) |
-| **Processor identity** | Bematist — legal-entity details per executed DPA. For self-host deployments Bematist is **not** a processor of user data; support-access contacts only. |
-| **Data subject categories** | Employees / contractors of the Controller who use Bematist-supported coding agents on work machines. |
+| **Processor identity** | Bema — legal-entity details per executed DPA. For self-host deployments Bema is **not** a processor of user data; support-access contacts only. |
+| **Data subject categories** | Employees / contractors of the Controller who use Bema-supported coding agents on work machines. |
 | **Personal-data categories (Tier B default)** | Pseudonymized `engineer_id`, hashed `session_id`, redacted event envelopes with prompt length + diff line-count, hashed file paths, error class, timestamps, tokens, cost. |
 | **Personal-data categories (Tier C opt-in)** | As Tier B + raw `user_prompt.prompt`, `tool_result.result`, file paths, diff bodies — **only within the three named exceptions (§3.4)**. |
 | **Special categories (Art. 9)** | None by design. Secret scanners + forbidden-field rejection block accidental capture. If Art. 9 data is nonetheless captured, Controller initiates Art. 33 breach response. |
@@ -383,7 +383,7 @@ Short form — the 7 items the signing DPO should verify before countersigning t
 
 ## Changelog
 
-- **2026-04-16 — v1.0.0-draft.** Initial DPIA template, Workstream I (Sandesh). Structured per GDPR Art. 35(7)(a)–(d); six Art. 35(7) sections + two appendices + DPO checklist. Sourced from Bematist PRD §6 + §12, CLAUDE.md §Privacy Model Rules / §Security Rules / §Compliance Rules, and Workstream I PRD §5 DPIA row + §10.3 DPIA review gate. Review cadence: reassess on material change (privacy-tier default flip, new adapter, new sub-processor, cross-border destination change, metric version bump).
+- **2026-04-16 — v1.0.0-draft.** Initial DPIA template, Workstream I (Sandesh). Structured per GDPR Art. 35(7)(a)–(d); six Art. 35(7) sections + two appendices + DPO checklist. Sourced from Bema PRD §6 + §12, CLAUDE.md §Privacy Model Rules / §Security Rules / §Compliance Rules, and Workstream I PRD §5 DPIA row + §10.3 DPIA review gate. Review cadence: reassess on material change (privacy-tier default flip, new adapter, new sub-processor, cross-border destination change, metric version bump).
 
 ## Cross-references
 

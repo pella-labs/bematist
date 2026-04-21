@@ -31,7 +31,7 @@ export interface DaemonResult {
 
 const LAUNCHD_LABEL = "dev.bematist.collector";
 const SYSTEMD_UNIT = "bematist.service";
-const WINDOWS_TASK = "\\Bematist\\Collector";
+const WINDOWS_TASK = "\\Bema\\Collector";
 
 function resolveBinary(): string {
   // `bematist` binary path. argv[1] points at the CLI entry; argv[0] is

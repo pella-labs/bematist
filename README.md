@@ -1,4 +1,4 @@
-# Bematist
+# Bema
 
 Open-source (Apache 2.0), self-hostable AI-engineering analytics platform. Auto-instruments every developer's machine to capture all LLM / coding-agent usage (tokens, cost, prompts, sessions, tool calls, outcomes) across every IDE/ADE — Claude Code, Codex, Cursor, OpenCode, Goose, Copilot, Continue.dev, Cline/Roo/Kilo — and ships it to a tenant-owned backend. The manager dashboard correlates LLM spend with Git outcomes (commits, PRs, green tests) and surfaces "why does dev X use ½ the tokens for similar work" via a Clio-style prompt pipeline plus Twin Finder — without shipping per-engineer leaderboards, per-session LLM judgments, or panopticon views.
 

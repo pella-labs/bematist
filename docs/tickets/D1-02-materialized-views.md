@@ -1,7 +1,7 @@
 # D1-02 Primer: ClickHouse materialized views (5 MVs)
 
 **For:** Fresh session implementing the Sprint 1 MV suite
-**Project:** bematist (DevMetrics)
+**Project:** bema (DevMetrics)
 **Workstream:** D (Storage & Schema) — primary author; H and E are consumers
 **Date:** 2026-04-17
 **Previous work:** `D1-00` env autoload, `D1-01` contract 05 drift. See `docs/DEVLOG.md`.

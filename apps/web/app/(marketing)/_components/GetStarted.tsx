@@ -170,13 +170,13 @@ export function GetStarted() {
 
   // When served from a non-prod origin (localhost, staging, previews) the
   // token is in *that* DB, not prod's — grammata's default --api-url
-  // (https://bematist.dev/api) would 401 the submit. Append an explicit
+  // (https://bema.tools/api) would 401 the submit. Append an explicit
   // --api-url so copy-paste just works from wherever the page is served.
   const cliCommand = useMemo(() => {
     if (!cardToken) return "";
     if (typeof window === "undefined") return `npx grammata ${cardToken}`;
     const origin = window.location.origin;
-    const isProd = /^https:\/\/(www\.)?bematist\.dev$/.test(origin);
+    const isProd = /^https:\/\/(www\.)?bema\.dev$/.test(origin);
     return isProd
       ? `npx grammata ${cardToken}`
       : `npx grammata ${cardToken} --api-url ${origin}/api`;
@@ -257,7 +257,7 @@ export function GetStarted() {
               rel="noreferrer"
               className="mk-getstarted-link"
             >
-              pella-labs/bematist
+              pella-labs/bema
             </a>{" "}
             in a new tab. Star it there, then drop your username below — we'll check the public
             stargazers list and hand you your card token. No sign-in needed.
@@ -313,7 +313,7 @@ export function GetStarted() {
       {step === "generate" && (
         <div className="mk-getstarted-panel">
           <h3>Generate your card token</h3>
-          <p>One-time use, one-hour expiry. Your CLI trades it for your personal Bematist card.</p>
+          <p>One-time use, one-hour expiry. Your CLI trades it for your personal Bema card.</p>
           <button
             type="button"
             onClick={handleGenerate}
@@ -329,7 +329,7 @@ export function GetStarted() {
         <div className="mk-getstarted-panel">
           <h3>Run this in your terminal</h3>
           <p>
-            Bematist reads your local Claude Code and Codex sessions. Only aggregated numbers leave
+            Bema reads your local Claude Code and Codex sessions. Only aggregated numbers leave
             your machine. Never prompt text, never code.
           </p>
           <div className="mk-getstarted-cmd">

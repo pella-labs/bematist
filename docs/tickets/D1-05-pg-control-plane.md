@@ -1,7 +1,7 @@
 # D1-05 Primer: Remaining Postgres control-plane tables (Drizzle)
 
 **For:** Fresh session landing the PG control-plane table suite
-**Project:** bematist (DevMetrics)
+**Project:** bema (DevMetrics)
 **Workstream:** D (Storage & Schema)
 **Date:** 2026-04-17 (planned)
 **Previous work:** `D1-00`. Independent of `D1-02`/`D1-03` (CH-side). `D1-04` may need `erasure_requests` — coordinate ordering. See `docs/DEVLOG.md`.

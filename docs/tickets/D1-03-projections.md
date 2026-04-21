@@ -1,7 +1,7 @@
 # D1-03 Primer: Projections on `events` + EXPLAIN gates
 
 **For:** Fresh session adding projections once MVs are stable
-**Project:** bematist (DevMetrics)
+**Project:** bema (DevMetrics)
 **Workstream:** D (Storage & Schema)
 **Date:** 2026-04-17 (planned)
 **Previous work:** `D1-02` materialized views. See `docs/DEVLOG.md`.

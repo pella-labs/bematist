@@ -37,7 +37,7 @@ import { atomicWrite, configEnvPath, dataDir } from "@bematist/config";
 import { COLLECTOR_VERSION, parseEnvFile } from "../config";
 import { daemonStart } from "../daemon";
 
-const DEFAULT_WEB_URL = "https://bematist.dev";
+const DEFAULT_WEB_URL = "https://bema.tools";
 const POLL_MAX_ATTEMPTS = 180; // 10 min @ 5s interval = 120, +buffer
 
 interface LoginOptions {
@@ -99,7 +99,7 @@ function usage(): string {
     "  bematist login [--web-url <url>] [--print-only] [--force] [--no-start]",
     "",
     "Flags:",
-    "  --web-url <url>  Web backend to authorize against (default: https://bematist.dev).",
+    "  --web-url <url>  Web backend to authorize against (default: https://bema.tools).",
     "                   Also respects $BEMATIST_WEB_URL.",
     "  --print-only     Print the URL + code without attempting to open a browser",
     "                   (for SSH / headless / Docker).",

@@ -75,7 +75,7 @@ export const DEMO_CARD: CardData = {
       ],
       activeDays: 42,
       projects: [
-        { name: "bematist", sessions: 382, cost: 198.4 },
+        { name: "bema", sessions: 382, cost: 198.4 },
         { name: "analytics-service", sessions: 206, cost: 104.5 },
         { name: "collector", sessions: 128, cost: 68.1 },
         { name: "dashboard", sessions: 89, cost: 32.2 },
@@ -94,7 +94,7 @@ export const DEMO_CARD: CardData = {
       },
       activeDays: 19,
       projects: [
-        { name: "bematist", sessions: 92, cost: 27.8 },
+        { name: "bema", sessions: 92, cost: 27.8 },
         { name: "collector", sessions: 54, cost: 14.1 },
         { name: "infra", sessions: 38, cost: 6.8 },
       ],
@@ -127,7 +127,7 @@ export const DEMO_CARD: CardData = {
       mostExpensiveSession: {
         cost: 14.8,
         model: "claude-opus-4-6",
-        project: "bematist",
+        project: "bema",
         date: "2026-04-02",
       },
       avgCostPerSession: 0.45,

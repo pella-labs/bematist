@@ -6,7 +6,7 @@
 // the domain UPSERTs. Topic config is LOCKED at 32 partitions, key=tenant_id
 // + ':' + installation_id (per-tenant ordering preserved per partition).
 //
-// Why a narrow interface: the Bematist tech stack locks Redpanda, but the
+// Why a narrow interface: the Bema tech stack locks Redpanda, but the
 // root package.json does not yet pin a Kafka client library. Per CLAUDE.md
 // "No new runtime npm deps without justification" we do NOT add one here —
 // the parent human agent's call-out on this PR decides between:

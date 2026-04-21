@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * `/privacy` — the Bematist Bill of Rights page. It's the canonical user-facing
+ * `/privacy` — the Bema Bill of Rights page. It's the canonical user-facing
  * statement of the six privacy guarantees we actually enforce in code. If this
  * page drifts from the six rules, someone has shipped a policy change without
  * the corresponding UI update — this spec blocks that.

@@ -7,7 +7,7 @@ import { DashboardShot } from "../_components/DashboardShot";
 import { DemoVideo } from "../_components/DemoVideo";
 import { HeroGrid } from "../_components/HeroGrid";
 
-const HOME_TITLE = "Bematist · Measure agentic engineering output";
+const HOME_TITLE = "Bema · Measure agentic engineering output";
 const HOME_DESCRIPTION =
   "Measure agentic engineering output. See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack.";
 
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: HOME_TITLE,
     description: HOME_DESCRIPTION,
-    site: "@bematist_dev",
+    site: "@bema_dev",
   },
 };
 
@@ -276,7 +276,7 @@ export default function MarketingHome() {
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">brew install pella-labs/bematist/bematist</span>
+            <span className="mk-term-cmd">brew install pella-labs/bema/bema</span>
             <span className="mk-term-comment">&nbsp;&nbsp;# collector</span>
           </div>
           <div>
@@ -294,7 +294,7 @@ export default function MarketingHome() {
             understand the least.
           </p>
           <p className="mk-closing-body">
-            Bematist measures it. Spend across every agent. Outcomes tied to merged code. The
+            Bema measures it. Spend across every agent. Outcomes tied to merged code. The
             prompts that ship, surfaced and shareable. Open-source, self-hostable, runs against your
             local sessions on day one. The data was always yours — now it's an instrument.
           </p>
@@ -303,7 +303,7 @@ export default function MarketingHome() {
               Grab your card
             </Link>
             <a
-              href="https://x.com/bematist_dev"
+              href="https://x.com/bema_dev"
               className="mk-btn mk-btn-ghost"
               rel="noreferrer"
               target="_blank"

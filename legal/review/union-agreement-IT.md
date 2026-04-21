@@ -5,7 +5,7 @@
 
 **File:** `legal/review/union-agreement-IT.md` — Italian *accordo sindacale*
 template per Statuto dei Lavoratori Art. 4 (as amended by D.Lgs. 151/2015 and
-subsequent jurisprudence) for a Bematist deployment in an Italian
+subsequent jurisprudence) for a Bema deployment in an Italian
 establishment. Authoritative body in Italian below; this preamble is advisory
 and non-binding. Owner: Workstream I (Compliance).
 
@@ -15,7 +15,7 @@ sign-off.**
 
 **Who uses this file.** The customer's `{{DATORE_DI_LAVORO}}` (employer) and
 the `{{RSU_O_RSA}}` (RSU or RSA — *rappresentanze sindacali*) execute this
-*accordo sindacale*. Bematist (the vendor) does NOT sign — the parties are
+*accordo sindacale*. Bema (the vendor) does NOT sign — the parties are
 the employer and the union representatives. Vendor commitments live in a
 separate DPA (Phase 2). Where no agreement is reached, authorization is
 sought from the *Ispettorato Nazionale del Lavoro* (INL) per Art. 4 c. 1.
@@ -29,7 +29,7 @@ sought from the *Ispettorato Nazionale del Lavoro* (INL) per Art. 4 c. 1.
   controllo a distanza dell'attività dei lavoratori") is permitted only for
   organizational and production needs, work safety, or asset protection,
   and only after a prior *accordo collettivo* with the RSU/RSA or, failing
-  that, INL authorization. Bematist's productivity-capture profile falls
+  that, INL authorization. Bema's productivity-capture profile falls
   squarely within this comma per CLAUDE.md and CR-9.
 - **Statuto dei Lavoratori Art. 4 c. 2** — exception for "strumenti
   utilizzati dal lavoratore per rendere la prestazione lavorativa" (work
@@ -52,7 +52,7 @@ sought from the *Ispettorato Nazionale del Lavoro* (INL) per Art. 4 c. 1.
   **21-day metadata retention ceiling** for workplace e-mail metadata
   absent specific *accordo sindacale* / INL authorization for longer
   periods. The Garante extends this reasoning by analogy to other
-  productivity-capture systems; per CR-9, Bematist defaults (90d Tier-A,
+  productivity-capture systems; per CR-9, Bema defaults (90d Tier-A,
   90d Tier-B, 30d Tier-C) exceed this ceiling and therefore mandate
   *accordo sindacale* on retention. Cited verbatim at §9 c. 2 below.
 - **Garante Provv. 9 marzo 2023 ("Provvedimento Lazio")** + general
@@ -72,7 +72,7 @@ sought from the *Ispettorato Nazionale del Lavoro* (INL) per Art. 4 c. 1.
 - `{{DATORE_DI_LAVORO}}` — employer legal name and codice fiscale.
 - `{{RSU_O_RSA}}` — names of RSU members or RSA chair.
 - `{{DATA_EFFETTO}}` — ISO date (YYYY-MM-DD).
-- `{{VERSIONE_SOFTWARE}}` — Bematist release tag.
+- `{{VERSIONE_SOFTWARE}}` — Bema release tag.
 - `{{ID_TENANT}}` — tenant identifier.
 - `{{DPO_EMAIL}}` — customer DPO mailbox.
 - `{{CONTATTO_ESCALATION}}` — vendor escalation contact.
@@ -83,7 +83,7 @@ sought from the *Ispettorato Nazionale del Lavoro* (INL) per Art. 4 c. 1.
 Ed25519 tier flip) are cited as descriptive of the shipped product per
 CLAUDE.md and PRD §5–§8 — not redesigned here.
 
-**On the 21-day retention conflict (CR-9, HIGH).** Bematist defaults
+**On the 21-day retention conflict (CR-9, HIGH).** Bema defaults
 (90 / 90 / 30 days) exceed the Garante 21-day ceiling. Three resolution
 options were identified in compliance PRD §13 CR-9: (A) IT tenants default
 to 21d raw retention; (B) gate IT go-live on signed *accordo sindacale*
@@ -98,7 +98,7 @@ contractually pending that decision and clearly flags the gap.
 ================================================================================
 -->
 
-# Accordo sindacale per l'installazione e l'uso del sistema Bematist
+# Accordo sindacale per l'installazione e l'uso del sistema Bema
 
 **tra**
 
@@ -122,7 +122,7 @@ congiuntamente, le "Parti".
 ## §1 Premessa e qualificazione
 
 (1) Il Datore di lavoro intende installare e utilizzare, nelle unità
-produttive di cui sopra, il sistema "Bematist" (di seguito il "Sistema") per
+produttive di cui sopra, il sistema "Bema" (di seguito il "Sistema") per
 la rilevazione, l'aggregazione e la restituzione di dati di utilizzo degli
 strumenti di sviluppo software assistiti da intelligenza artificiale
 (in particolare Claude Code, Codex, Cursor, Continue.dev, GitHub Copilot e
@@ -812,7 +812,7 @@ ________________________________________________
 - §4 c. 1 — exclusive list of finalità organizzative o produttive: counsel
   may propose adding "esigenze di sicurezza del lavoro" or "tutela del
   patrimonio aziendale" if relevant; current draft excludes them as not
-  applicable to Bematist.
+  applicable to Bema.
 - §5 c. 1 — divieto di controllo della prestazione e del comportamento:
   drafted as parallel to DE verbatim clause; confirm enforceability under
   art. 4 c. 1 SdL + GDPR art. 5(1)(b) purpose limitation in IT context.
@@ -822,7 +822,7 @@ ________________________________________________
   discrimination, sindacale, whistleblowing D.Lgs. 24/2023) are exhaustive
   and correctly framed.
 - §9 c. 1 — 21-day default for IT tenants: this is a customer-facing
-  contractual default that DIVERGES from Bematist global defaults
+  contractual default that DIVERGES from Bema global defaults
   (90/90/30). Per CR-9, the product-side resolution (CW-5) is pending. The
   template binds the customer contractually pending product-side decision.
   Counsel and product to align before promotion to legal/templates/.

@@ -18,7 +18,7 @@ export function Slide05ProductOpener(_props: { totalPages: number }) {
         Every engineering leader is asking the same three things about AI. Nobody can answer them.
         We built the instrument that can.
       </p>
-      <div className="pagenum-left">bematist.dev</div>
+      <div className="pagenum-left">bema.tools</div>
     </div>
   );
 }

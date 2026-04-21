@@ -1,7 +1,7 @@
 # D1-07 Primer: Plan-B Go sidecar skeleton (F15 / INT0 fallback)
 
 **For:** Fresh session authoring the Plan-B Go sidecar
-**Project:** bematist (DevMetrics)
+**Project:** bema (DevMetrics)
 **Workstream:** D (Storage & Schema)
 **Date:** 2026-04-17 (planned)
 **Previous work:** None hard — independent of `D1-02..06`. Must ship **before Sprint 1 ends** regardless of priority. See `docs/DEVLOG.md`.

@@ -14,7 +14,7 @@ Our current GitHub App onboarding path requires a customer admin to:
 2. Fill in ~8 fields (App name, Homepage URL, Callback URL, Webhook URL, Webhook secret, Permissions matrix, Event subscriptions, Install target).
 3. Click through the permissions consent screen.
 4. Download the private key `.pem`.
-5. Paste the private key + App ID + webhook secret into their Bematist deployment's env vars (or into our hosted tenant config surface when that ships).
+5. Paste the private key + App ID + webhook secret into their Bema deployment's env vars (or into our hosted tenant config surface when that ships).
 6. Separately install the App on their org and pick repos.
 
 That is fine for our own Pella Labs dev deploy — it happens once — but it is not acceptable customer UX. Every mature GitHub-integrated product solves this the same way: the **GitHub App Manifest Flow**.
@@ -29,8 +29,8 @@ Prior art — this is the exact pattern Vercel, Netlify, Sentry, Shortcut (Clubh
 
 ```
 ┌──────────────────────┐           ┌───────────────────────────┐            ┌────────────────────┐
-│  Customer admin on   │  1. POST  │  Bematist web            │  2. 302    │  github.com/settings│
-│  bematist.dev/       │◀──────────▶│  /api/github/manifest/   │◀──────────▶│  /apps/new?state=   │
+│  Customer admin on   │  1. POST  │  Bema web            │  2. 302    │  github.com/settings│
+│  bema.tools/       │◀──────────▶│  /api/github/manifest/   │◀──────────▶│  /apps/new?state=   │
 │  onboarding/github   │           │  initiate                 │            │  X&manifest={JSON} │
 └──────────────────────┘           └───────────────────────────┘            └────────────────────┘
                                                                                       │
@@ -39,7 +39,7 @@ Prior art — this is the exact pattern Vercel, Netlify, Sentry, Shortcut (Clubh
                                                                                       │
                                                                                       ▼
 ┌──────────────────────┐           ┌───────────────────────────┐            ┌────────────────────┐
-│  github.com redirects│  4. GET   │  Bematist web            │  5. POST   │  api.github.com/    │
+│  github.com redirects│  4. GET   │  Bema web            │  5. POST   │  api.github.com/    │
 │  to our callback     │──────────▶│  /api/github/manifest/   │──────────▶│  app-manifests/     │
 │  with ?code=ABC      │           │  callback?code=ABC       │            │  ABC/conversions    │
 └──────────────────────┘           └───────────────────────────┘            └────────────────────┘
@@ -87,11 +87,11 @@ Below is the canonical manifest. It is the single source of truth for both the M
 
 ```json
 {
-  "name": "Bematist — AI Engineering Analytics",
-  "url": "https://bematist.dev",
+  "name": "Bema — AI Engineering Analytics",
+  "url": "https://bema.tools",
   "description": "AI engineering analytics — observe LLM/coding-agent usage across IDEs and correlate with Git outcomes.",
   "hook_attributes": {
-    "url": "https://ingest.bematist.dev/v1/webhooks/github",
+    "url": "https://ingest.bema.tools/v1/webhooks/github",
     "active": true
   },
   "redirect_url": "https://<tenant-domain>/api/github/manifest/callback",
@@ -123,14 +123,14 @@ Below is the canonical manifest. It is the single source of truth for both the M
 
 Per-field notes (things that tripped us up during the manual setup):
 
-- **`request_oauth_on_install: true`** (maps to the "Request user authorization (OAuth) during installation" checkbox in the UI). Required so we can identify the installing user and bind the installation to their Bematist tenant on first redirect. Also implies "Expire user authorization tokens" is on (ships a `refresh_token` alongside the access token).
+- **`request_oauth_on_install: true`** (maps to the "Request user authorization (OAuth) during installation" checkbox in the UI). Required so we can identify the installing user and bind the installation to their Bema tenant on first redirect. Also implies "Expire user authorization tokens" is on (ships a `refresh_token` alongside the access token).
 - **`setup_url` is intentionally absent.** GitHub disables Setup URL whenever `request_oauth_on_install=true`; the post-install redirect uses the OAuth `callback_urls` entry instead.
 - **`webhooks: read`** in permissions — needed for the admin redelivery panel (`/app/hook/deliveries` endpoints). Easy to miss from the GitHub docs.
 - **`members: read`** is an Organization-level permission, not Repository. The manifest API doesn't namespace these; GitHub auto-detects by key name.
 - **`public: false`** — the app is private to the tenant that registered it. Do not flip this without explicit org sign-off; it would make the App install surface visible on the GitHub marketplace.
 - **No `account_permissions`.** We identify users via the OAuth-during-install flow, not via long-lived account scopes.
 
-Exact permissions + events must match CLAUDE.md §Outcome Attribution Rules and PRD §11. Keep this manifest in sync with the Bematist Dev / Bematist Prod Apps when either's config changes in the GitHub UI — the manifest is the source of truth, those Apps are snapshots.
+Exact permissions + events must match CLAUDE.md §Outcome Attribution Rules and PRD §11. Keep this manifest in sync with the Bema Dev / Bema Prod Apps when either's config changes in the GitHub UI — the manifest is the source of truth, those Apps are snapshots.
 
 ### 4. Secrets handling
 
@@ -154,11 +154,11 @@ The manifest flow **must not** allow one tenant to register an App whose webhook
 
 1. Pella Labs onboarding is a one-time manual step; Manifest Flow saves ~15 minutes of form-filling and one PEM paste. Not worth gating the dev cutover on.
 2. The Manifest Flow is harder to iterate on than the manual path because each end-to-end test creates a real App in some GitHub org. The manual path lets us mutate the App's permissions/events/webhook URL via the GitHub UI while we're still tuning the integration.
-3. We do not yet have the tenant-domain infrastructure in place (`<tenant>.bematist.dev` or similar). The manifest's `hook_attributes.url` + `redirect_url` + `callback_urls` need a stable per-tenant origin that doesn't exist yet on dev.
+3. We do not yet have the tenant-domain infrastructure in place (`<tenant>.bema.tools` or similar). The manifest's `hook_attributes.url` + `redirect_url` + `callback_urls` need a stable per-tenant origin that doesn't exist yet on dev.
 
 Revisit after:
 - First customer contract is signed OR the first self-host deployment request comes in (whichever is sooner).
-- Tenant-domain routing is working in prod (static `bematist.dev/tenant/<slug>` or subdomains).
+- Tenant-domain routing is working in prod (static `bema.tools/tenant/<slug>` or subdomains).
 
 ## How to pick up this work
 

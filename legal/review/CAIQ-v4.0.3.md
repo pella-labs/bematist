@@ -1,10 +1,10 @@
-# Consensus Assessments Initiative Questionnaire (CAIQ) v4.0.3 — Bematist pre-fill
+# Consensus Assessments Initiative Questionnaire (CAIQ) v4.0.3 — Bema pre-fill
 
 **Questionnaire version:** CAIQ v4.0.3 (Cloud Security Alliance, 2024), aligned with CCM v4.0.12.
 **Template version:** 1.0.0-draft
-**Maintained by:** Bematist Workstream I (Compliance).
+**Maintained by:** Bema Workstream I (Compliance).
 **Audience:** procurement security teams, third-party risk management (TPRM), Cloud Security Alliance STAR Registry submissions.
-**Applicability:** Bematist **managed-cloud** product mode. For **self-host** deployments, the majority of CAIQ items are the Controller's responsibility on the Controller's own infrastructure; Bematist's scope is limited to the shipped binary / container images and the software-supply-chain controls (CEK, IPY, SEF, STA).
+**Applicability:** Bema **managed-cloud** product mode. For **self-host** deployments, the majority of CAIQ items are the Controller's responsibility on the Controller's own infrastructure; Bema's scope is limited to the shipped binary / container images and the software-supply-chain controls (CEK, IPY, SEF, STA).
 
 > **Status — DRAFT.** This pre-fill is populated from the shipped product state (CLAUDE.md + PRD + contracts) at the release tag noted in the changelog. Answers are *processor-self-attested*; CSA STAR Level 2 attestation (Phase 3) requires independent audit. Customer procurement teams should read this alongside the executed DPA, SCCs + TIA (`legal/review/SCCs-module-2.md`), the DPIA (`legal/review/DPIA.md`), and the release-gate SBOM (`legal/review/cyclone-dx-SBOM.md`).
 
@@ -12,13 +12,13 @@
 
 ## How to read this document
 
-CAIQ v4.0.3 consolidates 197 Yes/No questions against the 17 CCM v4 domains. For each question Bematist provides:
+CAIQ v4.0.3 consolidates 197 Yes/No questions against the 17 CCM v4 domains. For each question Bema provides:
 
 - **Y / N / NA** — the authoritative answer for managed-cloud at the cited release tag.
 - **Compensating control** — optional; used when the answer is N or NA but a different control addresses the underlying risk.
 - **Evidence** — the artifact a customer auditor may request to verify. Paths point to this repository (public source) or to a named internal document available under NDA.
 
-Questions are grouped by CCM domain. Domain numbering follows CAIQ v4.0.3. Within each domain, we answer every *Control Specification* question; CAIQ's granular *Implementation Guidance* Yes/No sub-questions are collapsed where Bematist's answer is uniform across the sub-questions — the collapse is noted per row.
+Questions are grouped by CCM domain. Domain numbering follows CAIQ v4.0.3. Within each domain, we answer every *Control Specification* question; CAIQ's granular *Implementation Guidance* Yes/No sub-questions are collapsed where Bema's answer is uniform across the sub-questions — the collapse is noted per row.
 
 ---
 
@@ -102,7 +102,7 @@ Questions are grouped by CCM domain. Domain numbering follows CAIQ v4.0.3. Withi
 | # | Question | Y/N/NA | Compensating control | Evidence |
 |---|---|---|---|---|
 | DCS-01.1 | Are policies and procedures for the secure disposal of equipment used outside the organization's premises documented, including a wiping solution? | NA | Inherited from upstream cloud provider (AWS / GCP / Azure). | Upstream cloud provider SOC 2 + ISO 27001 reports |
-| DCS-02 to DCS-15 | (physical-premises questions) | NA | Inherited from upstream cloud provider. | Upstream cloud provider SOC 2 + ISO 27001; Bematist does not operate its own data centres |
+| DCS-02 to DCS-15 | (physical-premises questions) | NA | Inherited from upstream cloud provider. | Upstream cloud provider SOC 2 + ISO 27001; Bema does not operate its own data centres |
 
 ## Domain 7 — Data Security and Privacy Lifecycle Management (DSP)
 
@@ -187,7 +187,7 @@ Questions are grouped by CCM domain. Domain numbering follows CAIQ v4.0.3. Withi
 | IPY-01.1 | Are interoperability and portability policies established? | Y | — | `bematist export` machine-readable; OTel GenAI conventions alignment |
 | IPY-02.1 | Are interoperability / portability capabilities implemented? | Y | — | OTLP HTTP/Protobuf ingest; JSON custom events; CSV export |
 | IPY-03.1 | Are application and infrastructure interoperability and portability tested? | Y | — | Per-IDE contract tests on golden fixtures |
-| IPY-04.1 | Is data transfer and ownership clarified? | Y | — | Customer owns all tenant data; Bematist is Processor; self-host mode excludes Bematist from processing |
+| IPY-04.1 | Is data transfer and ownership clarified? | Y | — | Customer owns all tenant data; Bema is Processor; self-host mode excludes Bema from processing |
 
 ## Domain 12 — Infrastructure and Virtualization Security (IVS)
 
@@ -290,7 +290,7 @@ Questions are grouped by CCM domain. Domain numbering follows CAIQ v4.0.3. Withi
 
 ## Self-host-mode disclosure
 
-Where the customer deploys Bematist in **self-host mode** (default per CLAUDE.md §"Product shape"), the majority of operational CAIQ answers above (DCS, IVS, UEM, significant portions of IAM / LOG / BCR) are the customer's responsibility on the customer's own infrastructure. Bematist's scope in self-host is limited to:
+Where the customer deploys Bema in **self-host mode** (default per CLAUDE.md §"Product shape"), the majority of operational CAIQ answers above (DCS, IVS, UEM, significant portions of IAM / LOG / BCR) are the customer's responsibility on the customer's own infrastructure. Bema's scope in self-host is limited to:
 
 - Shipped binaries and container images (signed Sigstore + cosign + SLSA Level 3).
 - SBOM per release (STA-14).

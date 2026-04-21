@@ -1,5 +1,5 @@
 #!/bin/sh
-# Bematist installer — FALLBACK path for `curl … | sh`.
+# Bema installer — FALLBACK path for `curl … | sh`.
 #
 # Preferred install is `gh release download` + `cosign verify-blob`. This
 # installer is the quick-win for developers without gh/cosign; it still
@@ -10,10 +10,10 @@
 # (CLAUDE.md §Security Rules). Exits non-zero on any failure.
 #
 # Usage:
-#   curl -fsSL https://bematist.dev/install.sh | sh
-#   curl -fsSL https://bematist.dev/install.sh | sh -s -- --version v0.1.0
-#   curl -fsSL https://bematist.dev/install.sh | sh -s -- --prefix "$HOME/.local"
-#   curl -fsSL https://bematist.dev/install.sh | sh -s -- --verify-cosign
+#   curl -fsSL https://bema.tools/install.sh | sh
+#   curl -fsSL https://bema.tools/install.sh | sh -s -- --version v0.1.0
+#   curl -fsSL https://bema.tools/install.sh | sh -s -- --prefix "$HOME/.local"
+#   curl -fsSL https://bema.tools/install.sh | sh -s -- --verify-cosign
 #
 # Persist-config variant — the welcome-page one-liner feeds this:
 #   curl -fsSL .../install.sh | sh -s -- \
@@ -77,7 +77,7 @@ main() {
   os=$(detect_os)
   arch=$(detect_arch)
   tag=$(resolve_tag "$repo" "$version")
-  say "Bematist $tag · target $os-$arch · prefix $prefix"
+  say "Bema $tag · target $os-$arch · prefix $prefix"
 
   tmp=$(mktemp -d 2>/dev/null || mktemp -d -t bematist)
   trap 'rm -rf "$tmp"' EXIT INT TERM

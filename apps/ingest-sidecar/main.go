@@ -1,4 +1,4 @@
-// Package main — Plan-B ClickHouse writer side-car for Bematist.
+// Package main — Plan-B ClickHouse writer side-car for Bema.
 //
 // PLAN_B_SKELETON (Sprint-1 Phase 4, PRD §Phase 4 R2, D-S1-7, D-S1-24)
 // ====================================================================

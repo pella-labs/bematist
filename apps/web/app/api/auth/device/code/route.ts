@@ -1,4 +1,4 @@
-// POST /api/auth/device/code — mint a fresh device-auth row for `bematist
+// POST /api/auth/device/code — mint a fresh device-auth row for `bema
 // login`. RFC 8628 §3.1–§3.2 shape. Anonymous (the CLI has no credentials
 // yet); rate-limited per IP so a leaked URL can't be abused to spam rows.
 
@@ -55,7 +55,7 @@ function baseUrl(req: Request): string {
 }
 
 function ingestPublicUrl(): string {
-  return process.env.BEMATIST_INGEST_PUBLIC_URL ?? "https://ingest.bematist.dev";
+  return process.env.BEMATIST_INGEST_PUBLIC_URL ?? "https://ingest.bema.tools";
 }
 
 export async function POST(req: Request): Promise<Response> {
@@ -140,6 +140,6 @@ export async function POST(req: Request): Promise<Response> {
 
   // Cache-Control: no-store — device codes MUST never be served from a CDN.
   return NextResponse.json(response, {
-    headers: { "Cache-Control": "no-store", "X-Bematist-Public-Ingest": ingestPublicUrl() },
+    headers: { "Cache-Control": "no-store", "X-Bema-Public-Ingest": ingestPublicUrl() },
   });
 }

@@ -2,16 +2,16 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import "./marketing.css";
 
-const TWITTER_URL = "https://x.com/bematist_dev";
+const TWITTER_URL = "https://x.com/bema_dev";
 const GITHUB_URL = "https://github.com/pella-labs/bematist";
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="bematist-marketing">
+    <div className="bema-marketing">
       <div className="mk-container">
         <nav className="mk-nav" aria-label="Primary">
           <Link href="/home" className="mk-wordmark">
-            bematist
+            bema
           </Link>
           <div className="mk-nav-links">
             <a
@@ -19,7 +19,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
               className="mk-btn mk-btn-ghost mk-btn-icon"
               rel="noreferrer"
               target="_blank"
-              aria-label="Follow Bematist on X"
+              aria-label="Follow Bema on X"
             >
               <XMark />
               <span className="mk-btn-icon-label">Follow</span>

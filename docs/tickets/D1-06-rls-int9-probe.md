@@ -1,7 +1,7 @@
 # D1-06 Primer: RLS on every org-scoped table + INT9 cross-tenant probe
 
 **For:** Fresh session enforcing tenant isolation
-**Project:** bematist (DevMetrics)
+**Project:** bema (DevMetrics)
 **Workstream:** D (Storage & Schema)
 **Date:** 2026-04-17 (planned)
 **Previous work:** `D1-05` (control-plane tables). Hard-blocks this ticket. See `docs/DEVLOG.md`.

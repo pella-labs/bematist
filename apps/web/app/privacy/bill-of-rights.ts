@@ -1,5 +1,5 @@
 /**
- * Bematist Privacy Bill of Rights, version v1.
+ * Bema Privacy Bill of Rights, version v1.
  *
  * Six items pinned to CLAUDE.md §Privacy Model Rules. Ownership of wording
  * sits with Workstream I (compliance — Sandesh); this module owns rendering.

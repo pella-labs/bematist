@@ -88,7 +88,7 @@ export function proxy(request: NextRequest) {
   //   - Logged-out + dashboard not explicitly enabled → rewrite to `/home`
   //     (the marketing surface). The previous shape gated this on
   //     `NEXT_PUBLIC_IS_CLOUD` / `VERCEL`, which silently broke the root on
-  //     Railway where neither is set — bematist.dev served the auth wall
+  //     Railway where neither is set — bema.tools served the auth wall
   //     instead of the landing page.
   //   - Logged-in → fall through; the dashboard route renders at `/` and
   //     the auth gate below leaves it alone.

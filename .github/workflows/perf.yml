@@ -1,6 +1,6 @@
 name: perf
 
-# Bematist M2 perf gate — MERGE BLOCKER per CLAUDE.md §Key Constraints:
+# Bema M2 perf gate — MERGE BLOCKER per CLAUDE.md §Key Constraints:
 #   p95 dashboard < 2s on 1M-seeded events
 #   p99 ingest    < 100ms at 1k ev/s sustained
 #

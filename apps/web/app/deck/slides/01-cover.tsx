@@ -4,7 +4,7 @@ import { BMonogram } from "../../(marketing)/_components/Monogram";
 
 /**
  * Slide 1 — Cover / title.
- * Two-column layout: eyebrow + "Bematist." + descriptor on the left,
+ * Two-column layout: eyebrow + "Bema." + descriptor on the left,
  * 3D rotating B-mark inside an orbiting wordring on the right. Reuses the
  * landing-page BMonogram component (three.js).
  */
@@ -33,7 +33,7 @@ export function Slide01Cover(_props: { totalPages: number }) {
               display: "inline-block",
             }}
           />
-          <span>bematist</span>
+          <span>bema</span>
         </div>
         <div>Pella Labs · 2026</div>
       </div>
@@ -42,7 +42,7 @@ export function Slide01Cover(_props: { totalPages: number }) {
         <div className="sys" style={{ fontSize: 22, letterSpacing: "0.2em", marginBottom: 4 }}>
           OPEN-SOURCE · SELF-HOSTABLE
         </div>
-        <h1 className="cover-wordmark">Bematist.</h1>
+        <h1 className="cover-wordmark">Bema.</h1>
         <p
           className="lede"
           style={{
@@ -73,7 +73,7 @@ export function Slide01Cover(_props: { totalPages: number }) {
       <div className="cover-right">
         <div className="cover-monogram" aria-hidden>
           <svg className="ring-text" viewBox="0 0 420 420" role="presentation">
-            <title>Bematist wordring</title>
+            <title>Bema wordring</title>
             <defs>
               <path
                 id="deck-cover-ring-path"
@@ -82,7 +82,7 @@ export function Slide01Cover(_props: { totalPages: number }) {
             </defs>
             <text>
               <textPath href="#deck-cover-ring-path" startOffset="0%">
-                BEMATIST · AI ENGINEERING TELEMETRY · $/PR · ACCEPTED EDITS · AI SPEND · OUTCOMES ·
+                BEMA · AI ENGINEERING TELEMETRY · $/PR · ACCEPTED EDITS · AI SPEND · OUTCOMES ·
                 CLUSTERS ·{" "}
               </textPath>
             </text>
@@ -114,17 +114,17 @@ export function Slide01Cover(_props: { totalPages: number }) {
         </div>
         <div>
           <div className="label">Web</div>
-          <div className="val">bematist.dev</div>
+          <div className="val">bema.tools</div>
         </div>
         <div>
           <div className="label">Contact</div>
           <div className="val" style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
             <XGlyph />
-            <span>@bematist_dev</span>
+            <span>@bema_dev</span>
           </div>
         </div>
       </div>
-      <div className="pagenum-left">bematist.dev</div>
+      <div className="pagenum-left">bema.tools</div>
     </div>
   );
 }

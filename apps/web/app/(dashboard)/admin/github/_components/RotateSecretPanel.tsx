@@ -94,7 +94,7 @@ export function RotateSecretPanel() {
                 type="text"
                 value={ref}
                 onChange={(e) => setRef(e.target.value)}
-                placeholder="e.g. sm/bematist-gh-webhook-secret:v2"
+                placeholder="e.g. sm/bema-gh-webhook-secret:v2"
                 autoFocus
               />
             </label>

@@ -1,4 +1,4 @@
-# Bematist web — Railway deployment Dockerfile (single-stage).
+# Bema web — Railway deployment Dockerfile (single-stage).
 #
 # Mirrors apps/ingest/Dockerfile — single-stage so Bun workspace symlinks
 # stay intact. Builds Next.js then runs `next start`.

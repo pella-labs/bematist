@@ -1,6 +1,6 @@
-# Bematist Security Policy
+# Bema Security Policy
 
-Thanks for helping keep Bematist and its users safe.
+Thanks for helping keep Bema and its users safe.
 
 ## Scope
 
@@ -14,7 +14,7 @@ In scope for coordinated disclosure:
 
 Out of scope (please do not test against these without written permission):
 
-- Customer-hosted data in self-host or managed-cloud deployments. Bematist is tenant-owned by design — vulnerabilities in a specific customer's configuration belong to that customer.
+- Customer-hosted data in self-host or managed-cloud deployments. Bema is tenant-owned by design — vulnerabilities in a specific customer's configuration belong to that customer.
 - Social-engineering, physical attacks, or denial-of-service against shared infrastructure.
 - Third-party dependencies that have their own disclosure channels (please report upstream and let us know so we can track patches).
 
@@ -22,7 +22,7 @@ Out of scope (please do not test against these without written permission):
 
 Preferred: **GitHub Security Advisories** — open a private advisory at `https://github.com/<org>/bematist/security/advisories/new`. This creates a private thread with the maintainers, a CVE reservation path, and a draft disclosure timeline.
 
-Fallback: email `security@bematist.dev` *(placeholder — a real inbox and a published PGP key will be announced when the domain is registered; fingerprint `TBD-FINGERPRINT-PLACEHOLDER-UPDATE-ON-DOMAIN-REGISTRATION`)*.
+Fallback: email `security@bema.tools` *(placeholder — a real inbox and a published PGP key will be announced when the domain is registered; fingerprint `TBD-FINGERPRINT-PLACEHOLDER-UPDATE-ON-DOMAIN-REGISTRATION`)*.
 
 Please include, where possible:
 
@@ -44,7 +44,7 @@ We will work with you on the disclosure timeline and credit. Security advisories
 
 ## Safe harbor
 
-Bematist considers good-faith security research an essential part of keeping our users safe. If you make a good-faith effort to comply with this policy during your security research, we will consider your research to be authorized, will work with you to understand and resolve the issue quickly, and Bematist will not pursue or support any legal action related to your research. You are expected to comply with all applicable laws, to avoid privacy violations and degradation of user experience, and to give us a reasonable time to respond before making any information public. If legal action is initiated by a third party against you for activities that were conducted in accordance with this policy, we will make this authorization known.
+Bema considers good-faith security research an essential part of keeping our users safe. If you make a good-faith effort to comply with this policy during your security research, we will consider your research to be authorized, will work with you to understand and resolve the issue quickly, and Bema will not pursue or support any legal action related to your research. You are expected to comply with all applicable laws, to avoid privacy violations and degradation of user experience, and to give us a reasonable time to respond before making any information public. If legal action is initiated by a third party against you for activities that were conducted in accordance with this policy, we will make this authorization known.
 
 ## Credits
 

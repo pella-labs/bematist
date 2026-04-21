@@ -101,7 +101,7 @@ export const DevicePollResponse = z.object({
    *  bearer the CLI writes into BEMATIST_TOKEN. */
   bearer: z.string().optional(),
   /** Populated when status === "approved". The public ingest URL the CLI
-   *  writes into BEMATIST_ENDPOINT (e.g. "https://ingest.bematist.dev"). */
+   *  writes into BEMATIST_ENDPOINT (e.g. "https://ingest.bema.tools"). */
   endpoint: z.string().url().optional(),
   /** Populated when status === "approved". Human-friendly "logged in as
    *  <email> → <org_name>" line the CLI prints. */
