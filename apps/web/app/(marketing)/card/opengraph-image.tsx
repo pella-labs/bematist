@@ -1,12 +1,5 @@
 import { ImageResponse } from "next/og";
-import {
-  OG_COLORS,
-  OG_CONTENT_TYPE,
-  OG_SIZE,
-  OgFrame,
-  OgHeadline,
-  OgStatRow,
-} from "../_og/chrome";
+import { OG_COLORS, OG_CONTENT_TYPE, OG_SIZE, OgFrame, OgHeadline, OgStatRow } from "../_og/chrome";
 
 export const runtime = "nodejs";
 export const alt = "Bema — generate your eight share cards from local agent history";

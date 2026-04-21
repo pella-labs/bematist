@@ -686,8 +686,7 @@ export default function InstallPage() {
           <li>
             <span style={{ color: "var(--mk-ink)" }}>Local egress journal</span>
             <span className="mk-muted">
-              Every byte that leaves the machine is logged on the machine. Tailed with `bema
-              audit`.
+              Every byte that leaves the machine is logged on the machine. Tailed with `bema audit`.
             </span>
           </li>
           <li>

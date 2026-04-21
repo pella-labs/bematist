@@ -294,9 +294,9 @@ export default function MarketingHome() {
             understand the least.
           </p>
           <p className="mk-closing-body">
-            Bema measures it. Spend across every agent. Outcomes tied to merged code. The
-            prompts that ship, surfaced and shareable. Open-source, self-hostable, runs against your
-            local sessions on day one. The data was always yours — now it's an instrument.
+            Bema measures it. Spend across every agent. Outcomes tied to merged code. The prompts
+            that ship, surfaced and shareable. Open-source, self-hostable, runs against your local
+            sessions on day one. The data was always yours — now it's an instrument.
           </p>
           <div className="mk-closing-actions">
             <Link href="/card" className="mk-btn mk-btn-primary">

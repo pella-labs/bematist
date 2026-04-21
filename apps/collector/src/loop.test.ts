@@ -64,11 +64,7 @@ function mkScriptedAdapter(id: string, scriptedRuns: Event[][]): Adapter {
     version: "0.0.0",
     supportedSourceVersions: "*",
     async init(_ctx: AdapterContext) {},
-    async poll(
-      ctx: AdapterContext,
-      _signal: AbortSignal,
-      emit: (e: Event) => void,
-    ) {
+    async poll(ctx: AdapterContext, _signal: AbortSignal, emit: (e: Event) => void) {
       const emitted = scriptedRuns[callIdx] ?? [];
       callIdx += 1;
       for (const e of emitted) emit(e);

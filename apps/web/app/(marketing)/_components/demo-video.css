@@ -15,12 +15,11 @@
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(
-      ellipse 70% 60% at 50% 60%,
-      rgba(110, 138, 111, 0.08) 0%,
-      rgba(110, 138, 111, 0) 60%
-    );
+  background: radial-gradient(
+    ellipse 70% 60% at 50% 60%,
+    rgba(110, 138, 111, 0.08) 0%,
+    rgba(110, 138, 111, 0) 60%
+  );
   pointer-events: none;
   z-index: 0;
 }
@@ -100,7 +99,9 @@
     0 0 0 1px rgba(110, 138, 111, 0.18),
     0 24px 80px -24px rgba(110, 138, 111, 0.4),
     0 64px 160px -48px rgba(0, 0, 0, 0.7);
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
 }
 
 .bema-marketing .mk-demo-frame:hover {
@@ -203,7 +204,9 @@
   letter-spacing: 0.04em;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .bema-marketing .mk-demo-btn:hover {

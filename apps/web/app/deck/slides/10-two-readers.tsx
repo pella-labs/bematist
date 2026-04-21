@@ -9,8 +9,8 @@ export function Slide10TwoReaders({ totalPages }: { totalPages: number }) {
       </h2>
       <p className="body-text" style={{ marginTop: 20, fontSize: 24 }}>
         Different roles, different views — both grounded in{" "}
-        <span className="accent">one shared source of truth</span>. Bema is the instrument they
-        both need.
+        <span className="accent">one shared source of truth</span>. Bema is the instrument they both
+        need.
       </p>
 
       <div className="readers">

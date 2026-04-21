@@ -40,8 +40,8 @@ export default async function AdminGithubPage() {
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight">GitHub</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Connect Bema to your GitHub organization so we can correlate coding-agent sessions
-          with PRs, commits, and green tests. Webhooks flow to the ingest service; initial repo sync
+          Connect Bema to your GitHub organization so we can correlate coding-agent sessions with
+          PRs, commits, and green tests. Webhooks flow to the ingest service; initial repo sync
           fills the repo catalog and establishes the tracking lattice.
         </p>
       </header>
@@ -66,8 +66,8 @@ export default async function AdminGithubPage() {
         {connection.installation === null ? (
           <div className="flex flex-col gap-3">
             <p className="text-sm text-muted-foreground">
-              No GitHub App installation is bound to this org yet. Click below to install the
-              Bema GitHub App, select which repos to share, and return here.
+              No GitHub App installation is bound to this org yet. Click below to install the Bema
+              GitHub App, select which repos to share, and return here.
             </p>
             <div>
               <Link

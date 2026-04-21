@@ -35,9 +35,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
         {children}
         <footer className="mk-footer">
           <div className="mk-footer-copy">
-            <span className="mk-footer-line">
-              The instrument for agentic engineering output.
-            </span>
+            <span className="mk-footer-line">The instrument for agentic engineering output.</span>
             <span className="mk-footer-sub">
               See the spend. See the work. Scale what ships. Open-source, self-hostable, runs
               against your local sessions on day one.

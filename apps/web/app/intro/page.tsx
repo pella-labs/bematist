@@ -6,8 +6,7 @@ import { redirect } from "next/navigation";
 // noscript fallback, and the runtime redirect all stay in sync.
 export const FOUNDERS_CALENDAR = "https://calendar.app.google/VrY8s3Ho5Ldd4Wb66";
 
-const TITLE =
-  "Build Bema with us · 30-minute intro with the founding team";
+const TITLE = "Build Bema with us · 30-minute intro with the founding team";
 const DESCRIPTION =
   "Measure AI-assisted engineering. See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack.";
 
@@ -54,6 +53,7 @@ export default async function IntroPage() {
       <head>
         <meta httpEquiv="refresh" content={`0; url=${FOUNDERS_CALENDAR}`} />
         <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: intentional JS redirect fallback for crawler UAs; URL is escaped via JSON.stringify
           dangerouslySetInnerHTML={{
             __html: `window.location.replace(${JSON.stringify(FOUNDERS_CALENDAR)});`,
           }}

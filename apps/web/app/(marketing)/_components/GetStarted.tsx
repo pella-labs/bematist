@@ -329,8 +329,8 @@ export function GetStarted() {
         <div className="mk-getstarted-panel">
           <h3>Run this in your terminal</h3>
           <p>
-            Bema reads your local Claude Code and Codex sessions. Only aggregated numbers leave
-            your machine. Never prompt text, never code.
+            Bema reads your local Claude Code and Codex sessions. Only aggregated numbers leave your
+            machine. Never prompt text, never code.
           </p>
           <div className="mk-getstarted-cmd">
             <pre>{cliCommand}</pre>

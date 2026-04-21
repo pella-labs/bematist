@@ -5,8 +5,7 @@ import { BILL_OF_RIGHTS, BILL_OF_RIGHTS_VERSION } from "./bill-of-rights";
 
 export const metadata: Metadata = {
   title: "Bill of Rights",
-  description:
-    "The six guarantees Bema makes to every engineer whose machine runs the collector.",
+  description: "The six guarantees Bema makes to every engineer whose machine runs the collector.",
 };
 
 export default function BillOfRightsPage() {
