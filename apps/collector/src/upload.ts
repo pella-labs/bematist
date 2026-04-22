@@ -1,6 +1,6 @@
 import type { IngestPayload, IngestPrompt, IngestResponse, IngestSession } from "@pella/shared";
+import { COLLECTOR_VERSION } from "./config";
 
-export const COLLECTOR_VERSION = "0.0.2";
 const BATCH = 200;
 
 export interface UploadOptions {

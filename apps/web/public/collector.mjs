@@ -792,8 +792,10 @@ function* walkJsonl(dir, pattern) {
   }
 }
 
+// src/config.ts
+var COLLECTOR_VERSION = "0.0.5";
+
 // src/upload.ts
-var COLLECTOR_VERSION = "0.0.2";
 var BATCH = 200;
 async function uploadBatch(opts) {
   const log = opts.log ?? ((m) => console.log(m));

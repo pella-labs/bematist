@@ -7,12 +7,16 @@ on:
 
 # This workflow produces the binaries the install.sh / install.ps1
 # scripts fetch. Cross-compilation works from ubuntu for all 5 targets
-# (bun downloads each target runtime on demand). We deliberately do NOT
-# ad-hoc codesign darwin binaries — an ad-hoc signature is only valid
-# on the machine that produced it; a real notarization would need an
-# Apple Developer ID and is out of scope for now. install.sh strips
-# com.apple.quarantine on download, which is what actually unblocks
-# Gatekeeper on first launch.
+# (bun downloads each target runtime on demand).
+#
+# Darwin binaries MUST carry a valid ad-hoc code signature — on Apple
+# Silicon the kernel refuses to execute arm64 code that lacks one (the
+# process is SIGSTOP'd immediately at _dyld_start). `bun --compile`
+# appends the JS payload to a linker-signed Bun stub, which invalidates
+# the upstream signature; we re-sign with rcodesign (pure-Rust, runs on
+# Linux) so CI-built binaries launch correctly. Not notarized — a real
+# Developer ID is out of scope — so install.sh still strips
+# com.apple.quarantine on download to unblock Gatekeeper on first run.
 
 permissions:
   contents: write # upload assets to the release
@@ -45,6 +49,20 @@ jobs:
               src/bin.ts \
               --outfile "bin/pella-${target}${ext}"
           done
+
+      - name: Ad-hoc codesign darwin binaries
+        working-directory: apps/collector/bin
+        run: |
+          set -euxo pipefail
+          RCS_VER=0.29.0
+          RCS_ARCHIVE=apple-codesign-${RCS_VER}-x86_64-unknown-linux-musl
+          curl -fsSL -o rcodesign.tar.gz \
+            "https://github.com/indygreg/apple-platform-rs/releases/download/apple-codesign%2F${RCS_VER}/${RCS_ARCHIVE}.tar.gz"
+          tar -xzf rcodesign.tar.gz
+          RCS="./${RCS_ARCHIVE}/rcodesign"
+          "$RCS" sign pella-darwin-arm64
+          "$RCS" sign pella-darwin-x64
+          rm -rf rcodesign.tar.gz "${RCS_ARCHIVE}"
 
       - name: Generate SHA256SUMS
         working-directory: apps/collector/bin

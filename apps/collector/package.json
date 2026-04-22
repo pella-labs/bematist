@@ -1,6 +1,6 @@
 {
   "name": "@pella/collector",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "private": true,
   "bin": {
     "pella": "./bin/pella"
