@@ -1,5 +1,5 @@
 #!/bin/sh
-# pella-metrics collector — installer (macOS + Linux).
+# pellametric collector — installer (macOS + Linux).
 #
 # Wrapped in main() so a truncated pipe (slow network, aborted curl)
 # can't execute a partial script. Exits non-zero on any failure.

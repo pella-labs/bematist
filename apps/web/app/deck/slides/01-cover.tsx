@@ -4,44 +4,14 @@ import { BMonogram } from "../../(marketing)/_components/Monogram";
 
 /**
  * Slide 1 — Cover / title.
- * Two-column layout: eyebrow + "Pellametric." + descriptor on the left,
+ * Two-column layout: "Pellametric." + descriptor on the left,
  * 3D rotating B-mark inside an orbiting wordring on the right. Reuses the
  * landing-page BMonogram component (three.js).
  */
 export function Slide01Cover(_props: { totalPages: number }) {
   return (
     <div className="cover">
-      <div className="cover-top">
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 14,
-            fontFamily: "var(--f-sys)",
-            fontWeight: 700,
-            color: "var(--ink)",
-            fontSize: 26,
-            letterSpacing: "-0.02em",
-            textTransform: "none",
-          }}
-        >
-          <span
-            style={{
-              width: 14,
-              height: 14,
-              background: "var(--accent)",
-              display: "inline-block",
-            }}
-          />
-          <span>pellametric</span>
-        </div>
-        <div>Pella Labs · 2026</div>
-      </div>
-
       <div className="cover-left">
-        <div className="sys" style={{ fontSize: 22, letterSpacing: "0.2em", marginBottom: 4 }}>
-          OPEN-SOURCE · SELF-HOSTABLE
-        </div>
         <h1 className="cover-wordmark">Pellametric.</h1>
         <p
           className="lede"
@@ -124,7 +94,6 @@ export function Slide01Cover(_props: { totalPages: number }) {
           </div>
         </div>
       </div>
-      <div className="pagenum-left">pellametric.com</div>
     </div>
   );
 }

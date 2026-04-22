@@ -855,7 +855,7 @@ async function uploadBatch(opts) {
 async function runOnce(opts) {
   const HOME = os2.homedir();
   const since = opts.since ?? new Date(0);
-  console.log(`pella-metrics collector → ${opts.url}`);
+  console.log(`pellametric collector → ${opts.url}`);
   console.log(`since: ${since.toISOString().slice(0, 10)}`);
   const repoCache = makeRepoCache();
   const resolver = (cwd) => resolveRepo(cwd, repoCache);

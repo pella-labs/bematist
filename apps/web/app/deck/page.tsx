@@ -3,10 +3,10 @@
 import { DeckChrome } from "./components/deck-chrome";
 import { DeckStage } from "./components/slide-frame";
 import { Slide01Cover } from "./slides/01-cover";
-import { Slide03FlyingBlind } from "./slides/03-flying-blind";
-import { Slide08Demo } from "./slides/08-demo";
-import { Slide12ClosingCta } from "./slides/12-closing-cta";
-import { Slide15SolutionInstrument } from "./slides/15-solution-instrument";
+import { Slide02Problem } from "./slides/02-problem-statement";
+import { Slide04Demo } from "./slides/04-demo";
+import { Slide05ClosingCta } from "./slides/05-closing-cta";
+import { Slide03Solution } from "./slides/03-solution";
 import { useDeckNav } from "./use-deck-nav";
 
 // Five-slide pitch cut: cover -> problem -> solution -> demo -> closing.
@@ -24,13 +24,13 @@ export default function DeckPage() {
       case 0:
         return <Slide01Cover totalPages={TOTAL} />;
       case 1:
-        return <Slide03FlyingBlind totalPages={TOTAL} />;
+        return <Slide02Problem totalPages={TOTAL} />;
       case 2:
-        return <Slide15SolutionInstrument totalPages={TOTAL} />;
+        return <Slide03Solution totalPages={TOTAL} />;
       case 3:
-        return <Slide08Demo totalPages={TOTAL} />;
+        return <Slide04Demo totalPages={TOTAL} />;
       case 4:
-        return <Slide12ClosingCta totalPages={TOTAL} />;
+        return <Slide05ClosingCta totalPages={TOTAL} />;
       default:
         return null;
     }

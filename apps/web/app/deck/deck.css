@@ -185,15 +185,6 @@
   padding-top: 176px;
 }
 
-.pellametric-deck .eyebrow {
-  font-family: var(--f-mono);
-  font-size: var(--t-mono);
-  color: var(--ink-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 48px;
-}
-
 .pellametric-deck .sys {
   font-family: var(--f-sys);
   font-size: var(--t-sys);
@@ -265,24 +256,16 @@
   padding: 96px;
   display: grid;
   grid-template-columns: 1.15fr 1fr;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: 1fr auto;
   column-gap: 72px;
   row-gap: 32px;
   height: 100%;
   position: relative;
-}
-.pellametric-deck .cover-top {
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  font-family: var(--f-mono);
-  font-size: 24px;
-  color: var(--ink-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  box-sizing: border-box;
 }
 .pellametric-deck .cover-left {
+  grid-column: 1;
+  grid-row: 1;
   align-self: center;
   display: flex;
   flex-direction: column;
@@ -290,6 +273,8 @@
   text-align: left;
 }
 .pellametric-deck .cover-right {
+  grid-column: 2;
+  grid-row: 1;
   align-self: center;
   display: flex;
   align-items: center;
@@ -354,6 +339,7 @@
 }
 .pellametric-deck .cover-bottom {
   grid-column: 1 / -1;
+  grid-row: 2;
   display: grid;
   grid-template-columns: 1.6fr 1fr 1fr;
   gap: 48px;

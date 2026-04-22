@@ -6,10 +6,9 @@ const BULLETS = [
   "Track Outcomes & ROI",
 ];
 
-export function Slide15SolutionInstrument({ totalPages }: { totalPages: number }) {
+export function Slide03Solution({ totalPages }: { totalPages: number }) {
   return (
     <SlideShell sectionLabel="03 / THE SOLUTION" pageNumber={4} totalPages={totalPages}>
-      <div className="eyebrow">03 / THE SOLUTION</div>
       <div
         style={{
           display: "grid",

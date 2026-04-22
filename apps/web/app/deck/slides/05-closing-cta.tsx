@@ -16,7 +16,7 @@ const CARD_LINK = "https://pellametric.com/card";
  * on the right is hero art — rotated, oversized, bleeding past the right
  * edge — not a comparison panel. The card *is* the proof.
  */
-export function Slide12ClosingCta(_props: { totalPages: number }) {
+export function Slide05ClosingCta(_props: { totalPages: number }) {
   return (
     <div
       className="slide"
@@ -60,9 +60,6 @@ export function Slide12ClosingCta(_props: { totalPages: number }) {
           }}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-            <div className="eyebrow" style={{ marginBottom: 0 }}>
-              05 / GET STARTED
-            </div>
             <h2 className="title" style={{ margin: 0 }}>
               Measure{" "}
               <em

@@ -24,7 +24,7 @@ export default async function Dashboard() {
     <main className="max-w-[1600px] mx-auto mt-8 px-6 pb-16">
       <header className="flex items-end justify-between mb-12 pb-6 border-b border-border">
         <div>
-          <div className="mk-eyebrow mb-2">pella-metrics</div>
+          <div className="mk-eyebrow mb-2">pellametric</div>
           <h1 className="mk-heading text-3xl md:text-4xl font-semibold tracking-[-0.02em]">
             Welcome back,{" "}
             <em className="not-italic text-accent">{session.user.name?.split(" ")[0] ?? "dev"}.</em>
@@ -83,7 +83,7 @@ export default async function Dashboard() {
           <div>
             <div className="mk-eyebrow mb-2">collector</div>
             <h2 className="mk-heading font-semibold text-lg mb-1.5">Run it once</h2>
-            <p className="text-sm text-muted-foreground max-w-md">Reads your local Claude Code + Codex sessions, uploads to pella-metrics.</p>
+            <p className="text-sm text-muted-foreground max-w-md">Reads your local Claude Code + Codex sessions, uploads to pellametric.</p>
           </div>
           <Link href="/setup/collector" className="mk-label border border-border px-3 py-2 hover:border-[color:var(--border-hover)] transition shrink-0">
             setup →

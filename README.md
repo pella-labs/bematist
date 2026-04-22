@@ -1,4 +1,4 @@
-# pella-metrics
+# pella-metric
 
 Per-dev productivity metrics from Claude Code + Codex sessions, org-scoped via GitHub.
 

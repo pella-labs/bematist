@@ -1,5 +1,5 @@
 {
-  "name": "pella-metrics",
+  "name": "pellametric",
   "private": true,
   "version": "0.0.1",
   "description": "Per-dev productivity metrics from Claude Code + Codex sessions, org-scoped via GitHub",

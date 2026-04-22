@@ -1,4 +1,4 @@
-# pella-metrics collector — installer (Windows PowerShell).
+# pellametric collector — installer (Windows PowerShell).
 #
 # Usage:
 #   $env:PELLA_TOKEN = "pm_xxx"; irm https://pellametric.com/install.ps1 | iex

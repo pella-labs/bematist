@@ -13,7 +13,7 @@ export default async function Home() {
 
       {/* Top brand strip */}
       <header className="relative max-w-[1160px] mx-auto w-full px-8 pt-8">
-        <div className="mk-eyebrow">pella-metrics</div>
+        <div className="mk-eyebrow">pellametric</div>
       </header>
 
       {/* Hero — single centered column */}

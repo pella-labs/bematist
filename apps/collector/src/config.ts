@@ -88,7 +88,7 @@ export function writeConfig(token: string, url: string): string {
   existing.PELLA_TOKEN = token;
   existing.PELLA_URL = url;
   const header =
-    "# pella-metrics collector config — written by `pella login`.\n" +
+    "# pellametric collector config — written by `pella login`.\n" +
     "# Hand-editable: one KEY=VALUE per line. Comments start with #.\n";
   const body = Object.entries(existing)
     .sort(([a], [b]) => a.localeCompare(b))

@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /*
- * pella-metrics — bematist-inspired dark palette.
+ * pellametric — bematist-inspired dark palette.
  * Warm paper-white ink on near-black, sage accent, warm amber for secondary.
  * Hex values exposed as plain #rgba so Tailwind opacity modifiers keep working.
  */

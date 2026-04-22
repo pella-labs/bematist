@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * pella-metrics collector — legacy one-shot entry.
+ * pellametric collector — legacy one-shot entry.
  *
  * Bundled into apps/web/public/collector.mjs by `bun run build` and
  * served as the curl-piped fallback from /setup/collector for users

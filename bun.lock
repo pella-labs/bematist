@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "pella-metrics",
+      "name": "pellametric",
       "devDependencies": {
         "typescript": "^5.6.3",
       },

@@ -12,10 +12,9 @@ const LINE_ITEMS: { label: string; width: string }[] = [
   { label: "Quality of outputs", width: "70%" },
 ];
 
-export function Slide03FlyingBlind({ totalPages }: { totalPages: number }) {
+export function Slide02Problem({ totalPages }: { totalPages: number }) {
   return (
     <SlideShell sectionLabel="02 / THE PROBLEM" pageNumber={3} totalPages={totalPages}>
-      <div className="eyebrow">02 / THE PROBLEM</div>
       <div
         style={{
           display: "grid",
