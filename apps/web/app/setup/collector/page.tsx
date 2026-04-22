@@ -16,7 +16,7 @@ export default function SetupCollector() {
   }
 
   return (
-    <main className="max-w-2xl mx-auto mt-16 px-6 pb-16">
+    <main className="max-w-xl mx-auto mt-8 px-6 pb-16">
       <header className="flex items-start gap-4 mb-10 pb-5 border-b border-border">
         <BackButton href="/dashboard" />
         <div>

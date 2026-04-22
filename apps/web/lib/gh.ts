@@ -13,7 +13,7 @@ export type PrAgg = {
 async function gh<T = any>(path: string, token: string): Promise<T | null> {
   const r = await fetch(`https://api.github.com${path}`, {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" },
-    cache: "no-store",
+    next: { revalidate: 300, tags: ["gh"] },
   });
   if (!r.ok) return null;
   return r.json();

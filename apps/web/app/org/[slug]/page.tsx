@@ -1,18 +1,28 @@
 import { auth } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gte } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import BackButton from "@/components/back-button";
 import { type TeamRow } from "@/components/team-tables";
 import OrgViewSwitcher from "@/components/org-view-switcher";
+import WindowPicker from "@/components/window-picker";
+import { windowCutoff, parseWindow, type WindowKey } from "@/lib/window";
 import { aggregateBoth } from "@/lib/aggregate";
 import { costFor } from "@/lib/pricing";
 import { prAggForMember } from "@/lib/gh";
 
-export default async function OrgPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function OrgPage({
+  params, searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ window?: string }>;
+}) {
   const { slug } = await params;
+  const sp = await searchParams;
+  const windowKey: WindowKey = parseWindow(sp.window);
+  const cutoff = windowCutoff(windowKey);
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) redirect("/");
 
@@ -25,12 +35,20 @@ export default async function OrgPage({ params }: { params: Promise<{ slug: stri
   if (!row) notFound();
   const isManager = row.role === "manager";
 
-  // Always load all org sessions once for managers; devs only see own.
-  const allOrgSessions = isManager
-    ? await db.select().from(schema.sessionEvent).where(eq(schema.sessionEvent.orgId, row.org.id))
-    : [];
-  const mySessions = await db.select().from(schema.sessionEvent)
-    .where(and(eq(schema.sessionEvent.orgId, row.org.id), eq(schema.sessionEvent.userId, session.user.id)));
+  // Build org + window filter (cutoff = null ⇒ no lower bound)
+  const orgFilter = eq(schema.sessionEvent.orgId, row.org.id);
+  const windowFilter = cutoff ? and(orgFilter, gte(schema.sessionEvent.startedAt, cutoff)) : orgFilter;
+  const myFilter = cutoff
+    ? and(orgFilter, eq(schema.sessionEvent.userId, session.user.id), gte(schema.sessionEvent.startedAt, cutoff))
+    : and(orgFilter, eq(schema.sessionEvent.userId, session.user.id));
+
+  // Parallel: both session queries + the calling user's GitHub account.
+  const [allOrgSessions, mySessions] = await Promise.all([
+    isManager
+      ? db.select().from(schema.sessionEvent).where(windowFilter)
+      : Promise.resolve([] as any[]),
+    db.select().from(schema.sessionEvent).where(myFilter),
+  ]);
 
   // Team view = everyone including me; Myself = just me
   const teamData = aggregateBoth((isManager ? allOrgSessions : mySessions) as any);
@@ -39,11 +57,17 @@ export default async function OrgPage({ params }: { params: Promise<{ slug: stri
   // ------- Team aggregates (manager only) -------
   let teamRows: TeamRow[] = [];
   if (isManager) {
-    const members = await db
-      .select({ user: schema.user, role: schema.membership.role })
-      .from(schema.membership)
-      .innerJoin(schema.user, eq(schema.membership.userId, schema.user.id))
-      .where(eq(schema.membership.orgId, row.org.id));
+    // Fetch members and the caller's GitHub token in parallel.
+    const [members, [acc]] = await Promise.all([
+      db
+        .select({ user: schema.user, role: schema.membership.role })
+        .from(schema.membership)
+        .innerJoin(schema.user, eq(schema.membership.userId, schema.user.id))
+        .where(eq(schema.membership.orgId, row.org.id)),
+      db.select().from(schema.account)
+        .where(and(eq(schema.account.userId, session.user.id), eq(schema.account.providerId, "github")))
+        .limit(1),
+    ]);
 
     const byUser = new Map<string, any>();
     const userTimestamps = new Map<string, number[]>();       // user -> [ts,...] for active-hours calc
@@ -93,9 +117,6 @@ export default async function OrgPage({ params }: { params: Promise<{ slug: stri
       userHours.set(uid, Math.min(active / 3600, 24 * 30));
     }
 
-    const [acc] = await db.select().from(schema.account)
-      .where(and(eq(schema.account.userId, session.user.id), eq(schema.account.providerId, "github")))
-      .limit(1);
     const ghToken = acc?.accessToken ?? null;
 
     teamRows = await Promise.all(members.map(async m => {
@@ -137,14 +158,22 @@ export default async function OrgPage({ params }: { params: Promise<{ slug: stri
           <div>
             <div className="mk-eyebrow mb-2">org · {row.role}</div>
             <h1 className="mk-heading text-3xl md:text-4xl font-semibold tracking-[-0.02em]">{row.org.name}</h1>
-            <div className="mk-label mt-1.5">{row.org.slug}</div>
+            <div className="mk-label mt-1.5">
+              {row.org.slug}
+              <span className="ml-2 text-muted-foreground normal-case tracking-normal">
+                · {(isManager ? allOrgSessions.length : mySessions.length).toLocaleString()} sessions in {windowKey === "all" ? "all time" : windowKey}
+              </span>
+            </div>
           </div>
         </div>
-        {isManager && (
-          <Link href={`/org/${row.org.slug}/invite`} className="mk-label bg-accent text-accent-foreground px-3 py-2 hover:opacity-90 transition">
-            Invite →
-          </Link>
-        )}
+        <div className="flex items-start gap-3">
+          <WindowPicker current={windowKey} />
+          {isManager && (
+            <Link href={`/org/${row.org.slug}/invite`} className="mk-label bg-accent text-accent-foreground px-3 py-2 hover:opacity-90 transition">
+              Invite →
+            </Link>
+          )}
+        </div>
       </header>
 
       <OrgViewSwitcher

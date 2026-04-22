@@ -1,10 +1,12 @@
 import { auth } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte } from "drizzle-orm";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import BackButton from "@/components/back-button";
+import WindowPicker from "@/components/window-picker";
+import { windowCutoff, parseWindow, type WindowKey } from "@/lib/window";
 import { prDetailsForMember } from "@/lib/gh-pr-details";
 import { costFor, money } from "@/lib/pricing";
 
@@ -22,11 +24,13 @@ export default async function DevDetailPage({
   params, searchParams,
 }: {
   params: Promise<{ slug: string; login: string }>;
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; window?: string }>;
 }) {
   const { slug, login } = await params;
   const sp = await searchParams;
   const view = (sp.view as ViewKey) ?? "overview";
+  const windowKey: WindowKey = parseWindow(sp.window);
+  const cutoff = windowCutoff(windowKey);
 
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) redirect("/");
@@ -46,8 +50,9 @@ export default async function DevDetailPage({
 
   if (targetUser.id !== session.user.id && viewer.role !== "manager") redirect(`/org/${slug}`);
 
+  const baseFilter = and(eq(schema.sessionEvent.orgId, viewer.org.id), eq(schema.sessionEvent.userId, targetUser.id));
   const sessions = await db.select().from(schema.sessionEvent)
-    .where(and(eq(schema.sessionEvent.orgId, viewer.org.id), eq(schema.sessionEvent.userId, targetUser.id)))
+    .where(cutoff ? and(baseFilter, gte(schema.sessionEvent.startedAt, cutoff)) : baseFilter)
     .orderBy(desc(schema.sessionEvent.startedAt));
 
   // ---------- Aggregate helpers ----------
@@ -67,13 +72,16 @@ export default async function DevDetailPage({
 
   return (
     <main className="max-w-[1600px] mx-auto mt-8 px-6 pb-16">
-      <header className="flex items-start gap-4 mb-6">
-        <BackButton href={`/org/${slug}`} label="back to team" />
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Dev · {viewer.org.name}</div>
-          <h1 className="text-2xl font-bold mt-1">{targetUser.name}</h1>
-          <p className="text-xs text-muted-foreground mt-1 font-mono">{targetUser.githubLogin ?? targetUser.id}</p>
+      <header className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-start gap-4">
+          <BackButton href={`/org/${slug}`} label="back to team" />
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Dev · {viewer.org.name}</div>
+            <h1 className="text-2xl font-bold mt-1">{targetUser.name}</h1>
+            <p className="text-xs text-muted-foreground mt-1 font-mono">{targetUser.githubLogin ?? targetUser.id}</p>
+          </div>
         </div>
+        <WindowPicker current={windowKey} />
       </header>
 
       {/* Header KPIs always visible */}
@@ -118,11 +126,12 @@ export default async function DevDetailPage({
   );
 }
 
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "positive" | "destructive" }) {
+  const valueClass = tone === "positive" ? "text-positive" : tone === "destructive" ? "text-destructive" : "text-foreground";
   return (
     <div className="bg-card border border-border rounded-lg p-4">
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</div>
-      <div className="text-lg font-bold mt-1 text-foreground">{value}</div>
+      <div className={`text-lg font-bold mt-1 ${valueClass}`}>{value}</div>
       {sub && <div className="text-[10px] text-muted-foreground mt-0.5">{sub}</div>}
     </div>
   );
@@ -178,7 +187,16 @@ function SkillsView({ sessions }: { sessions: any[] }) {
   const list = [...rows.entries()].sort((a, b) => b[1].tokens - a[1].tokens);
   const max = list[0]?.[1]?.tokens ?? 1;
   return (
-    <SimpleTable title="Skills — how they got used" empty="No skills recorded." cols={["Skill", "Sessions", "Tokens", ""]}>
+    <SimpleTable
+      title="Skills — how they got used"
+      empty="No skills recorded."
+      cols={[
+        { label: "Skill", align: "left" },
+        { label: "Sessions", align: "right" },
+        { label: "Tokens", align: "right" },
+        { label: "", align: "left" },
+      ]}
+    >
       {list.map(([name, v]) => (
         <tr key={name} className="border-b border-border/50">
           <td className="py-2 px-3 font-mono">{name}</td>
@@ -208,7 +226,16 @@ function McpView({ sessions }: { sessions: any[] }) {
   const list = [...rows.entries()].sort((a, b) => b[1].tokens - a[1].tokens);
   const max = list[0]?.[1]?.tokens ?? 1;
   return (
-    <SimpleTable title="MCP servers — adoption + spend" empty="No MCP calls recorded." cols={["Server", "Sessions", "Tokens", ""]}>
+    <SimpleTable
+      title="MCP servers — adoption + spend"
+      empty="No MCP calls recorded."
+      cols={[
+        { label: "Server", align: "left" },
+        { label: "Sessions", align: "right" },
+        { label: "Tokens", align: "right" },
+        { label: "", align: "left" },
+      ]}
+    >
       {list.map(([name, v]) => (
         <tr key={name} className="border-b border-border/50">
           <td className="py-2 px-3 font-mono">{name}</td>
@@ -231,7 +258,15 @@ function ToolsView({ sessions }: { sessions: any[] }) {
   const list = [...rows.entries()].sort((a, b) => b[1] - a[1]);
   const max = list[0]?.[1] ?? 1;
   return (
-    <SimpleTable title="Tools — call counts" empty="No tool calls recorded." cols={["Tool", "Calls", ""]}>
+    <SimpleTable
+      title="Tools — call counts"
+      empty="No tool calls recorded."
+      cols={[
+        { label: "Tool", align: "left" },
+        { label: "Calls", align: "right" },
+        { label: "", align: "left" },
+      ]}
+    >
       {list.map(([name, n]) => (
         <tr key={name} className="border-b border-border/50">
           <td className="py-2 px-3 font-mono">{name}</td>
@@ -261,7 +296,7 @@ function FilesView({ sessions }: { sessions: any[] }) {
   const thrash = list.filter(([_, v]) => v.sessions >= 3);
   return (
     <div className="space-y-6">
-      <SimpleTable title={`Thrash files — touched ≥3 sessions (${thrash.length})`} empty="No thrash detected." cols={["File", "Sessions", "Tokens"]}>
+      <SimpleTable title={`Thrash files — touched ≥3 sessions (${thrash.length})`} empty="No thrash detected." cols={[{ label: "File", align: "left" }, { label: "Sessions", align: "right" }, { label: "Tokens", align: "right" }]}>
         {thrash.map(([f, v]) => (
           <tr key={f} className="border-b border-border/50">
             <td className="py-2 px-3 font-mono truncate max-w-xl text-muted-foreground">{f}</td>
@@ -270,7 +305,7 @@ function FilesView({ sessions }: { sessions: any[] }) {
           </tr>
         ))}
       </SimpleTable>
-      <SimpleTable title="Top files (by attributed tokens)" empty="No files touched." cols={["File", "Sessions", "Tokens"]}>
+      <SimpleTable title="Top files (by attributed tokens)" empty="No files touched." cols={[{ label: "File", align: "left" }, { label: "Sessions", align: "right" }, { label: "Tokens", align: "right" }]}>
         {list.map(([f, v]) => (
           <tr key={f} className="border-b border-border/50">
             <td className="py-2 px-3 font-mono truncate max-w-xl text-muted-foreground">{f}</td>
@@ -285,7 +320,21 @@ function FilesView({ sessions }: { sessions: any[] }) {
 
 function SessionsView({ sessions }: { sessions: any[] }) {
   return (
-    <SimpleTable title={`Sessions (${sessions.length})`} empty="No sessions." cols={["Started", "Source", "Repo", "Intent", "Msgs", "Tokens", "Files", "Err", "Teacher"]}>
+    <SimpleTable
+      title={`Sessions (${sessions.length})`}
+      empty="No sessions."
+      cols={[
+        { label: "Started", align: "left" },
+        { label: "Source", align: "left" },
+        { label: "Repo", align: "left" },
+        { label: "Intent", align: "left" },
+        { label: "Msgs", align: "right" },
+        { label: "Tokens", align: "right" },
+        { label: "Files", align: "right" },
+        { label: "Err", align: "right" },
+        { label: "Teacher", align: "right" },
+      ]}
+    >
       {sessions.slice(0, 200).map(s => (
         <tr key={s.id} className="border-b border-border/50 hover:bg-popover/40">
           <td className="py-1.5 px-3 font-mono text-muted-foreground">
@@ -325,11 +374,25 @@ async function PrsView({ orgSlug, login, viewerId }: { orgSlug: string; login: s
         <Stat label="PRs total" value={prs.length.toString()} />
         <Stat label="Merged" value={merged.length.toString()} />
         <Stat label="Open" value={open.length.toString()} />
-        <Stat label="+LOC" value={`+${totalAdd.toLocaleString()}`} />
-        <Stat label="−LOC" value={`−${totalDel.toLocaleString()}`} />
+        <Stat label="+LOC" value={`+${totalAdd.toLocaleString()}`} tone="positive" />
+        <Stat label="−LOC" value={`−${totalDel.toLocaleString()}`} tone="destructive" />
       </div>
 
-      <SimpleTable title={`Per-PR detail`} empty="—" cols={["PR", "Title", "+LOC", "−LOC", "Files", "Commits", "Reviews", "State", "Merge (h)"]}>
+      <SimpleTable
+        title={`Per-PR detail`}
+        empty="—"
+        cols={[
+          { label: "PR", align: "left" },
+          { label: "Title", align: "left" },
+          { label: "+LOC", align: "right" },
+          { label: "−LOC", align: "right" },
+          { label: "Files", align: "right" },
+          { label: "Commits", align: "right" },
+          { label: "Reviews", align: "right" },
+          { label: "State", align: "left" },
+          { label: "Merge (h)", align: "right" },
+        ]}
+      >
         {prs.sort((a, b) => b.additions - a.additions).map(p => {
           const mergeHrs = p.merged && p.mergedAt ? (new Date(p.mergedAt).getTime() - new Date(p.createdAt).getTime()) / 3600000 : null;
           return (
@@ -353,7 +416,9 @@ async function PrsView({ orgSlug, login, viewerId }: { orgSlug: string; login: s
 
 /* ---------- helpers ---------- */
 
-function SimpleTable({ title, empty, cols, children }: { title: string; empty: string; cols: string[]; children: React.ReactNode }) {
+type Col = string | { label: string; align?: "left" | "right" };
+
+function SimpleTable({ title, empty, cols, children }: { title: string; empty: string; cols: Col[]; children: React.ReactNode }) {
   const childArr = Array.isArray(children) ? children : [children];
   const isEmpty = childArr.filter(Boolean).length === 0;
   return (
@@ -363,9 +428,11 @@ function SimpleTable({ title, empty, cols, children }: { title: string; empty: s
         <table className="w-full text-xs">
           <thead className="text-muted-foreground">
             <tr className="border-b border-border">
-              {cols.map((c, i) => (
-                <th key={c + i} className={`py-2 px-3 ${i === 0 ? "text-left" : "text-right"}`}>{c}</th>
-              ))}
+              {cols.map((c, i) => {
+                const label = typeof c === "string" ? c : c.label;
+                const align = typeof c === "string" ? (i === 0 ? "left" : "right") : (c.align ?? "left");
+                return <th key={label + i} className={`py-2 px-3 ${align === "right" ? "text-right" : "text-left"}`}>{label}</th>;
+              })}
             </tr>
           </thead>
           <tbody>

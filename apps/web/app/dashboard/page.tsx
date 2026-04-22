@@ -21,7 +21,7 @@ export default async function Dashboard() {
     .where(eq(schema.membership.userId, session.user.id));
 
   return (
-    <main className="max-w-5xl mx-auto mt-16 px-6 pb-16">
+    <main className="max-w-[1600px] mx-auto mt-8 px-6 pb-16">
       <header className="flex items-end justify-between mb-12 pb-6 border-b border-border">
         <div>
           <div className="mk-eyebrow mb-2">pella-metrics</div>
@@ -30,7 +30,17 @@ export default async function Dashboard() {
             <em className="not-italic text-accent">{session.user.name?.split(" ")[0] ?? "dev"}.</em>
           </h1>
         </div>
-        <SignOutButton />
+        <div className="flex items-center gap-3">
+          {session.user.image && (
+            <img
+              src={session.user.image}
+              alt={session.user.name ?? "avatar"}
+              className="size-10 rounded-full border border-border object-cover"
+              referrerPolicy="no-referrer"
+            />
+          )}
+          <SignOutButton />
+        </div>
       </header>
 
       {memberships.length === 0 ? (

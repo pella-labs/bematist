@@ -20,7 +20,8 @@ const TOKEN = args.token || process.env.PELLA_TOKEN;
 declare const __DEFAULT_URL__: string;
 const DEFAULT_URL = typeof __DEFAULT_URL__ === "string" ? __DEFAULT_URL__ : "http://localhost:3000";
 const URL = (args.url || process.env.PELLA_URL || DEFAULT_URL).replace(/\/$/, "");
-const SINCE = args.since ? new Date(args.since) : new Date("2026-01-01");
+// Default: no lower bound — upload all history. Override with --since=YYYY-MM-DD
+const SINCE = args.since ? new Date(args.since) : new Date(0);
 
 if (!TOKEN) { console.error("Missing --token"); process.exit(1); }
 

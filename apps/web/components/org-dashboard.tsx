@@ -56,9 +56,11 @@ const tooltipBase = {
 };
 
 const common: any = {
+  interaction: { mode: "index" as const, intersect: false, axis: "x" as const },
+  hover: { mode: "index" as const, intersect: false },
   plugins: {
     legend: { display: false },
-    tooltip: { ...tooltipBase, callbacks: { title: (items: any[]) => items.map(i => i.label) } },
+    tooltip: { ...tooltipBase, mode: "index" as const, intersect: false, callbacks: { title: (items: any[]) => items.map(i => i.label) } },
   },
   scales: {
     x: {
@@ -89,6 +91,8 @@ const common: any = {
 
 const hBarOpts: any = {
   ...common,
+  interaction: { mode: "nearest" as const, intersect: true },
+  hover: { mode: "nearest" as const, intersect: true },
   indexAxis: "y" as const,
   scales: {
     x: {
