@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { classifyIntent, TEACHER_RE, FRUSTRATION_RE, parseGithubRemote } from "../classify";
+import { classifyIntent, TEACHER_RE, FRUSTRATION_RE } from "../parsers/intent";
+import { parseGithubRemote } from "../parsers/repo";
 
 describe("classifyIntent", () => {
   it("recognises approvals", () => {

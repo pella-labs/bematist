@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  pella-metrics collector — macOS LaunchAgent template.
+  Rendered at install time by `pella start` with @HOME@ and @BIN@
+  substituted for the user's $HOME and the resolved `pella` binary path.
+
+  LaunchAgent (not LaunchDaemon): the collector observes the logged-in
+  developer's own session files under $HOME, so it runs as that user at
+  GUI-login — not as root at boot.
+
+  KeepAlive + RunAtLoad restart on crash and survive logout→login.
+  ThrottleInterval keeps a crash loop from hogging CPU.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.pella.collector</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>@BIN@</string>
+    <string>serve</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+
+  <key>StandardOutPath</key>
+  <string>@HOME@/.pella/logs/out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>@HOME@/.pella/logs/err.log</string>
+
+  <key>WorkingDirectory</key>
+  <string>@HOME@/.pella</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+    <key>HOME</key>
+    <string>@HOME@</string>
+  </dict>
+
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+</dict>
+</plist>

@@ -6,6 +6,7 @@ build
 coverage
 tsconfig.tsbuildinfo
 *.tsbuildinfo
+apps/collector/bin/
 
 .claude/
 .codex/

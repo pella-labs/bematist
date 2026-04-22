@@ -1,0 +1,29 @@
+# pella-metrics collector — systemd user unit template.
+# Installed at ~/.config/systemd/user/pella.service by `pella start`.
+# Enable with:
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now pella.service
+# Add `loginctl enable-linger $USER` if the collector must survive logout
+# on headless dev boxes. `pella start` prints a warning when linger is
+# not enabled.
+#
+# @BIN@ is substituted with the resolved `pella` binary path
+# (typically /usr/local/bin/pella).
+
+[Unit]
+Description=pella-metrics collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=@BIN@ serve
+Restart=on-failure
+RestartSec=5
+EnvironmentFile=-%h/.pella/config.env
+WorkingDirectory=%h/.pella
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
