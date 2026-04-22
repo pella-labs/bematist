@@ -1,0 +1,65 @@
+import Link from "next/link";
+import type { ReactNode } from "react";
+import "./marketing.css";
+
+const TWITTER_URL = "https://x.com/pella_labs";
+const GITHUB_URL = "https://github.com/pella-labs/pellametrics";
+
+export default function MarketingLayout({ children }: { children: ReactNode }) {
+  return (
+    <div className="bema-marketing">
+      <div className="mk-container">
+        <nav className="mk-nav" aria-label="Primary">
+          <Link href="/" className="mk-wordmark">
+            pella metrics
+          </Link>
+          <div className="mk-nav-links">
+            <a
+              href={TWITTER_URL}
+              className="mk-btn mk-btn-ghost mk-btn-icon"
+              rel="noreferrer"
+              target="_blank"
+              aria-label="Follow on X"
+            >
+              <XMark />
+              <span className="mk-btn-icon-label">Follow</span>
+            </a>
+            <Link href="/signin" className="mk-btn mk-btn-ghost">
+              Sign in
+            </Link>
+            <a href={GITHUB_URL} className="mk-btn mk-btn-primary" rel="noreferrer">
+              GitHub
+            </a>
+          </div>
+        </nav>
+        {children}
+        <footer className="mk-footer">
+          <div className="mk-footer-copy">
+            <span className="mk-footer-line">The instrument for agentic engineering output.</span>
+            <span className="mk-footer-sub">
+              See the spend. See the work. Scale what ships. Open-source, self-hostable, runs
+              against your local sessions on day one.
+            </span>
+          </div>
+          <div>
+            <a href={TWITTER_URL} rel="noreferrer" target="_blank">
+              Follow on X
+            </a>
+            <a href={GITHUB_URL} rel="noreferrer">
+              GitHub
+            </a>
+            <Link href="/signin">Sign in</Link>
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+function XMark() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.654l-5.214-6.817-5.966 6.817H1.683l7.73-8.835L1.254 2.25h6.817l4.713 6.231 5.46-6.231zm-1.161 17.52h1.834L7.084 4.126H5.117l11.966 15.644z" />
+    </svg>
+  );
+}

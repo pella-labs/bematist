@@ -1,23 +1,84 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, JetBrains_Mono, Space_Mono } from "next/font/google";
-import { Geist } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+  IBM_Plex_Sans,
+  Inter,
+  JetBrains_Mono,
+  Space_Mono,
+} from "next/font/google";
+
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
+  "http://localhost:3000";
 
 const fontSans = Geist({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
-const fontHeading = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-heading", display: "swap" });
-const fontMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
-const fontNumeric = Space_Mono({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-numeric", display: "swap" });
+const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
+const fontHeading = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-heading",
+  display: "swap",
+});
+const mkSans = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-mk-sans",
+  display: "swap",
+});
+const mkMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--font-mk-mono",
+  display: "swap",
+});
+const mkSys = Space_Mono({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-mk-sys",
+  display: "swap",
+});
+const fontNumeric = Space_Mono({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-numeric",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "pella-metrics",
-  description: "Per-dev productivity metrics, org-scoped via GitHub",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Pella Metrics",
+    template: "%s · Pella Metrics",
+  },
+  description:
+    "Measure agentic engineering output. See the spend. See the work. Scale what ships.",
+  applicationName: "Pella Metrics",
+  openGraph: {
+    type: "website",
+    siteName: "Pella Metrics",
+    locale: "en_US",
+    url: "/",
+    title: "Pella Metrics · Measure agentic engineering output",
+    description:
+      "See the spend. See the work. Scale what ships. Analytics across Claude Code, Codex and the rest of your dev-AI stack.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Pella Metrics · Measure agentic engineering output",
+    description:
+      "See the spend. See the work. Scale what ships. Analytics across Claude Code, Codex and the rest of your dev-AI stack.",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
-      className={`dark antialiased ${fontSans.variable} ${fontHeading.variable} ${fontMono.variable} ${fontNumeric.variable}`}
+      className={`dark antialiased ${fontSans.variable} ${fontMono.variable} ${fontHeading.variable} ${mkSans.variable} ${mkMono.variable} ${mkSys.variable} ${fontNumeric.variable}`}
+      suppressHydrationWarning
     >
       <body className="min-h-screen bg-background text-foreground">{children}</body>
     </html>
