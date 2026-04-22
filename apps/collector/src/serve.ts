@@ -5,6 +5,7 @@ import { finalizeSessions } from "./accumulator";
 import type { CollectorConfig } from "./config";
 import { ingestClaudeFileSlice } from "./parsers/claude";
 import { type CodexFileCtxMap, ingestCodexFileSlice } from "./parsers/codex";
+import { type CursorSweepState, newCursorSweepState, sweepCursor } from "./parsers/cursor";
 import { makeRepoCache, resolveRepo } from "./parsers/repo";
 import { walkJsonl } from "./parsers/walk";
 import type { SessionMap } from "./types";
@@ -45,9 +46,11 @@ export function startServeLoop(cfg: CollectorConfig): LoopHandle {
   const resolver = (cwd: string) => resolveRepo(cwd, repoCache);
   const claudeSessions: SessionMap = new Map();
   const codexSessions: SessionMap = new Map();
+  const cursorSessions: SessionMap = new Map();
   const codexCtx: CodexFileCtxMap = new Map();
   const claudeCursors = new Map<string, FileCursor>();
   const codexCursors = new Map<string, FileCursor>();
+  const cursorSweepState: CursorSweepState = newCursorSweepState();
 
   let stopped = false;
   let resolveDone: () => void = () => {};
@@ -71,6 +74,9 @@ export function startServeLoop(cfg: CollectorConfig): LoopHandle {
       CODEX_PATTERN,
       (state, abs, off) => ingestCodexFileSlice(state, abs, off, codexCtx, cfg.since),
     );
+    // Cursor's SQLite source has its own PRAGMA data_version + per-composer
+    // lastUpdatedAt watermarks (no byte-offset cursor — rows mutate in place).
+    const touchedCursor = sweepCursor(cursorSessions, cursorSweepState, cfg.since);
 
     if (touchedClaude.size > 0) {
       const { sessions, prompts, responses } = finalizeSessions(claudeSessions, resolver, touchedClaude);
@@ -98,10 +104,24 @@ export function startServeLoop(cfg: CollectorConfig): LoopHandle {
         });
       }
     }
+    if (touchedCursor.size > 0) {
+      const { sessions, prompts, responses } = finalizeSessions(cursorSessions, resolver, touchedCursor);
+      if (sessions.length > 0) {
+        await uploadBatch({
+          url: cfg.url,
+          token: cfg.token,
+          source: "cursor",
+          sessions,
+          prompts,
+          responses,
+        });
+      }
+    }
 
-    if (touchedClaude.size + touchedCodex.size > 0) {
+    const total = touchedClaude.size + touchedCodex.size + touchedCursor.size;
+    if (total > 0) {
       console.log(
-        `pella tick: claude+${touchedClaude.size} codex+${touchedCodex.size} in ${Date.now() - started}ms`,
+        `pella tick: claude+${touchedClaude.size} codex+${touchedCodex.size} cursor+${touchedCursor.size} in ${Date.now() - started}ms`,
       );
     }
   };

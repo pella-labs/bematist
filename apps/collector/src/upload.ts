@@ -6,7 +6,7 @@ const BATCH = 200;
 export interface UploadOptions {
   url: string;
   token: string;
-  source: "claude" | "codex";
+  source: "claude" | "codex" | "cursor";
   sessions: IngestSession[];
   prompts: IngestPrompt[];
   responses: IngestResponse[];
