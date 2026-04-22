@@ -3,6 +3,7 @@ import path from "node:path";
 import { finalizeSessions } from "../accumulator";
 import { ingestClaudeFileSlice } from "../parsers/claude";
 import { type CodexFileCtxMap, ingestCodexFileSlice } from "../parsers/codex";
+import { newCursorSweepState, sweepCursor } from "../parsers/cursor";
 import { makeRepoCache, resolveRepo } from "../parsers/repo";
 import { walkJsonl } from "../parsers/walk";
 import type { SessionMap } from "../types";
@@ -68,5 +69,20 @@ export async function runOnce(opts: RunOnceOptions): Promise<void> {
     sessions: codexFinal.sessions,
     prompts: codexFinal.prompts,
     responses: codexFinal.responses,
+  });
+
+  // Cursor (SQLite, not JSONL — one sweep rebuilds every composer's state).
+  const cursorSessions: SessionMap = new Map();
+  sweepCursor(cursorSessions, newCursorSweepState(), since);
+  const cursorFinal = finalizeSessions(cursorSessions, resolver);
+  console.log(
+    `cursor sessions in-scope: ${cursorFinal.sessions.length} (prompts: ${cursorFinal.prompts.length})`,
+  );
+  await uploadBatch({
+    url: opts.url,
+    token: opts.token,
+    source: "cursor",
+    sessions: cursorFinal.sessions,
+    prompts: cursorFinal.prompts,
   });
 }

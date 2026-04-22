@@ -55,7 +55,7 @@ const responseSchema = z.object({
 });
 
 const ingestSchema = z.object({
-  source: z.enum(["claude", "codex"]),
+  source: z.enum(["claude", "codex", "cursor"]),
   collectorVersion: z.string().optional(),
   sessions: z.array(sessionSchema),
   prompts: z.array(promptSchema).optional(),

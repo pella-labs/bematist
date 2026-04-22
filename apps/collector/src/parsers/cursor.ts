@@ -1,0 +1,401 @@
+// Cursor adapter.
+//
+// Cursor stores every IDE session in a pair of SQLite DBs:
+//   macOS   ~/Library/Application Support/Cursor/User/globalStorage/state.vscdb
+//   Linux   $XDG_CONFIG_HOME/Cursor/User/globalStorage/state.vscdb   (~/.config)
+//   Windows %APPDATA%/Cursor/User/globalStorage/state.vscdb
+// plus one per-workspace state.vscdb under workspaceStorage/<wsHash>/.
+//
+// Key shape (validated on real user data across Cursor 1.7 → 2.3):
+//   cursorDiskKV:composerData:<id>          ← one conversation header + ordering
+//   cursorDiskKV:bubbleId:<cid>:<bid>       ← one turn (user / assistant / tool)
+//   ItemTable['src...applicationUser']      ← aiSettings.composerModel etc.
+//   workspaceStorage/<hash>/workspace.json  ← folder URI
+//   workspaceStorage/<hash>/state.vscdb     ← ItemTable['composer.composerData']
+//                                              .allComposers[] maps cid → workspace
+//
+// Access: shell out to the `sqlite3` CLI with `.mode json`. Reason: zero
+// native deps, bundle-compatible (this collector ships as a single Node
+// bundle or a `bun build --compile` binary), and works identically on
+// macOS/Linux/Windows. The existing collector already shells out to `git`,
+// so this adds only one more external tool dependency.
+//
+// Unlike Claude/Codex JSONL (append-only, byte-offset cursor), Cursor's
+// SQLite rows are mutated in place as the session grows. The incremental
+// strategy is a two-level watermark:
+//   1. PRAGMA data_version — cheap "has the DB changed at all?" check
+//   2. per-composer lastUpdatedAt — which composers need re-read
+// We rebuild the SessionState for a changed composer from scratch each
+// tick (idempotent — server upsert on (userId, source, externalSessionId)).
+//
+// Known honest gaps (documented so dashboard math is right):
+//  - Per-bubble timestamps are NOT on disk. We synthesise prompt times by
+//    interpolating between createdAt and lastUpdatedAt. This preserves
+//    ordering and keeps the (user,source,sid,ts) prompt_uniq index happy.
+//  - `model` comes from the user's currently-selected aiSettings. For
+//    historical composers this may be wrong (user switched models since);
+//    for new composers captured by the daemon it's correct.
+//  - tokensCacheRead / tokensCacheWrite / tokensReasoning are 0 — Cursor
+//    does not expose these locally. Treat as honest zeros, not estimates.
+//  - ~21% of composers contain "orphan" bubbles not referenced by
+//    fullConversationHeadersOnly (regenerated / cancelled turns). We
+//    aggregate their tokens/tools/errors but don't count them as user
+//    turns, mirroring the Claude adapter's isSidechain treatment.
+
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+import type { SessionMap, SessionState } from "../types";
+import { newSessionState } from "../types";
+import { classifyIntent, FRUSTRATION_RE, TEACHER_RE } from "./intent";
+
+// ----------------------------- paths --------------------------------------
+
+export function cursorDataRoot(): string {
+  if (process.platform === "darwin") {
+    return path.join(os.homedir(), "Library", "Application Support", "Cursor");
+  }
+  if (process.platform === "win32") {
+    const appdata = process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming");
+    return path.join(appdata, "Cursor");
+  }
+  const xdg = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config");
+  return path.join(xdg, "Cursor");
+}
+
+function globalDb(root: string): string {
+  return path.join(root, "User", "globalStorage", "state.vscdb");
+}
+
+function workspaceStorageDir(root: string): string {
+  return path.join(root, "User", "workspaceStorage");
+}
+
+// ----------------------------- sqlite -------------------------------------
+
+/**
+ * Run one SELECT via the sqlite3 CLI in JSON mode (SQLite ≥3.33). Returns
+ * each row as a typed object. Values may contain newlines / pipes / any
+ * ASCII — JSON handles them so we don't have to worry about delimiter
+ * collisions. `-readonly` + `.timeout 2000` keeps us polite if Cursor is
+ * actively writing.
+ */
+export function sqliteQuery<T = Record<string, string>>(dbPath: string, sql: string): T[] {
+  if (!fs.existsSync(dbPath)) return [];
+  try {
+    const out = execFileSync(
+      "sqlite3",
+      ["-readonly", "-bail", "-cmd", ".timeout 2000", "-cmd", ".mode json", dbPath, sql],
+      { encoding: "utf8", maxBuffer: 512 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] },
+    );
+    if (!out.trim()) return [];
+    return JSON.parse(out) as T[];
+  } catch {
+    return [];
+  }
+}
+
+/** Convenience: return the `value` column of the first row, or null. */
+export function sqliteOne(dbPath: string, sql: string): string | null {
+  const rows = sqliteQuery<{ value: string }>(dbPath, sql);
+  return rows.length ? rows[0].value : null;
+}
+
+/** Current SQLite data_version — cheap monotonic "did anything write?" probe. */
+export function sqliteDataVersion(dbPath: string): number {
+  const rows = sqliteQuery<{ data_version: number }>(dbPath, "PRAGMA data_version");
+  return rows[0]?.data_version ?? 0;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function isSafeCursorId(id: string): boolean {
+  return UUID_RE.test(id);
+}
+
+// ----------------------------- pure logic ---------------------------------
+
+export interface CursorAiSettings {
+  composerModel?: string;
+  regularChatModel?: string;
+  cmdKModel?: string;
+}
+
+export interface CursorBubble {
+  type?: number; // 1 = user, 2 = assistant
+  text?: string;
+  tokenCount?: { inputTokens?: number; outputTokens?: number } | null;
+  toolFormerData?: {
+    name?: string;
+    status?: string; // completed | error | cancelled
+    userDecision?: string | null;
+  } | null;
+}
+
+export interface CursorComposer {
+  composerId?: string;
+  createdAt?: number;
+  lastUpdatedAt?: number;
+  status?: string;
+  unifiedMode?: string;
+  forceMode?: string;
+  fullConversationHeadersOnly?: Array<{ bubbleId: string; type?: number }>;
+  originalFileStates?: Record<string, unknown>;
+  newlyCreatedFiles?: string[];
+  _v?: number;
+}
+
+export function pickModel(cd: CursorComposer, ai: CursorAiSettings): string | undefined {
+  const mode = cd.unifiedMode || cd.forceMode;
+  if (mode === "chat") return ai.regularChatModel || ai.composerModel;
+  return ai.composerModel || ai.regularChatModel;
+}
+
+/**
+ * Synthesise a per-turn timestamp by linear interpolation between the
+ * session start and end. Preserves ordering and, crucially, always yields
+ * a unique ms value across turns (we add turnIndex ms so the
+ * prompt_uniq (userId,source,sid,ts) index never collides).
+ */
+export function interpolateTurnTs(
+  startMs: number,
+  endMs: number,
+  turnIndex: number,
+  totalTurns: number,
+): Date {
+  const span = Math.max(0, endMs - startMs);
+  if (totalTurns <= 1) return new Date(startMs + turnIndex);
+  const t = startMs + Math.floor((span * turnIndex) / (totalTurns - 1));
+  return new Date(t + turnIndex);
+}
+
+/**
+ * Build a fresh SessionState for one composer. The caller replaces any
+ * previous entry in the SessionMap with this one — cursor rows are
+ * mutated in place, so incremental fold-deltas don't apply.
+ *
+ * `bubblesAll` feeds the aggregate metrics (tokens/tools/errors). The
+ * orphan bubbles that exist in ~21% of composers contribute real work
+ * and belong in those totals. `bubblesOrdered` is the user-visible
+ * conversation (fullConversationHeadersOnly) — used for user-turn /
+ * prompt metrics only.
+ */
+export function buildCursorSessionState(
+  cd: CursorComposer,
+  bubblesOrdered: CursorBubble[],
+  bubblesAll: CursorBubble[],
+  cwd: string,
+  model: string | undefined,
+): SessionState {
+  const sid = cd.composerId!;
+  const s = newSessionState(sid, cwd, false, model);
+  s.start = new Date(cd.createdAt || 0);
+  s.end = new Date(cd.lastUpdatedAt || cd.createdAt || 0);
+
+  // Aggregate across every bubble (including orphans).
+  for (const b of bubblesAll) {
+    const tc = b.tokenCount || {};
+    s.tokensIn += tc.inputTokens || 0;
+    s.tokensOut += tc.outputTokens || 0;
+    const tfd = b.toolFormerData;
+    if (tfd?.name) {
+      s.toolHist[tfd.name] = (s.toolHist[tfd.name] || 0) + 1;
+      if (tfd.status === "error" || tfd.status === "cancelled") s.errors++;
+    } else if (b.type === 2 && (b.text || "").length > 0) {
+      s.messages++;
+    }
+  }
+
+  // Files touched — originalFileStates is Cursor's pre-edit snapshot map.
+  for (const uri of Object.keys(cd.originalFileStates || {})) {
+    try {
+      const p = decodeURIComponent(uri.replace(/^file:\/\//, ""));
+      if (p) s.filesEdited.add(p);
+    } catch {
+      s.filesEdited.add(uri);
+    }
+  }
+  for (const f of cd.newlyCreatedFiles || []) s.filesEdited.add(f);
+
+  // User-turn / prompt metrics — only from the visible conversation.
+  const userBubbles = bubblesOrdered.filter(b => b.type === 1 && (b.text || "").length > 0);
+  for (let i = 0; i < userBubbles.length; i++) {
+    const text = userBubbles[i].text || "";
+    s.userTurns++;
+    const intent = classifyIntent(text);
+    s.intents[intent] = (s.intents[intent] || 0) + 1;
+    const wc = text.split(/\s+/).filter(Boolean).length;
+    s.promptWords.push(wc);
+    if (wc < 30 && TEACHER_RE.test(text)) s.teacherMoments++;
+    if (FRUSTRATION_RE.test(text)) s.frustrationSpikes++;
+    const ts = interpolateTurnTs(s.start.getTime(), s.end.getTime(), i, userBubbles.length);
+    s.prompts.push({ ts, text, wordCount: wc });
+  }
+
+  return s;
+}
+
+// ----------------------------- sweep --------------------------------------
+
+export interface CursorSweepState {
+  /** Last observed PRAGMA data_version — short-circuit ticks when unchanged. */
+  dataVersion: number;
+  /** composerId → last lastUpdatedAt we processed for that composer. */
+  lastSeen: Map<string, number>;
+}
+
+export function newCursorSweepState(): CursorSweepState {
+  return { dataVersion: -1, lastSeen: new Map() };
+}
+
+/**
+ * Discover which composers changed since last sweep and rebuild their
+ * SessionState entries in `sessions`. Returns the set of sids that were
+ * touched — `finalizeSessions` consumes this for incremental uploads.
+ *
+ * Safe to call repeatedly. When Cursor is idle the whole function is a
+ * single PRAGMA data_version lookup.
+ */
+export function sweepCursor(
+  sessions: SessionMap,
+  state: CursorSweepState,
+  since: Date,
+  root: string = cursorDataRoot(),
+): Set<string> {
+  const touched = new Set<string>();
+  const gdb = globalDb(root);
+  if (!fs.existsSync(gdb)) return touched;
+
+  // Cheap short-circuit: the global DB hasn't been written to since last tick.
+  const dv = sqliteDataVersion(gdb);
+  if (dv > 0 && dv === state.dataVersion) return touched;
+
+  // Read the user's currently-selected models (one shellout).
+  const userBlob = sqliteOne(
+    gdb,
+    "SELECT value FROM ItemTable WHERE key = 'src.vs.platform.reactivestorage.browser.reactiveStorageServiceImpl.persistentStorage.applicationUser'",
+  );
+  let aiSettings: CursorAiSettings = {};
+  if (userBlob) {
+    try {
+      aiSettings = (JSON.parse(userBlob) as { aiSettings?: CursorAiSettings }).aiSettings || {};
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // composerId → cwd (one pass across every workspaceStorage/<hash>/state.vscdb).
+  const cidToCwd = buildComposerIdToCwd(root);
+
+  // Pull every composer header (each is a small JSON blob; ~10KB p95).
+  const composerRows = sqliteQuery<{ key: string; value: string }>(
+    gdb,
+    "SELECT key, value FROM cursorDiskKV WHERE key LIKE 'composerData:%'",
+  );
+  const sinceMs = since.getTime();
+
+  for (const { key, value } of composerRows) {
+    const cid = key.slice("composerData:".length);
+    if (!isSafeCursorId(cid)) continue;
+    let cd: CursorComposer;
+    try {
+      cd = JSON.parse(value);
+    } catch {
+      continue;
+    }
+    cd.composerId = cid;
+
+    const headers = cd.fullConversationHeadersOnly || [];
+    // Cursor pre-creates an empty composer per mode on startup — filter those.
+    if ((!cd.status || cd.status === "none") && headers.length === 0) continue;
+
+    const createdAt = cd.createdAt || 0;
+    const lastUpdatedAt = cd.lastUpdatedAt || createdAt;
+    if (!createdAt) continue;
+    if (lastUpdatedAt < sinceMs) continue;
+
+    // Skip composers we already processed at this same lastUpdatedAt.
+    const prevSeen = state.lastSeen.get(cid) || 0;
+    if (lastUpdatedAt <= prevSeen) continue;
+
+    const cwd = cidToCwd.get(cid);
+    if (!cwd) continue;
+
+    // Clamp absurdly long "sessions" that sit open across days.
+    const DAY = 24 * 60 * 60 * 1000;
+    if (lastUpdatedAt - createdAt > DAY) cd.lastUpdatedAt = createdAt + DAY;
+
+    // Load the composer's bubbles.
+    const bubbleRows = sqliteQuery<{ key: string; value: string }>(
+      gdb,
+      `SELECT key, value FROM cursorDiskKV WHERE key LIKE 'bubbleId:${cid}:%'`,
+    );
+    const byId = new Map<string, CursorBubble>();
+    const prefix = `bubbleId:${cid}:`;
+    for (const { key: bk, value: bv } of bubbleRows) {
+      if (!bv) continue;
+      const bid = bk.slice(prefix.length);
+      try {
+        byId.set(bid, JSON.parse(bv));
+      } catch {
+        /* skip malformed */
+      }
+    }
+    const bubblesOrdered: CursorBubble[] = [];
+    for (const h of headers) {
+      const b = byId.get(h.bubbleId);
+      if (b) bubblesOrdered.push(b);
+    }
+    const bubblesAll = Array.from(byId.values());
+
+    const model = pickModel(cd, aiSettings);
+    const s = buildCursorSessionState(cd, bubblesOrdered, bubblesAll, cwd, model);
+    sessions.set(cid, s);
+    state.lastSeen.set(cid, lastUpdatedAt);
+    touched.add(cid);
+  }
+
+  state.dataVersion = dv;
+  return touched;
+}
+
+function buildComposerIdToCwd(root: string): Map<string, string> {
+  const out = new Map<string, string>();
+  const wsRoot = workspaceStorageDir(root);
+  if (!fs.existsSync(wsRoot)) return out;
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(wsRoot, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const dir = path.join(wsRoot, entry.name);
+    const wj = path.join(dir, "workspace.json");
+    const sdb = path.join(dir, "state.vscdb");
+    if (!fs.existsSync(wj) || !fs.existsSync(sdb)) continue;
+
+    let folder = "";
+    try {
+      const j = JSON.parse(fs.readFileSync(wj, "utf8"));
+      folder = decodeURIComponent((j.folder || "").replace(/^file:\/\//, ""));
+    } catch {
+      continue;
+    }
+    if (!folder) continue;
+
+    const v = sqliteOne(sdb, "SELECT value FROM ItemTable WHERE key = 'composer.composerData'");
+    if (!v) continue;
+    let parsed: { allComposers?: Array<{ composerId?: string }> };
+    try {
+      parsed = JSON.parse(v);
+    } catch {
+      continue;
+    }
+    for (const c of parsed.allComposers || []) {
+      if (c.composerId) out.set(c.composerId, folder);
+    }
+  }
+  return out;
+}

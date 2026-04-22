@@ -40,7 +40,7 @@ export interface IngestResponse {
 }
 
 export interface IngestPayload {
-  source: "claude" | "codex";
+  source: "claude" | "codex" | "cursor";
   collectorVersion?: string;
   sessions: IngestSession[];
   prompts?: IngestPrompt[];
