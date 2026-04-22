@@ -54,7 +54,12 @@ export default async function Dashboard() {
         </section>
       ) : (
         <section>
-          <div className="mk-eyebrow mb-4">your orgs</div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="mk-eyebrow">your orgs</div>
+            <Link href="/setup/org" className="mk-label border border-border px-3 py-2 hover:border-[color:var(--border-hover)] transition">
+              + connect another org
+            </Link>
+          </div>
           <div className="border border-border">
             {memberships.map(({ org, role }, i) => (
               <Link

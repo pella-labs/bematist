@@ -8,7 +8,7 @@ export default function SetupOrgPage() {
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    fetch("/api/orgs").then(r => r.json()).then(d => {
+    fetch("/api/orgs", { cache: "no-store" }).then(r => r.json()).then(d => {
       setOrgs(d.orgs ?? []);
       setLoading(false);
     });
@@ -27,7 +27,7 @@ export default function SetupOrgPage() {
   }
 
   return (
-    <main className="max-w-xl mx-auto mt-8 px-6 pb-16">
+    <main className="max-w-xl mx-auto min-h-[80vh] px-6 pt-12 pb-16 flex flex-col">
       <header className="flex items-start gap-4 mb-6">
         <BackButton href="/dashboard" />
         <div>
@@ -39,9 +39,24 @@ export default function SetupOrgPage() {
         orgs.length === 0 ? <p className="text-sm text-muted-foreground">No orgs found on your GitHub account.</p> :
         <div className="space-y-2">
           {orgs.map(o => (
-            <button key={o.id} onClick={() => claim(o)} className="w-full text-left bg-card border border-border rounded-md p-3 hover:border-primary transition">
-              <div className="font-medium">{o.login}</div>
-              <div className="text-xs text-muted-foreground">id: {o.id}</div>
+            <button
+              key={o.id}
+              onClick={() => !o.connected && claim(o)}
+              disabled={o.connected}
+              className={`w-full text-left bg-card border border-border rounded-md p-3 flex items-center gap-3 transition ${o.connected ? "opacity-60 cursor-default" : "hover:border-primary"}`}
+            >
+              {o.avatar ? (
+                <img src={o.avatar} alt={o.login} className="size-8 rounded-full border border-border object-cover shrink-0" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="size-8 rounded-full border border-border bg-popover shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="font-medium truncate">{o.login}</div>
+                <div className="text-xs text-muted-foreground">id: {o.id}</div>
+              </div>
+              {o.connected
+                ? <span className="text-[10px] uppercase tracking-wider text-positive font-semibold">connected</span>
+                : <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">+ connect</span>}
             </button>
           ))}
         </div>

@@ -8,6 +8,8 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+
 async function getGithubAccessToken(userId: string): Promise<string | null> {
   const [acc] = await db
     .select()
@@ -24,12 +26,32 @@ export async function GET() {
   const token = await getGithubAccessToken(session.user.id);
   if (!token) return NextResponse.json({ error: "no github token" }, { status: 400 });
 
-  const r = await fetch("https://api.github.com/user/orgs", {
+  // /user/memberships/orgs covers private memberships where /user/orgs may miss rows.
+  const r = await fetch("https://api.github.com/user/memberships/orgs?state=active&per_page=100", {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" },
+    cache: "no-store",
   });
   if (!r.ok) return NextResponse.json({ error: "github api error", detail: await r.text() }, { status: 502 });
-  const orgs = await r.json();
-  return NextResponse.json({ orgs: orgs.map((o: any) => ({ id: String(o.id), login: o.login, name: o.login })) });
+  const memberships = await r.json();
+  const orgs = (memberships as any[]).map(m => ({ ...m.organization, role: m.role }));
+
+  // Which of these is this user already a member of in our DB?
+  const mine = await db
+    .select({ org: schema.org })
+    .from(schema.membership)
+    .innerJoin(schema.org, eq(schema.membership.orgId, schema.org.id))
+    .where(eq(schema.membership.userId, session.user.id));
+  const mySlugs = new Set(mine.map(m => m.org.slug.toLowerCase()));
+
+  return NextResponse.json({
+    orgs: orgs.map((o: any) => ({
+      id: String(o.id),
+      login: o.login,
+      name: o.login,
+      avatar: o.avatar_url ?? null,
+      connected: mySlugs.has((o.login as string).toLowerCase()),
+    })),
+  });
 }
 
 const claimSchema = z.object({
