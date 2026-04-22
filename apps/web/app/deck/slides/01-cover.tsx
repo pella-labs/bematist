@@ -4,7 +4,7 @@ import { BMonogram } from "../../(marketing)/_components/Monogram";
 
 /**
  * Slide 1 — Cover / title.
- * Two-column layout: eyebrow + "Bema." + descriptor on the left,
+ * Two-column layout: eyebrow + "Pellametric." + descriptor on the left,
  * 3D rotating B-mark inside an orbiting wordring on the right. Reuses the
  * landing-page BMonogram component (three.js).
  */
@@ -33,7 +33,7 @@ export function Slide01Cover(_props: { totalPages: number }) {
               display: "inline-block",
             }}
           />
-          <span>bema</span>
+          <span>pellametric</span>
         </div>
         <div>Pella Labs · 2026</div>
       </div>
@@ -42,7 +42,7 @@ export function Slide01Cover(_props: { totalPages: number }) {
         <div className="sys" style={{ fontSize: 22, letterSpacing: "0.2em", marginBottom: 4 }}>
           OPEN-SOURCE · SELF-HOSTABLE
         </div>
-        <h1 className="cover-wordmark">Bema.</h1>
+        <h1 className="cover-wordmark">Pellametric.</h1>
         <p
           className="lede"
           style={{
@@ -73,7 +73,7 @@ export function Slide01Cover(_props: { totalPages: number }) {
       <div className="cover-right">
         <div className="cover-monogram" aria-hidden>
           <svg className="ring-text" viewBox="0 0 420 420" role="presentation">
-            <title>Bema wordring</title>
+            <title>Pellametric wordring</title>
             <defs>
               <path
                 id="deck-cover-ring-path"
@@ -82,7 +82,7 @@ export function Slide01Cover(_props: { totalPages: number }) {
             </defs>
             <text>
               <textPath href="#deck-cover-ring-path" startOffset="0%">
-                BEMA · AI ENGINEERING TELEMETRY · $/PR · ACCEPTED EDITS · AI SPEND · OUTCOMES ·
+                PELLAMETRIC · AI ENGINEERING TELEMETRY · $/PR · ACCEPTED EDITS · AI SPEND · OUTCOMES ·
                 CLUSTERS ·{" "}
               </textPath>
             </text>
@@ -114,17 +114,17 @@ export function Slide01Cover(_props: { totalPages: number }) {
         </div>
         <div>
           <div className="label">Web</div>
-          <div className="val">bema.tools</div>
+          <div className="val">pellametric.com</div>
         </div>
         <div>
           <div className="label">Contact</div>
           <div className="val" style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
             <XGlyph />
-            <span>@bema_dev</span>
+            <span>@pellametric</span>
           </div>
         </div>
       </div>
-      <div className="pagenum-left">bema.tools</div>
+      <div className="pagenum-left">pellametric.com</div>
     </div>
   );
 }

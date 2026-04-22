@@ -6,9 +6,9 @@ import "./deck.css";
 // SEO via robots metadata. Distribute the URL directly; search engines are
 // told to skip it.
 export const metadata: Metadata = {
-  title: "Bema · Pitch Deck",
+  title: "Pellametric · Pitch Deck",
   description:
-    "Investor-facing pitch deck for Bema — the open-source analytics platform for AI-assisted engineering.",
+    "Investor-facing pitch deck for Pellametric — the open-source analytics platform for AI-assisted engineering.",
   robots: {
     index: false,
     follow: false,
@@ -19,5 +19,5 @@ export const metadata: Metadata = {
 };
 
 export default function DeckLayout({ children }: { children: ReactNode }) {
-  return <div className="bema-deck">{children}</div>;
+  return <div className="pellametric-deck">{children}</div>;
 }

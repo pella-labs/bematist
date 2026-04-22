@@ -34,7 +34,7 @@ import {
 } from "./card-utils";
 import "./card.css";
 import "./holo.css";
-import "./card-bema.css";
+import "./card-pellametric.css";
 
 /* ── Icons ── */
 const FlameIcon = ({ size = 14, color = "#ff9f43" }: { size?: number; color?: string }) => (
@@ -686,7 +686,7 @@ export function CardPage({
       }
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.download = `bema-card-${currentPage + 1}.png`;
+      link.download = `pellametric-card-${currentPage + 1}.png`;
       link.href = url;
       link.click();
       URL.revokeObjectURL(url);
@@ -877,7 +877,7 @@ export function CardPage({
         return (
           <div className="card-content">
             <div className={`top-row reveal ${show ? "show" : ""}`}>
-              <div className="brand">BEMA</div>
+              <div className="brand">PELLAMETRIC</div>
               <div className="tier">{tier}</div>
             </div>
             <div className={`reveal ${show ? "show" : ""}`} style={{ transitionDelay: "130ms" }}>
@@ -1023,7 +1023,7 @@ export function CardPage({
         return (
           <div className="card-content">
             <div className="top-row">
-              <div className="brand">BEMA</div>
+              <div className="brand">PELLAMETRIC</div>
               <div className="page-title">Identity</div>
             </div>
             <div className="wrap-insight">
@@ -1084,7 +1084,7 @@ export function CardPage({
         return (
           <div className="card-content">
             <div className="top-row" style={{ marginBottom: 20 }}>
-              <div className="brand">BEMA</div>
+              <div className="brand">PELLAMETRIC</div>
               <div className="page-title">Activity</div>
             </div>
             {statView !== "codex" ? (
@@ -1223,7 +1223,7 @@ export function CardPage({
         return (
           <div className="card-content">
             <div className="top-row">
-              <div className="brand">BEMA</div>
+              <div className="brand">PELLAMETRIC</div>
               <div className="page-title">Tools</div>
             </div>
             {(() => {
@@ -1312,7 +1312,7 @@ export function CardPage({
             )}
             <div style={{ position: "relative", zIndex: 1 }}>
               <div className="top-row">
-                <div className="brand">BEMA</div>
+                <div className="brand">PELLAMETRIC</div>
                 <div className="page-title">Models</div>
               </div>
               <SectionHead title="Your Favorite Model" sub="The AI model you used the most" />
@@ -1405,7 +1405,7 @@ export function CardPage({
         return (
           <div className="card-content">
             <div className="top-row">
-              <div className="brand">BEMA</div>
+              <div className="brand">PELLAMETRIC</div>
               <div className="page-title">Projects</div>
             </div>
             <SectionHead title="Your Top Project" sub="Where you spent the most time with AI" />
@@ -1523,7 +1523,7 @@ export function CardPage({
         return (
           <div className="card-content">
             <div className="top-row">
-              <div className="brand">BEMA</div>
+              <div className="brand">PELLAMETRIC</div>
               <div className="page-title">Analytics</div>
             </div>
             <SectionHead title="Analytics" sub="Session costs and activity patterns" />
@@ -1621,7 +1621,7 @@ export function CardPage({
         return (
           <div className="card-content">
             <div className="top-row">
-              <div className="brand">BEMA</div>
+              <div className="brand">PELLAMETRIC</div>
               <div className="page-title">Summary</div>
             </div>
             <SectionHead title="Your Coding Journey" sub="Everything at a glance" />
@@ -1779,7 +1779,7 @@ export function CardPage({
                       />
                     </svg>
                   </div>
-                  <div className="splash-brand">BEMA</div>
+                  <div className="splash-brand">PELLAMETRIC</div>
                   <div className="splash-sub">illuminating your code</div>
                 </div>
               </div>

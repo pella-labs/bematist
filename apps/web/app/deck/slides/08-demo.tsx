@@ -10,7 +10,7 @@ export function Slide08Demo({ totalPages }: { totalPages: number }) {
 
       <div className="dashmock">
         <div className="dashmock-side">
-          <div className="brand">◼ bema</div>
+          <div className="brand">◼ pellametric</div>
           {[
             ["/ Summary", true],
             ["/ Sessions", false],

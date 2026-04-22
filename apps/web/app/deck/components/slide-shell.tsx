@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 /**
  * Slide chrome — header row (wordmark + section label) and footer
- * (bema.tools only). Matches the standalone deck's visual language.
+ * (pellametric.com only). Matches the standalone deck's visual language.
  * Rendered inside the 1920×1080 stage. The per-slide page-number indicator
  * was removed — the deck-level counter from `DeckChrome` is the single
  * source of truth for position, so the props stay accepted (call sites
@@ -12,7 +12,7 @@ export function SlideShell({
   children,
   sectionLabel,
   withChrome = true,
-  leftFoot = "bema.tools",
+  leftFoot = "pellametric.com",
   gridBg = true,
   className,
 }: {
@@ -31,7 +31,7 @@ export function SlideShell({
       {withChrome && sectionLabel ? (
         <div className="chrome-row">
           <div className="wordmark">
-            <span className="wordmark-dot" /> bema
+            <span className="wordmark-dot" /> pellametric
           </div>
           <div className="chrome-right">{sectionLabel}</div>
         </div>
