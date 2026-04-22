@@ -121,7 +121,7 @@ export default async function DevDetailPage({
       {view === "tools" && <ToolsView sessions={sessions} />}
       {view === "files" && <FilesView sessions={sessions} />}
       {view === "sessions" && <SessionsView sessions={sessions} />}
-      {view === "prs" && <PrsView orgSlug={slug} login={targetUser.githubLogin} viewerId={session.user.id} sessions={sessions} />}
+      {view === "prs" && <PrsView orgSlug={slug} login={targetUser.githubLogin} viewerId={session.user.id} sessions={sessions} cutoff={cutoff} />}
     </main>
   );
 }
@@ -354,13 +354,13 @@ function SessionsView({ sessions }: { sessions: any[] }) {
   );
 }
 
-async function PrsView({ orgSlug, login, viewerId, sessions }: { orgSlug: string; login: string | null; viewerId: string; sessions: any[] }) {
+async function PrsView({ orgSlug, login, viewerId, sessions, cutoff }: { orgSlug: string; login: string | null; viewerId: string; sessions: any[]; cutoff: Date | null }) {
   if (!login) return <Empty msg="No GitHub login on account." />;
   const [acc] = await db.select().from(schema.account)
     .where(and(eq(schema.account.userId, viewerId), eq(schema.account.providerId, "github")))
     .limit(1);
   if (!acc?.accessToken) return <Empty msg="No GitHub token on file." />;
-  const prs = await prDetailsForMember(orgSlug, login, acc.accessToken);
+  const prs = await prDetailsForMember(orgSlug, login, acc.accessToken, cutoff);
   if (prs.length === 0) return <Empty msg="No PRs found." />;
 
   // Token attribution: file-overlap + time-window match.

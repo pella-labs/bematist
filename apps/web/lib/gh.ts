@@ -19,9 +19,10 @@ async function gh<T = any>(path: string, token: string): Promise<T | null> {
   return r.json();
 }
 
-export async function prAggForMember(org: string, login: string, token: string): Promise<PrAgg> {
+export async function prAggForMember(org: string, login: string, token: string, since?: Date | null): Promise<PrAgg> {
   // Search returns up to 1000, which is plenty for a 30-day window per member.
-  const q = encodeURIComponent(`is:pr org:${org} author:${login}`);
+  const dateClause = since ? ` created:>=${since.toISOString().slice(0, 10)}` : "";
+  const q = encodeURIComponent(`is:pr org:${org} author:${login}${dateClause}`);
   const data = await gh<any>(`/search/issues?q=${q}&per_page=100`, token);
   const items = (data?.items ?? []) as any[];
 

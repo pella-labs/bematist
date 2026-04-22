@@ -127,7 +127,7 @@ export default async function OrgPage({
       };
       let pr = null;
       if (ghToken && m.user.githubLogin) {
-        try { pr = await prAggForMember(row.org.slug, m.user.githubLogin, ghToken); } catch {}
+        try { pr = await prAggForMember(row.org.slug, m.user.githubLogin, ghToken, cutoff); } catch {}
       }
       const cacheDenom = agg.tokensCacheRead + agg.tokensIn + agg.tokensCacheWrite;
       const cacheHitPct = cacheDenom > 0 ? +((100 * agg.tokensCacheRead) / cacheDenom).toFixed(1) : 0;

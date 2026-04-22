@@ -25,8 +25,9 @@ async function gh(path: string, token: string) {
   return r.json();
 }
 
-export async function prDetailsForMember(org: string, login: string, token: string): Promise<PrDetail[]> {
-  const q = encodeURIComponent(`is:pr org:${org} author:${login}`);
+export async function prDetailsForMember(org: string, login: string, token: string, since?: Date | null): Promise<PrDetail[]> {
+  const dateClause = since ? ` created:>=${since.toISOString().slice(0, 10)}` : "";
+  const q = encodeURIComponent(`is:pr org:${org} author:${login}${dateClause}`);
   const data = await gh(`/search/issues?q=${q}&per_page=100`, token);
   const items = (data?.items ?? []) as any[];
   const out = await Promise.all(items.slice(0, 50).map(async (it: any) => {
