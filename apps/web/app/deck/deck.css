@@ -1,0 +1,1198 @@
+/*
+ * Investor pitch deck — scoped design tokens and primitives.
+ * Scoped under .bema-deck so it never leaks to the dashboard or marketing pages.
+ * Deck is full-viewport, dark, 16:9 — matches the standalone HTML source.
+ */
+
+.bema-deck {
+  --bg: #0a0b0d;
+  --bg-elev: #111316;
+  --bg-term: #050506;
+  --ink: #ede8de;
+  --ink-muted: rgba(237, 232, 222, 0.6);
+  --ink-faint: rgba(237, 232, 222, 0.3);
+  --border: rgba(237, 232, 222, 0.14);
+  --border-hover: rgba(237, 232, 222, 0.3);
+  --accent: #6e8a6f;
+  --accent-muted: rgba(110, 138, 111, 0.15);
+  --warm: #b07b3e;
+  --warm-muted: rgba(176, 123, 62, 0.15);
+
+  --f-sans: var(--font-mk-sans, "Inter", -apple-system, BlinkMacSystemFont, sans-serif);
+  --f-head: var(--font-heading, "IBM Plex Sans", -apple-system, sans-serif);
+  --f-mono: var(--font-mk-mono, "JetBrains Mono", ui-monospace, Menlo, monospace);
+  --f-sys: var(--font-mk-sys, "Space Mono", ui-monospace, monospace);
+
+  /* Grid unit — 1920×1080 stage scale */
+  --grid: 48px;
+
+  /* Type scale (1920×1080 canonical, scaled via clamp + CSS zoom on small screens) */
+  --t-display: 168px;
+  --t-title: 88px;
+  --t-subtitle: 48px;
+  --t-body: 30px;
+  --t-small: 22px;
+  --t-mono: 20px;
+  --t-sys: 18px;
+
+  /* Spacing */
+  --pad-top: 96px;
+  --pad-bottom: 80px;
+  --pad-x: 96px;
+  --title-gap: 48px;
+  --item-gap: 28px;
+
+  background: #000;
+  color: var(--ink);
+  font-family: var(--f-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Deck shell ────────────────────────────────────────────────── */
+.bema-deck .deck-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* Stage — fixed 16:9 aspect, scales to viewport without distortion */
+.bema-deck .deck-stage {
+  position: relative;
+  width: 100vw;
+  height: 56.25vw; /* 16:9 */
+  max-height: 100vh;
+  max-width: 177.78vh;
+  background: var(--bg);
+  overflow: hidden;
+  box-shadow: 0 40px 120px -40px rgba(0, 0, 0, 0.6);
+}
+
+.bema-deck .deck-slide {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: var(--t-body);
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  overflow: hidden;
+  /* Render at 1920×1080 then scale to fit the stage — keeps inner pixel math exact */
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+}
+
+/* ── Primitives ──────────────────────────────────────────────── */
+.bema-deck .slide {
+  display: flex;
+  flex-direction: column;
+  padding: var(--pad-top) var(--pad-x) var(--pad-bottom);
+  position: relative;
+  height: 100%;
+}
+
+.bema-deck .slide-chrome {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.bema-deck .slide-chrome::before,
+.bema-deck .slide-chrome::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+.bema-deck .slide-chrome::before {
+  left: var(--pad-x);
+}
+.bema-deck .slide-chrome::after {
+  right: var(--pad-x);
+}
+
+.bema-deck .slide-body {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.bema-deck .grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(237, 232, 222, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(237, 232, 222, 0.03) 1px, transparent 1px);
+  background-size: var(--grid) var(--grid);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bema-deck .chrome-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 28px 96px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  z-index: 3;
+}
+.bema-deck .chrome-row .wordmark {
+  font-family: var(--f-sys);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  font-size: 24px;
+  text-transform: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.bema-deck .chrome-row .wordmark-dot {
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border-radius: 2px;
+  display: inline-block;
+}
+.bema-deck .chrome-row .chrome-right {
+  font-family: var(--f-mono);
+  font-size: 18px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.bema-deck .slide.with-chrome {
+  padding-top: 176px;
+}
+
+.bema-deck .eyebrow {
+  font-family: var(--f-mono);
+  font-size: var(--t-mono);
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 48px;
+}
+
+.bema-deck .sys {
+  font-family: var(--f-sys);
+  font-size: var(--t-sys);
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-weight: 400;
+}
+
+.bema-deck h1,
+.bema-deck h2,
+.bema-deck h3 {
+  font-family: var(--f-head);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.bema-deck .title {
+  font-family: var(--f-head);
+  font-weight: 500;
+  font-size: var(--t-title);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  margin: 0;
+  max-width: 1440px;
+}
+.bema-deck .title em,
+.bema-deck .accent {
+  font-style: normal;
+  color: var(--accent);
+}
+.bema-deck .warm {
+  color: var(--warm);
+}
+.bema-deck .ink {
+  color: var(--ink);
+}
+.bema-deck .muted {
+  color: var(--ink-muted);
+}
+.bema-deck .faint {
+  color: var(--ink-faint);
+}
+.bema-deck .mono {
+  font-family: var(--f-mono);
+}
+
+.bema-deck .lede {
+  font-size: var(--t-subtitle);
+  color: var(--ink-muted);
+  max-width: 1320px;
+  line-height: 1.25;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  font-family: var(--f-head);
+}
+
+.bema-deck .body-text {
+  font-size: var(--t-body);
+  color: var(--ink-muted);
+  line-height: 1.5;
+  max-width: 1180px;
+}
+
+/* ── Cover ───────────────────────────────────────────────────── */
+.bema-deck .cover {
+  padding: 96px;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  grid-template-rows: auto 1fr auto;
+  column-gap: 72px;
+  row-gap: 32px;
+  height: 100%;
+  position: relative;
+}
+.bema-deck .cover-top {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  font-family: var(--f-mono);
+  font-size: 24px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.bema-deck .cover-left {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  text-align: left;
+}
+.bema-deck .cover-right {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  height: 640px;
+}
+.bema-deck .cover-wordmark {
+  font-family: var(--f-sys);
+  font-weight: 700;
+  font-size: 180px;
+  letter-spacing: -0.06em;
+  line-height: 0.9;
+  color: var(--ink);
+  margin: 0;
+}
+.bema-deck .cover-monogram {
+  width: 560px;
+  height: 560px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+.bema-deck .cover-monogram .ring-text {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  animation: deck-ring-spin 28s linear infinite;
+  transform-origin: 50% 50%;
+}
+.bema-deck .cover-monogram .ring-text text {
+  fill: var(--ink-faint);
+  font-family: var(--f-mono);
+  font-size: 14px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+.bema-deck .cover-monogram .logo-host {
+  position: relative;
+  z-index: 2;
+  width: 62%;
+  height: 62%;
+}
+@keyframes deck-ring-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bema-deck .cover-monogram .ring-text,
+  .bema-deck .rings-bg .ring-outer,
+  .bema-deck .rings-bg .ring-inner {
+    animation: none;
+  }
+}
+.bema-deck .cover-bottom {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  gap: 48px;
+  padding-top: 40px;
+  border-top: 1px solid var(--border);
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+}
+.bema-deck .cover-bottom .label {
+  color: var(--ink-faint);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+.bema-deck .cover-bottom .val {
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+/* ── Features grid ───────────────────────────────────────────── */
+.bema-deck .features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-top: 48px;
+  min-height: 320px;
+}
+.bema-deck .feature {
+  padding: 40px 40px 40px 0;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.bema-deck .feature:not(:first-child) {
+  padding-left: 40px;
+}
+.bema-deck .feature:last-child {
+  border-right: none;
+}
+.bema-deck .feature-index {
+  font-family: var(--f-mono);
+  font-size: 18px;
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+}
+.bema-deck .feature h3 {
+  font-family: var(--f-sys);
+  font-size: 40px;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  color: var(--ink);
+  margin: 0;
+}
+.bema-deck .feature p {
+  color: var(--ink-muted);
+  font-size: var(--t-body);
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* ── KV list ─────────────────────────────────────────────────── */
+.bema-deck .kv {
+  list-style: none;
+  padding: 0;
+  margin: 32px 0 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 72px;
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+}
+.bema-deck .kv li {
+  display: contents;
+}
+.bema-deck .kv li > * {
+  padding: 18px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.bema-deck .kv li:last-child > * {
+  border-bottom: none;
+}
+.bema-deck .kv li span:first-child {
+  color: var(--ink-muted);
+}
+
+/* ── Terminal ────────────────────────────────────────────────── */
+.bema-deck .terminal {
+  font-family: var(--f-mono);
+  font-size: 24px;
+  line-height: 1.9;
+  color: var(--ink-muted);
+  background: var(--bg-term);
+  padding: 40px 48px;
+  border: 1px solid var(--border);
+}
+.bema-deck .term-prompt {
+  color: var(--accent);
+  margin-right: 16px;
+}
+.bema-deck .term-cmd {
+  color: var(--ink);
+}
+.bema-deck .term-comment {
+  color: #5c6370;
+}
+
+/* ── Badge ───────────────────────────────────────────────────── */
+.bema-deck .badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  font-family: var(--f-mono);
+  font-size: 18px;
+  background: var(--bg);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+}
+.bema-deck .badge.accent {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.bema-deck .badge.warm {
+  border-color: var(--warm);
+  color: var(--warm);
+}
+
+/* ── Timeline (Why now) ──────────────────────────────────────── */
+.bema-deck .timeline {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--border);
+  margin-top: 48px;
+  min-height: 280px;
+}
+.bema-deck .timeline-col {
+  padding: 36px 36px 36px 0;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.bema-deck .timeline-col:not(:first-child) {
+  padding-left: 36px;
+}
+.bema-deck .timeline-col:last-child {
+  border-right: none;
+}
+.bema-deck .timeline-year {
+  font-family: var(--f-sys);
+  font-size: 56px;
+  letter-spacing: -0.03em;
+  color: var(--accent);
+  line-height: 1;
+}
+.bema-deck .timeline-col h4 {
+  font-family: var(--f-head);
+  font-size: 34px;
+  line-height: 1.15;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.bema-deck .timeline-col p {
+  font-size: var(--t-body);
+  color: var(--ink-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ── Bars ────────────────────────────────────────────────────── */
+.bema-deck .bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  height: 200px;
+  padding: 20px 24px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  margin-top: 0;
+}
+.bema-deck .bars .bar {
+  flex: 1;
+  background: linear-gradient(180deg, var(--accent), rgba(110, 138, 111, 0.2));
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 8px;
+  color: var(--ink);
+  font-family: var(--f-mono);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+.bema-deck .bars .bar::after {
+  content: attr(data-year);
+  position: absolute;
+  bottom: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--ink-muted);
+  font-family: var(--f-mono);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+
+/* ── Diagram ─────────────────────────────────────────────────── */
+.bema-deck .diagram {
+  display: grid;
+  grid-template-columns: 320px 1fr 320px;
+  gap: 56px;
+  align-items: center;
+  margin-top: 40px;
+  min-height: 0;
+  flex: 1;
+}
+.bema-deck .diagram-nodes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bema-deck .diagram-node {
+  padding: 12px 18px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  font-family: var(--f-mono);
+  font-size: 20px;
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.bema-deck .diagram-node .dot {
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+.bema-deck .diagram-center {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bema-deck .diagram-hub {
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background:
+    radial-gradient(120% 90% at 25% 20%, rgba(110, 138, 111, 0.55), transparent 60%),
+    radial-gradient(100% 80% at 85% 90%, rgba(176, 123, 62, 0.45), transparent 55%),
+    linear-gradient(160deg, #1a1f1a, #0a0b0d 70%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    inset 0 0 0 1px rgba(237, 232, 222, 0.1),
+    0 20px 60px -20px rgba(0, 0, 0, 0.6);
+  position: relative;
+}
+.bema-deck .diagram-hub::before {
+  content: "";
+  position: absolute;
+  inset: -24px;
+  border: 1px dashed rgba(237, 232, 222, 0.1);
+  border-radius: 50%;
+}
+.bema-deck .diagram-hub svg {
+  width: 55%;
+  height: 55%;
+  color: #ede8de;
+}
+
+/* ── QCards ──────────────────────────────────────────────────── */
+.bema-deck .qcards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  margin-top: 64px;
+}
+.bema-deck .qcard {
+  border: 1px solid var(--border);
+  padding: 48px 44px;
+  background: var(--bg-elev);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 440px;
+  transition: border-color 0.3s ease;
+}
+.bema-deck .qcard:hover {
+  border-color: var(--border-hover);
+}
+.bema-deck .qcard .qnum {
+  font-family: var(--f-sys);
+  font-size: 96px;
+  color: var(--ink-faint);
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+}
+.bema-deck .qcard h3 {
+  font-family: var(--f-head);
+  font-size: 40px;
+  line-height: 1.1;
+  color: var(--ink);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.bema-deck .qcard p {
+  font-size: var(--t-body);
+  color: var(--ink-muted);
+  margin: 0;
+  line-height: 1.45;
+}
+.bema-deck .qcard .answer {
+  margin-top: auto;
+  padding-top: 24px;
+  border-top: 1px dashed var(--border);
+  font-family: var(--f-mono);
+  font-size: 20px;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
+/* ── Readers ─────────────────────────────────────────────────── */
+.bema-deck .readers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--border);
+  margin-top: 40px;
+  min-height: 0;
+  flex: 1;
+}
+.bema-deck .reader-col {
+  padding: 40px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.bema-deck .reader-col + .reader-col {
+  border-left: 1px solid var(--border);
+  background: var(--bg-elev);
+}
+.bema-deck .reader-role {
+  font-family: var(--f-mono);
+  font-size: 20px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.bema-deck .reader-col h3 {
+  font-family: var(--f-head);
+  font-size: 40px;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+.bema-deck .reader-sees {
+  font-family: var(--f-mono);
+  font-size: 14px;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 6px;
+}
+.bema-deck .reader-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bema-deck .reader-list li {
+  font-family: var(--f-mono);
+  font-size: 20px;
+  color: var(--ink-muted);
+  padding-left: 28px;
+  position: relative;
+  line-height: 1.35;
+}
+.bema-deck .reader-list li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+/* ── Dashboard mock ──────────────────────────────────────────── */
+.bema-deck .dashmock {
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  margin-top: 40px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.bema-deck .dashmock-side {
+  border-right: 1px solid var(--border);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg);
+}
+.bema-deck .dashmock-side .brand {
+  font-family: var(--f-sys);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--ink);
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.bema-deck .dashmock-side-item {
+  padding: 10px 14px;
+  font-family: var(--f-mono);
+  font-size: 18px;
+  color: var(--ink-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.bema-deck .dashmock-side-item.active {
+  background: var(--accent-muted);
+  color: var(--ink);
+}
+.bema-deck .dashmock-main {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.bema-deck .dashmock-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.bema-deck .dashmock-kpi {
+  padding: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bema-deck .dashmock-kpi-label {
+  font-family: var(--f-mono);
+  font-size: 14px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.bema-deck .dashmock-kpi-value {
+  font-family: var(--f-sys);
+  font-size: 36px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.bema-deck .dashmock-kpi-delta {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  color: var(--accent);
+}
+.bema-deck .dashmock-chart {
+  flex: 1;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  padding: 24px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-height: 0;
+}
+.bema-deck .dashmock-chart .b {
+  flex: 1;
+  background: linear-gradient(180deg, var(--accent), rgba(110, 138, 111, 0.25));
+  min-height: 6%;
+}
+
+/* ── Quote slide ─────────────────────────────────────────────── */
+.bema-deck .quote-slide {
+  padding: 120px var(--pad-x);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  background: var(--bg-elev);
+}
+.bema-deck .quote-text {
+  font-family: var(--f-head);
+  font-size: 88px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  font-weight: 400;
+  max-width: 1600px;
+}
+.bema-deck .quote-text em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+/* ── CTA ─────────────────────────────────────────────────────── */
+.bema-deck .cta {
+  padding: 120px 96px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 96px;
+  align-items: end;
+  height: 100%;
+}
+.bema-deck .cta h2 {
+  font-family: var(--f-head);
+  font-size: 140px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  font-weight: 500;
+  margin: 0 0 32px;
+}
+.bema-deck .cta h2 em {
+  font-style: normal;
+  color: var(--accent);
+}
+.bema-deck .cta-url {
+  font-family: var(--f-mono);
+  font-size: 36px;
+  color: var(--accent);
+  margin-top: 40px;
+}
+
+/* CardMount ships its own carousel arrows for the marketing /card page,
+   but in the deck we auto-advance — surfacing arrows confuses the audience
+   (they look identical to the deck nav). Same logic for the share bar,
+   the provider-filter pill at top, and the page dots at bottom: the
+   closing CTA slide wants *only* the card animation, nothing else. */
+.bema-deck .deck-card-host .card-nav-side,
+.bema-deck .deck-card-host .share-bar,
+.bema-deck .deck-card-host .global-toggle,
+.bema-deck .deck-card-host .card-page-dots {
+  display: none !important;
+}
+
+/* ── Section opener ──────────────────────────────────────────── */
+.bema-deck .opener {
+  padding: 96px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+  background:
+    radial-gradient(50% 40% at 15% 25%, rgba(110, 138, 111, 0.08), transparent 60%), var(--bg);
+  position: relative;
+}
+.bema-deck .opener .num {
+  font-family: var(--f-sys);
+  font-size: 240px;
+  line-height: 0.9;
+  color: var(--ink-faint);
+  letter-spacing: -0.06em;
+  margin-bottom: 32px;
+}
+.bema-deck .opener .big-title {
+  font-family: var(--f-head);
+  font-size: 144px;
+  line-height: 1;
+  color: var(--ink);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  max-width: 1400px;
+}
+.bema-deck .opener .big-title em {
+  font-style: normal;
+  color: var(--accent);
+}
+.bema-deck .opener .sub {
+  font-family: var(--f-mono);
+  font-size: var(--t-body);
+  color: var(--ink-muted);
+  margin-top: 40px;
+  max-width: 1200px;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+
+/* ── Rings flourish ──────────────────────────────────────────── */
+.bema-deck .rings-bg {
+  position: absolute;
+  right: -200px;
+  top: -200px;
+  width: 900px;
+  height: 900px;
+  opacity: 0.35;
+  pointer-events: none;
+}
+.bema-deck .rings-bg svg {
+  width: 100%;
+  height: 100%;
+}
+@keyframes deck-rings-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.bema-deck .rings-bg .ring-outer {
+  animation: deck-rings-spin 180s linear infinite;
+  transform-origin: 50% 50%;
+}
+.bema-deck .rings-bg .ring-inner {
+  animation: deck-rings-spin 120s linear infinite reverse;
+  transform-origin: 50% 50%;
+}
+
+/* ── Pagenum ─────────────────────────────────────────────────── */
+.bema-deck .pagenum {
+  position: absolute;
+  bottom: 28px;
+  right: 96px;
+  font-family: var(--f-mono);
+  font-size: 16px;
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  z-index: 3;
+}
+.bema-deck .pagenum .total {
+  color: var(--ink-faint);
+}
+.bema-deck .pagenum-left {
+  position: absolute;
+  bottom: 28px;
+  left: 96px;
+  font-family: var(--f-mono);
+  font-size: 16px;
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+  z-index: 3;
+}
+
+/* ── Nav chrome (host — outside stage) ───────────────────────── */
+.bema-deck .deck-nav {
+  position: fixed;
+  bottom: 18px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+  pointer-events: none;
+}
+.bema-deck .deck-nav .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(237, 232, 222, 0.2);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+.bema-deck .deck-nav .dot:hover {
+  background: rgba(237, 232, 222, 0.5);
+  transform: scale(1.3);
+}
+.bema-deck .deck-nav .dot.active {
+  background: var(--accent);
+  transform: scale(1.3);
+}
+.bema-deck .deck-counter {
+  position: fixed;
+  bottom: 18px;
+  right: 24px;
+  font-family: var(--f-mono);
+  font-size: 13px;
+  color: var(--ink-faint);
+  letter-spacing: 0.12em;
+  z-index: 10;
+  pointer-events: none;
+  text-transform: uppercase;
+}
+.bema-deck .deck-help {
+  position: fixed;
+  bottom: 18px;
+  left: 24px;
+  font-family: var(--f-mono);
+  font-size: 13px;
+  color: var(--ink-faint);
+  letter-spacing: 0.12em;
+  z-index: 10;
+  text-transform: uppercase;
+  background: none;
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+.bema-deck .deck-help:hover {
+  border-color: var(--border-hover);
+  color: var(--ink);
+}
+.bema-deck .deck-shortcuts {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  z-index: 20;
+  backdrop-filter: blur(4px);
+}
+.bema-deck .deck-shortcuts-panel {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  padding: 40px 48px;
+  min-width: 420px;
+  font-family: var(--f-mono);
+  font-size: 14px;
+  color: var(--ink-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.bema-deck .deck-shortcuts-panel h3 {
+  font-family: var(--f-sys);
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+  margin: 0 0 12px;
+}
+.bema-deck .deck-shortcuts-panel kbd {
+  font-family: var(--f-mono);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--ink);
+  margin: 0 2px;
+}
+.bema-deck .deck-shortcuts-close {
+  align-self: flex-end;
+  margin-top: 16px;
+  background: none;
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  color: var(--ink-muted);
+  font-family: var(--f-mono);
+  font-size: 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.bema-deck .deck-shortcuts-close:hover {
+  border-color: var(--border-hover);
+  color: var(--ink);
+}
+
+/* ── Reduced motion ─────────────────────────────────────────── */
+/* ── Oscilloscope (Solution slide) ───────────────────────────── */
+.bema-deck .deck-osc-glow {
+  filter: drop-shadow(0 0 4px rgba(155, 169, 143, 0.6));
+}
+.bema-deck .deck-waveform-path {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: deck-waveform-draw 4s linear infinite;
+}
+@keyframes deck-waveform-draw {
+  from {
+    stroke-dashoffset: 1000;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.bema-deck .deck-pulse-dot {
+  animation: deck-pulse 1.6s ease-in-out infinite;
+}
+@keyframes deck-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* ── Redaction bars (Flying Blind slide) ─────────────────────── */
+.bema-deck .deck-redact-bar {
+  background: var(--ink);
+  opacity: 0.28;
+  animation-name: deck-redact-float;
+  animation-duration: 4.2s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+@keyframes deck-redact-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.22;
+  }
+  50% {
+    transform: translate3d(0, -3px, 0);
+    opacity: 0.34;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bema-deck .deck-slide,
+  .bema-deck .deck-nav .dot,
+  .bema-deck .deck-redact-bar,
+  .bema-deck .deck-waveform-path,
+  .bema-deck .deck-pulse-dot {
+    transition: none;
+    animation: none;
+  }
+}
