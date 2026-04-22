@@ -7,7 +7,7 @@ const GITHUB_URL = "https://github.com/pella-labs/pellametrics";
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="bema-marketing">
+    <div className="pellametric-marketing">
       <div className="mk-container">
         <nav className="mk-nav" aria-label="Primary">
           <Link href="/" className="mk-wordmark">

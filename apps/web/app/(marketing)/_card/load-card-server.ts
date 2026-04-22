@@ -3,7 +3,7 @@ import type { CardData } from "./card-utils";
 import { DEMO_CARD } from "./demo-data";
 
 /**
- * Demo-only card loader. The original Bema card system stores per-user stats
+ * Demo-only card loader. The original Pellametric card system stores per-user stats
  * in Postgres; this port keeps the card UX as a static demo until a backend
  * card store is wired up. Returns null for any id other than "demo" so that
  * /card/<other> falls back gracefully.
