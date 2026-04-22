@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 // Where /intro actually sends people. Centralised so the metadata link, the
 // noscript fallback, and the runtime redirect all stay in sync.
-export const FOUNDERS_CALENDAR = "https://calendar.app.google/VrY8s3Ho5Ldd4Wb66";
+const FOUNDERS_CALENDAR = "https://calendar.app.google/VrY8s3Ho5Ldd4Wb66";
 
 const TITLE = "Build Pellametric with us · 30-minute intro with the founding team";
 const DESCRIPTION =
