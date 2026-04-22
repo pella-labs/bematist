@@ -1,18 +1,18 @@
 "use client";
 
-import { BMonogram } from "../../(marketing)/_components/Monogram";
+import { PMonogram } from "../../(marketing)/_components/Monogram";
 
 /**
  * Slide 1 — Cover / title.
  * Two-column layout: "Pellametric." + descriptor on the left,
- * 3D rotating B-mark inside an orbiting wordring on the right. Reuses the
- * landing-page BMonogram component (three.js).
+ * 3D rotating P-mark inside an orbiting wordring on the right. Reuses the
+ * landing-page PMonogram component (three.js).
  */
 export function Slide01Cover(_props: { totalPages: number }) {
   return (
     <div className="cover">
       <div className="cover-left">
-        <h1 className="cover-wordmark">Pellametric.</h1>
+        <h1 className="cover-wordmark">Pellametric</h1>
         <p
           className="lede"
           style={{
@@ -58,7 +58,7 @@ export function Slide01Cover(_props: { totalPages: number }) {
             </text>
           </svg>
           <div className="logo-host">
-            <BMonogram
+            <PMonogram
               color="#6e8a6f"
               attenuationColor="#0f1a10"
               rimColor="#b07b3e"

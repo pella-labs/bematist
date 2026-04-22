@@ -1150,6 +1150,63 @@
   }
 }
 
+/* ── Black box slide (problem statement) ─────────────────────── */
+.pellametric-deck .deck-bb-flow {
+  stroke-dasharray: 2 14;
+  stroke-dashoffset: 0;
+  animation: deck-bb-flow 2.8s linear infinite;
+  filter: drop-shadow(0 0 4px rgba(110, 138, 111, 0.55));
+}
+@keyframes deck-bb-flow {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -64;
+  }
+}
+.pellametric-deck .deck-bb-halo {
+  transition: opacity 0.6s ease;
+  animation: deck-bb-breathe 3.8s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+@keyframes deck-bb-breathe {
+  0%,
+  100% {
+    transform: scale(0.96);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+.pellametric-deck .deck-bb-ring {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: deck-bb-ring-spin 32s linear infinite;
+}
+@keyframes deck-bb-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.pellametric-deck .deck-bb-core {
+  animation: deck-bb-core-pulse 1.8s ease-in-out infinite;
+}
+@keyframes deck-bb-core-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
 /* ── Redaction bars (Flying Blind slide) ─────────────────────── */
 .pellametric-deck .deck-redact-bar {
   background: var(--ink);
@@ -1177,7 +1234,11 @@
   .pellametric-deck .deck-nav .dot,
   .pellametric-deck .deck-redact-bar,
   .pellametric-deck .deck-waveform-path,
-  .pellametric-deck .deck-pulse-dot {
+  .pellametric-deck .deck-pulse-dot,
+  .pellametric-deck .deck-bb-flow,
+  .pellametric-deck .deck-bb-halo,
+  .pellametric-deck .deck-bb-ring,
+  .pellametric-deck .deck-bb-core {
     transition: none;
     animation: none;
   }

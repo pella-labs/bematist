@@ -1,12 +1,12 @@
-import { BMonogram } from "./Monogram";
+import { PMonogram } from "./Monogram";
 
 /**
- * BrandMonolith. Glass B monogram center-stage with two counter-rotating
+ * BrandMonolith. Glass P monogram center-stage with two counter-rotating
  * rings of product language orbiting it.
  */
 export function BrandMonolith() {
   return (
-    <section className="mk-monolith" aria-label="Pella Metrics brand mark">
+    <section className="mk-monolith" aria-label="Pellametric brand mark">
       <div className="mk-monolith-stage">
         <Ring
           className="mk-ring"
@@ -23,7 +23,7 @@ export function BrandMonolith() {
           letterSpacing={5}
         />
         <div className="mk-monogram-frame">
-          <BMonogram />
+          <PMonogram />
         </div>
       </div>
     </section>
