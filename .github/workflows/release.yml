@@ -1,0 +1,66 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# This workflow produces the binaries the install.sh / install.ps1
+# scripts fetch. Cross-compilation works from ubuntu for all 5 targets
+# (bun downloads each target runtime on demand). We deliberately do NOT
+# ad-hoc codesign darwin binaries — an ad-hoc signature is only valid
+# on the machine that produced it; a real notarization would need an
+# Apple Developer ID and is out of scope for now. install.sh strips
+# com.apple.quarantine on download, which is what actually unblocks
+# Gatekeeper on first launch.
+
+permissions:
+  contents: write # upload assets to the release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.9
+
+      - name: Install deps
+        run: bun install --frozen-lockfile
+
+      - name: Build all 5 targets
+        working-directory: apps/collector
+        run: |
+          set -euxo pipefail
+          mkdir -p bin
+          for target in darwin-arm64 darwin-x64 linux-x64 linux-arm64 windows-x64; do
+            ext=""
+            [ "$target" = "windows-x64" ] && ext=".exe"
+            bun build \
+              --compile --minify --sourcemap \
+              --target=bun-${target} \
+              --no-compile-autoload-dotenv --no-compile-autoload-bunfig \
+              src/bin.ts \
+              --outfile "bin/pella-${target}${ext}"
+          done
+
+      - name: Generate SHA256SUMS
+        working-directory: apps/collector/bin
+        run: sha256sum pella-* > SHA256SUMS
+
+      - name: List artifacts
+        working-directory: apps/collector/bin
+        run: ls -la
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          fail_on_unmatched_files: true
+          files: |
+            apps/collector/bin/pella-darwin-arm64
+            apps/collector/bin/pella-darwin-x64
+            apps/collector/bin/pella-linux-x64
+            apps/collector/bin/pella-linux-arm64
+            apps/collector/bin/pella-windows-x64.exe
+            apps/collector/bin/SHA256SUMS
