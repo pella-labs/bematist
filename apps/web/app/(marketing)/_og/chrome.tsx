@@ -93,7 +93,7 @@ export function OgFrame({ children }: { children: ReactNode }) {
             display: "flex",
           }}
         >
-          pella metrics
+          Pellametric
         </span>
       </div>
 

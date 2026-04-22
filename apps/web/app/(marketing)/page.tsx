@@ -6,7 +6,7 @@ import { BrandMonolith } from "./_components/BrandMonolith";
 import { DashboardShot } from "./_components/DashboardShot";
 import { HeroGrid } from "./_components/HeroGrid";
 
-const HOME_TITLE = "Pella Metrics · Measure agentic engineering output";
+const HOME_TITLE = "Pellametric · Measure agentic engineering output";
 const HOME_DESCRIPTION =
   "Measure agentic engineering output. See the spend. See the work. Scale what ships. Analytics across Claude Code, Codex and the rest of your dev-AI stack.";
 
@@ -118,7 +118,7 @@ export default function MarketingHome() {
                 Grab your card
               </Link>
               <a
-                href="https://github.com/pella-labs/pellametrics"
+                href="https://github.com/pella-labs/pellametric"
                 className="mk-btn mk-btn-ghost"
                 rel="noreferrer"
               >
@@ -255,7 +255,7 @@ export default function MarketingHome() {
             understand the least.
           </p>
           <p className="mk-closing-body">
-            Pella Metrics measures it. Spend across every agent. Outcomes tied to merged code.
+            Pellametric measures it. Spend across every agent. Outcomes tied to merged code.
             The prompts that ship, surfaced and shareable. Open-source, self-hostable, runs against
             your local sessions on day one. The data was always yours — now it's an instrument.
           </p>

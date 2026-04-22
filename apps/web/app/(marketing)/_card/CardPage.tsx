@@ -1839,7 +1839,7 @@ export function CardPage({
               onClick={async () => {
                 try {
                   await navigator.share({
-                    title: `${userName}'s Pella Metrics Card`,
+                    title: `${userName}'s Pellametric Card`,
                     text: "Where did my tokens go? @pella_labs knows. Grab your card →",
                     url: window.location.href,
                   });

@@ -28,7 +28,7 @@ export function Slide05ClosingCta(_props: { totalPages: number }) {
         <div className="wordmark">
           <span className="wordmark-dot" /> pellametric
         </div>
-        <div className="chrome-right">05 / GET STARTED</div>
+        <div className="chrome-right">05 / VERDICT</div>
       </div>
 
       <div
@@ -61,30 +61,16 @@ export function Slide05ClosingCta(_props: { totalPages: number }) {
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
             <h2 className="title" style={{ margin: 0 }}>
-              Measure{" "}
-              <em
+              Every token, every tool, every repo.{" "}
+              <span
                 style={{
                   color: "var(--accent)",
-                  fontStyle: "italic",
                   fontWeight: 500,
                 }}
               >
-                AI development
-              </em>
-              .
+                Finally counted.
+              </span>
             </h2>
-
-            <p
-              className="body-text"
-              style={{
-                margin: 0,
-                maxWidth: 720,
-              }}
-            >
-              <span style={{ color: "var(--ink)" }}>See the work.</span>{" "}
-              <span style={{ color: "var(--ink)" }}>Find the friction.</span>{" "}
-              <span style={{ color: "var(--ink)" }}>Track the return.</span>
-            </p>
           </div>
 
           <div

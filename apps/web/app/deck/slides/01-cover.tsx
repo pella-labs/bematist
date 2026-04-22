@@ -23,7 +23,7 @@ export function Slide01Cover(_props: { totalPages: number }) {
             fontWeight: 500,
           }}
         >
-          Measure <em className="accent">AI-assisted engineering</em>.
+          Measure <em className="accent">agentic engineering</em>.
         </p>
         <p
           style={{
@@ -34,8 +34,8 @@ export function Slide01Cover(_props: { totalPages: number }) {
             margin: "18px 0 0 0",
           }}
         >
-          <span style={{ color: "var(--ink)" }}>See the spend.</span>{" "}
-          <span style={{ color: "var(--ink)" }}>See the work.</span>{" "}
+          <span style={{ color: "var(--ink)" }}>Meter the spend.</span>{" "}
+          <span style={{ color: "var(--ink)" }}>Map the work.</span>{" "}
           <span style={{ color: "var(--ink)" }}>Scale what ships.</span>
         </p>
       </div>

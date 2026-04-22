@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import "./marketing.css";
 
 const TWITTER_URL = "https://x.com/pella_labs";
-const GITHUB_URL = "https://github.com/pella-labs/pellametrics";
+const GITHUB_URL = "https://github.com/pella-labs/pellametric";
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
@@ -11,7 +11,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
       <div className="mk-container">
         <nav className="mk-nav" aria-label="Primary">
           <Link href="/" className="mk-wordmark">
-            pella metrics
+            Pellametric
           </Link>
           <div className="mk-nav-links">
             <a

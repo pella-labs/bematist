@@ -50,24 +50,24 @@ const fontNumeric = Space_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Pella Metrics",
-    template: "%s · Pella Metrics",
+    default: "Pellametric",
+    template: "%s · Pellametric",
   },
   description:
     "Measure agentic engineering output. See the spend. See the work. Scale what ships.",
-  applicationName: "Pella Metrics",
+  applicationName: "Pellametric",
   openGraph: {
     type: "website",
-    siteName: "Pella Metrics",
+    siteName: "Pellametric",
     locale: "en_US",
     url: "/",
-    title: "Pella Metrics · Measure agentic engineering output",
+    title: "Pellametric · Measure agentic engineering output",
     description:
       "See the spend. See the work. Scale what ships. Analytics across Claude Code, Codex and the rest of your dev-AI stack.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Pella Metrics · Measure agentic engineering output",
+    title: "Pellametric · Measure agentic engineering output",
     description:
       "See the spend. See the work. Scale what ships. Analytics across Claude Code, Codex and the rest of your dev-AI stack.",
   },
