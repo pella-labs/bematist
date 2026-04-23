@@ -1933,3 +1933,141 @@
     animation: none;
   }
 }
+
+/* ─── Sign-in sheet ────────────────────────────────────────────── */
+.pellametric-marketing .mk-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(5, 5, 6, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: mk-sheet-fade 0.18s ease-out;
+}
+
+.pellametric-marketing .mk-sheet-panel {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  padding: 40px 32px 32px;
+  background: var(--mk-bg-elevated);
+  border: 1px solid var(--mk-border);
+  color: var(--mk-ink);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: mk-sheet-rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.pellametric-marketing .mk-sheet-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--mk-ink-muted);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.pellametric-marketing .mk-sheet-close:hover {
+  color: var(--mk-ink);
+  border-color: var(--mk-border);
+}
+
+.pellametric-marketing .mk-sheet-eyebrow {
+  color: var(--mk-ink-muted);
+  margin-bottom: 4px;
+}
+
+.pellametric-marketing .mk-sheet-title {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  font-weight: 500;
+  color: var(--mk-ink);
+}
+
+.pellametric-marketing .mk-sheet-body {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--mk-ink-muted);
+}
+
+.pellametric-marketing .mk-sheet-cta {
+  height: 44px;
+  gap: 10px;
+  padding: 0 22px;
+  font-size: 13px;
+  margin-top: 8px;
+  justify-content: center;
+}
+
+.pellametric-marketing .mk-sheet-cta:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.pellametric-marketing .mk-sheet-scope {
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 11px;
+  color: var(--mk-ink-faint);
+  line-height: 1.55;
+  margin-top: 4px;
+}
+
+.pellametric-marketing .mk-sheet-scope code {
+  font-family: inherit;
+  color: var(--mk-ink-muted);
+  background: rgba(237, 232, 222, 0.05);
+  padding: 1px 5px;
+  border: 1px solid var(--mk-border);
+}
+
+@keyframes mk-sheet-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes mk-sheet-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mk-sheet-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pellametric-marketing .mk-sheet-backdrop,
+  .pellametric-marketing .mk-sheet-panel {
+    animation: none;
+  }
+}

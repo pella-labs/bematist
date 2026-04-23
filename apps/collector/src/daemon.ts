@@ -90,9 +90,16 @@ function launchdStart(): DaemonResult {
       detail: boot.stderr,
     };
   }
-  run("launchctl", ["kickstart", "-k", "-s", `${launchdDomain()}/${LAUNCHD_LABEL}`]);
-  // Poll briefly for running state — kickstart -s is synchronous but
-  // `launchctl print` can still race the agent's transition to state=running.
+  // Force a restart so a freshly-written plist (new binary path, new
+  // template) actually takes effect. `-k` = kill existing and respawn.
+  // Do NOT pass `-s` — that is launchctl's "start suspended (for
+  // debugger attach)" flag, which leaves the process SIGSTOP'd at
+  // _dyld_start forever. Prior versions used `-k -s` under the wrong
+  // assumption that `-s` meant "synchronous".
+  run("launchctl", ["kickstart", "-k", `${launchdDomain()}/${LAUNCHD_LABEL}`]);
+  // Poll briefly — kickstart returns once launchd has accepted the
+  // request, but `launchctl print` can still race the agent's
+  // transition to state=running.
   let running = false;
   for (let i = 0; i < 10; i++) {
     running = launchdIsRunning();

@@ -134,8 +134,9 @@ export default function MarketingHome() {
               Claude Code, Codex and the rest of your dev-AI stack.
             </p>
             <div className="mk-hero-actions">
-              {/* Single hero CTA — Sign in and GitHub already live in the
-                  primary nav, so the hero doesn't need to repeat them. */}
+              {/* Single hero CTA. Sign in + GitHub live in the primary
+                  nav (AuthCta + GitHub button), so the hero doesn't
+                  need to repeat them. */}
               <Link href="/card" className="mk-btn mk-btn-primary">
                 Grab your card
               </Link>

@@ -793,7 +793,7 @@ function* walkJsonl(dir, pattern) {
 }
 
 // src/config.ts
-var COLLECTOR_VERSION = "0.0.5";
+var COLLECTOR_VERSION = "0.0.7";
 
 // src/upload.ts
 var BATCH = 200;
