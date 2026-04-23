@@ -9,8 +9,8 @@
   --card-opacity: 0;
 
   --card-radius: 24px;
-  --card-edge: hsl(281, 80%, 75%);
-  --card-glow: hsl(281, 62%, 58%);
+  --card-edge: hsl(122, 55%, 70%);
+  --card-glow: hsl(122, 45%, 50%);
 
   /* full card coverage — only the rounded corners are clipped */
   --clip: inset(0 round var(--card-radius));

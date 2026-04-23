@@ -122,10 +122,11 @@
   gap: 10px;
 }
 .pellametric-marketing .mk-wordmark-logo {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   display: inline-block;
   object-fit: contain;
+  transform: translateY(-1px);
 }
 
 .pellametric-marketing .mk-nav-links {

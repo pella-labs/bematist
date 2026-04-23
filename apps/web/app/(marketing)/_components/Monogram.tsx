@@ -34,7 +34,7 @@ export function PMonogram({
   backColor = "#6e8a6f",
   interactive = true,
   autoRotate = true,
-  autoRotateSpeed = 0.025,
+  autoRotateSpeed = 0.007,
   float = true,
   scale = 1,
   className,

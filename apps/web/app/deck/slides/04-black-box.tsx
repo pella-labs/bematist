@@ -44,7 +44,13 @@ function CodexMark({ size = 32 }: { size?: number }) {
 }
 function CursorMark({ size = 32 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden focusable="false">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden
+      focusable="false"
+    >
       <title>Cursor</title>
       <path d="M4 3L20 12L12 13L11 21L4 3Z" fill="#ede8de" />
     </svg>
@@ -52,7 +58,13 @@ function CursorMark({ size = 32 }: { size?: number }) {
 }
 function GithubMark({ size = 32 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden focusable="false">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden
+      focusable="false"
+    >
       <title>GitHub</title>
       <path
         fill="#ede8de"
@@ -134,13 +146,41 @@ type Source = {
   Mark: (p: { size?: number }) => ReactNode;
 };
 const SOURCES: Source[] = [
-  { key: "claude", label: "Claude Code", tokens: "7.1M", unit: "TOK/DAY", Mark: ClaudeMark },
-  { key: "codex", label: "Codex", tokens: "4.25M", unit: "TOK/DAY", Mark: CodexMark },
-  { key: "cursor", label: "Cursor", tokens: "6.05M", unit: "TOK/DAY", Mark: CursorMark },
-  { key: "github", label: "GitHub", tokens: "312", unit: "PRS/MO", Mark: GithubMark },
+  {
+    key: "claude",
+    label: "Claude Code",
+    tokens: "7.1M",
+    unit: "TOK/DAY",
+    Mark: ClaudeMark,
+  },
+  {
+    key: "codex",
+    label: "Codex",
+    tokens: "4.25M",
+    unit: "TOK/DAY",
+    Mark: CodexMark,
+  },
+  {
+    key: "cursor",
+    label: "Cursor",
+    tokens: "6.05M",
+    unit: "TOK/DAY",
+    Mark: CursorMark,
+  },
+  {
+    key: "github",
+    label: "GitHub",
+    tokens: "312",
+    unit: "PRS/MO",
+    Mark: GithubMark,
+  },
 ];
 
-type Item = { label: string; value: string; Icon: (p: { size?: number }) => ReactNode };
+type Item = {
+  label: string;
+  value: string;
+  Icon: (p: { size?: number }) => ReactNode;
+};
 type Group = { key: string; label: string; items: Item[] };
 const GROUPS: Group[] = [
   {
@@ -230,7 +270,9 @@ export function Slide04BlackBox({ totalPages }: { totalPages: number }) {
 
   const inPaths = useMemo(
     () =>
-      SOURCES.map((_, i) => curvePath(SRC_X + SRC_W, sourceCenterY(i), HUB_X, HUB_CY)),
+      SOURCES.map((_, i) =>
+        curvePath(SRC_X + SRC_W, sourceCenterY(i), HUB_X, HUB_CY),
+      ),
     [],
   );
   const outPaths = useMemo(
@@ -242,7 +284,11 @@ export function Slide04BlackBox({ totalPages }: { totalPages: number }) {
   );
 
   return (
-    <SlideShell sectionLabel="02 / THE PROBLEM" pageNumber={2} totalPages={totalPages}>
+    <SlideShell
+      sectionLabel="02 / THE PROBLEM"
+      pageNumber={2}
+      totalPages={totalPages}
+    >
       {/* Toggle — large, wordless, centered below the black box */}
       <div
         style={{
@@ -397,25 +443,40 @@ export function Slide04BlackBox({ totalPages }: { totalPages: number }) {
                 offset: 0.7 + i * 0.22,
               })),
             ].flatMap(({ id, offset }, k) =>
-              [0, 1.1, 2.2].map((stagger, j) => (
-                <circle
-                  key={`pulse-${k}-${j}`}
-                  r={3.2}
-                  fill="var(--accent)"
-                  style={{
-                    filter: "drop-shadow(0 0 6px rgba(110,138,111,0.9))",
-                  }}
-                >
-                  <animateMotion
-                    dur="3.3s"
-                    repeatCount="indefinite"
-                    begin={`${(offset + stagger).toFixed(2)}s`}
-                    rotate="auto"
+              [0, 1.1, 2.2].map((stagger, j) => {
+                const beginAt = `${(offset + stagger).toFixed(2)}s`;
+                return (
+                  <circle
+                    key={`pulse-${k}-${j}`}
+                    r={3.2}
+                    fill="var(--accent)"
+                    opacity={0}
+                    style={{
+                      filter: "drop-shadow(0 0 6px rgba(110,138,111,0.9))",
+                    }}
                   >
-                    <mpath href={`#${id}`} />
-                  </animateMotion>
-                </circle>
-              )),
+                    <animateMotion
+                      dur="3.3s"
+                      repeatCount="indefinite"
+                      begin={beginAt}
+                      rotate="auto"
+                    >
+                      <mpath href={`#${id}`} />
+                    </animateMotion>
+                    {/* Flip to opaque when the motion fires so the dot
+                        doesn't render at the SVG origin (0,0) during the
+                        pre-begin delay — that was the stray orange dot. */}
+                    <animate
+                      attributeName="opacity"
+                      from="0"
+                      to="1"
+                      dur="0.01s"
+                      begin={beginAt}
+                      fill="freeze"
+                    />
+                  </circle>
+                );
+              }),
             )
           : inPaths.flatMap((_, i) =>
               [0, 2.75].map((stagger, j) => (
@@ -423,6 +484,7 @@ export function Slide04BlackBox({ totalPages }: { totalPages: number }) {
                   key={`dead-${i}-${j}`}
                   r={2.8}
                   fill="#b07b3e"
+                  opacity={0}
                   style={{
                     filter: "drop-shadow(0 0 5px rgba(176,123,62,0.85))",
                   }}
@@ -454,7 +516,12 @@ export function Slide04BlackBox({ totalPages }: { totalPages: number }) {
           key={`sweep-${sweepTick}`}
           aria-hidden
           className="deck-bb-sweep"
-          style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 4 }}
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            zIndex: 4,
+          }}
         />
       ) : null}
 
@@ -487,7 +554,14 @@ export function Slide04BlackBox({ totalPages }: { totalPages: number }) {
             <span style={{ display: "inline-flex", alignItems: "center" }}>
               <Mark size={32} />
             </span>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+                minWidth: 0,
+              }}
+            >
               <span
                 style={{
                   fontFamily: "var(--f-mono)",
@@ -562,7 +636,8 @@ export function Slide04BlackBox({ totalPages }: { totalPages: number }) {
           width: HUB_W,
           height: HUB_H,
           borderRadius: 22,
-          background: "linear-gradient(160deg, rgba(10,12,13,0.98), rgba(4,5,6,0.98))",
+          background:
+            "linear-gradient(160deg, rgba(10,12,13,0.98), rgba(4,5,6,0.98))",
           border: `1.5px solid ${on ? "rgba(110,138,111,0.65)" : "rgba(237,232,222,0.14)"}`,
           padding: 0,
           cursor: "pointer",
@@ -591,48 +666,14 @@ export function Slide04BlackBox({ totalPages }: { totalPages: number }) {
           />
         ) : null}
 
-        <div
-          style={{
-            position: "relative",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 16,
-          }}
-        >
-          <span
-            className={on ? "deck-bb-core" : undefined}
-            aria-hidden
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              background: on
-                ? "linear-gradient(160deg, rgba(110,138,111,0.95), rgba(110,138,111,0.4))"
-                : "rgba(237,232,222,0.08)",
-              boxShadow: on ? "0 0 36px rgba(110,138,111,0.7)" : "none",
-              border: on ? "none" : "1px solid rgba(237,232,222,0.12)",
-              transition: "all .5s ease",
-            }}
-          />
-          <span
-            style={{
-              fontFamily: "var(--f-sys)",
-              fontSize: 22,
-              fontWeight: 700,
-              letterSpacing: "0.28em",
-              textTransform: "uppercase",
-              color: "var(--accent)",
-              opacity: on ? 1 : 0,
-              maxHeight: on ? 28 : 0,
-              overflow: "hidden",
-              transition: "opacity .5s ease, max-height .5s ease",
-            }}
-          >
-            pellametric
-          </span>
-        </div>
+        <img
+          key={on ? `on-${sweepTick}` : "off"}
+          src="/primary-logo.svg"
+          alt=""
+          aria-hidden
+          className={`deck-bb-logo${on ? " is-on" : ""}`}
+          style={{ position: "relative" }}
+        />
       </button>
 
       {/* ── Outcome groups ───────────────────────────────────────── */}
@@ -691,7 +732,9 @@ export function Slide04BlackBox({ totalPages }: { totalPages: number }) {
                     columnGap: 14,
                     padding: "10px 0",
                     borderBottom:
-                      idx < g.items.length - 1 ? "1px dashed rgba(237,232,222,0.08)" : "none",
+                      idx < g.items.length - 1
+                        ? "1px dashed rgba(237,232,222,0.08)"
+                        : "none",
                   }}
                 >
                   <span

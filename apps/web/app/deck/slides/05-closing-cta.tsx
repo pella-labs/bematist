@@ -31,8 +31,11 @@ export function Slide05ClosingCta(_props: { totalPages: number }) {
 
       <div className="chrome-row">
         <div className="wordmark">
-          <img className="wordmark-dot" src="/primary-logo.svg" alt="" />{" "}
-          pellametric
+          <img
+            className="wordmark-dot"
+            src="/primary-logo.svg"
+            alt="Pellametric"
+          />
         </div>
         <div className="chrome-right">05 / VERDICT</div>
       </div>
@@ -45,7 +48,7 @@ export function Slide05ClosingCta(_props: { totalPages: number }) {
           gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.15fr)",
           gap: 72,
           alignItems: "stretch",
-          padding: "176px 0 96px 96px",
+          padding: "192px 0 96px 96px",
           height: "100%",
           boxSizing: "border-box",
         }}

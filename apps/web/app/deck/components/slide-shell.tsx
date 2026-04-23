@@ -33,8 +33,11 @@ export function SlideShell({
       {withChrome && sectionLabel ? (
         <div className="chrome-row">
           <div className="wordmark">
-            <img className="wordmark-dot" src="/primary-logo.svg" alt="" />{" "}
-            pellametric
+            <img
+              className="wordmark-dot"
+              src="/primary-logo.svg"
+              alt="Pellametric"
+            />
           </div>
           <div className="chrome-right">{sectionLabel}</div>
         </div>

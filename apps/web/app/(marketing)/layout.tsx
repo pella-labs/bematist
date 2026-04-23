@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import "./marketing.css";
 
-const TWITTER_URL = "https://x.com/pella_labs";
+const TWITTER_URL = "https://x.com/pellametric";
 const GITHUB_URL = "https://github.com/pella-labs/pellametric";
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
@@ -30,6 +30,9 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
               <XMark />
               <span className="mk-btn-icon-label">Follow</span>
             </a>
+            <Link href="/deck" className="mk-btn mk-btn-ghost">
+              Deck
+            </Link>
             <Link href="/signin" className="mk-btn mk-btn-ghost">
               Sign in
             </Link>

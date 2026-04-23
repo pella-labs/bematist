@@ -54,7 +54,7 @@
   --title-gap: 48px;
   --item-gap: 28px;
 
-  background: #000;
+  background: var(--bg);
   color: var(--ink);
   font-family: var(--f-sans);
   -webkit-font-smoothing: antialiased;
@@ -62,13 +62,15 @@
 }
 
 /* ── Deck shell ────────────────────────────────────────────────── */
+/* Root and stage share the same bg so 16:9 letterboxing disappears
+   into the page instead of showing as a black strip. */
 .pellametric-deck .deck-root {
   position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #000;
+  background: var(--bg);
   overflow: hidden;
   z-index: 1;
 }
@@ -82,7 +84,6 @@
   max-width: 177.78vh;
   background: var(--bg);
   overflow: hidden;
-  box-shadow: 0 40px 120px -40px rgba(0, 0, 0, 0.6);
 }
 
 .pellametric-deck .deck-slide {
@@ -158,7 +159,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 28px 96px;
+  /* 24 + 48 (logo) + 24 = 96px = 2 grid cells. Border-bottom lands
+     exactly on grid line 2 so the header reads as a grid-aligned band. */
+  padding: 24px 96px;
   border-bottom: 1px solid var(--border);
   font-family: var(--f-mono);
   font-size: var(--t-small);
@@ -168,19 +171,13 @@
   z-index: 3;
 }
 .pellametric-deck .chrome-row .wordmark {
-  font-family: var(--f-sys);
-  font-weight: 700;
-  color: var(--ink);
-  letter-spacing: -0.02em;
-  font-size: 24px;
-  text-transform: none;
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 0;
 }
 .pellametric-deck .chrome-row .wordmark-dot {
-  width: 18px;
-  height: 18px;
+  width: 48px;
+  height: 48px;
   display: inline-block;
   object-fit: contain;
 }
@@ -193,7 +190,9 @@
 }
 
 .pellametric-deck .slide.with-chrome {
-  padding-top: 176px;
+  /* 96px chrome row + 96px gap = 192px = 4 grid cells. Keeps body
+     content starting on a grid line. */
+  padding-top: 192px;
 }
 
 .pellametric-deck .sys {
@@ -303,8 +302,8 @@
   margin: 0;
 }
 .pellametric-deck .cover-monogram {
-  width: 560px;
-  height: 560px;
+  width: 420px;
+  height: 420px;
   position: relative;
   display: flex;
   align-items: center;
@@ -1231,6 +1230,56 @@
   }
 }
 
+/* ── Hub P-mark (sources/outcomes slide) ─────────────────────── */
+.pellametric-deck .deck-bb-logo {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  display: block;
+  opacity: 0.22;
+  filter: saturate(0.25) brightness(0.65);
+  transform: scale(0.9);
+  transition:
+    opacity 0.5s ease,
+    filter 0.5s ease,
+    transform 0.5s ease;
+}
+.pellametric-deck .deck-bb-logo.is-on {
+  opacity: 1;
+  filter: saturate(1.1) brightness(1.1)
+    drop-shadow(0 0 18px rgba(110, 138, 111, 0.55))
+    drop-shadow(0 0 38px rgba(110, 138, 111, 0.35));
+  animation:
+    deck-bb-logo-enter 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    deck-bb-logo-pulse 3.2s ease-in-out 1.1s infinite;
+}
+@keyframes deck-bb-logo-enter {
+  0% {
+    transform: scale(0.3) rotate(-200deg);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.18) rotate(12deg);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(0.96) rotate(-4deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+@keyframes deck-bb-logo-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
 /* ── Redaction bars (Flying Blind slide) ─────────────────────── */
 .pellametric-deck .deck-redact-bar {
   background: var(--ink);
@@ -1253,6 +1302,59 @@
   }
 }
 
+/* ── Team portraits (Thank-you slide) ─────────────────────────── */
+.pellametric-deck .deck-team-portrait {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  padding: 3px;
+  isolation: isolate;
+}
+/* Base ring: a soft, near-monochrome outline that stays stable while a
+   single sage highlight sweeps around it. This reads more deliberate
+   than the prior multi-color conic, which muddied at portrait size. */
+.pellametric-deck .deck-team-portrait-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      rgba(110, 138, 111, 0.85) 30deg,
+      rgba(234, 243, 229, 0.75) 45deg,
+      rgba(110, 138, 111, 0.35) 70deg,
+      transparent 110deg,
+      transparent 360deg
+    ),
+    linear-gradient(rgba(237, 232, 222, 0.22), rgba(237, 232, 222, 0.22));
+  animation: deck-team-shimmer 7s linear infinite;
+  filter: drop-shadow(0 0 14px rgba(110, 138, 111, 0.28));
+  z-index: 0;
+}
+.pellametric-deck .deck-team-portrait-inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-elev);
+  box-shadow: inset 0 0 0 1px rgba(237, 232, 222, 0.14);
+}
+.pellametric-deck .deck-team-portrait-inner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+@keyframes deck-team-shimmer {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pellametric-deck .deck-slide,
   .pellametric-deck .deck-nav .dot,
@@ -1262,7 +1364,10 @@
   .pellametric-deck .deck-bb-flow,
   .pellametric-deck .deck-bb-halo,
   .pellametric-deck .deck-bb-ring,
-  .pellametric-deck .deck-bb-core {
+  .pellametric-deck .deck-bb-core,
+  .pellametric-deck .deck-bb-logo,
+  .pellametric-deck .deck-bb-logo.is-on,
+  .pellametric-deck .deck-team-portrait-ring {
     transition: none;
     animation: none;
   }
