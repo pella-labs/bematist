@@ -33,7 +33,8 @@ const ADAPTERS = [
     name: "Claude Code",
     status: "Full",
     tone: "ok",
-    captures: "Sessions, input/output/cache tokens, models, tool calls, accepted edits",
+    captures:
+      "Sessions, input/output/cache tokens, models, tool calls, accepted edits",
   },
   {
     name: "Codex",
@@ -87,11 +88,31 @@ const FEATURES = [
 ] as const;
 
 const SCORE_DIMENSIONS = [
-  { tag: "35%", name: "Outcome quality", body: "Sessions that end in merged code." },
-  { tag: "25%", name: "Efficiency", body: "Accepted edits per dollar, peer-normalized." },
-  { tag: "20%", name: "Autonomy", body: "How often a session ships without a hand-hold." },
-  { tag: "10%", name: "Adoption depth", body: "How many of your agents the engineer actually uses." },
-  { tag: "10%", name: "Team impact", body: "Playbooks this engineer promoted that others adopted." },
+  {
+    tag: "35%",
+    name: "Outcome quality",
+    body: "Sessions that end in merged code.",
+  },
+  {
+    tag: "25%",
+    name: "Efficiency",
+    body: "Accepted edits per dollar, peer-normalized.",
+  },
+  {
+    tag: "20%",
+    name: "Autonomy",
+    body: "How often a session ships without a hand-hold.",
+  },
+  {
+    tag: "10%",
+    name: "Adoption depth",
+    body: "How many of your agents the engineer actually uses.",
+  },
+  {
+    tag: "10%",
+    name: "Team impact",
+    body: "Playbooks this engineer promoted that others adopted.",
+  },
 ] as const;
 
 export default function MarketingHome() {
@@ -105,26 +126,19 @@ export default function MarketingHome() {
               open-source. self-hostable.
             </div>
             <h1>
-              Measure agentic engineering <em style={{ color: "var(--mk-accent)" }}>output.</em>
+              Measure agentic engineering{" "}
+              <em style={{ color: "var(--mk-accent)" }}>output.</em>
             </h1>
             <p>
-              See the spend. See the work. Scale what ships. Analytics across Claude Code, Codex
-              and the rest of your dev-AI stack.
+              See the spend. See the work. Scale what ships. Analytics across
+              Claude Code, Codex and the rest of your dev-AI stack.
             </p>
             <div className="mk-hero-actions">
-              <Link href="/signin" className="mk-btn mk-btn-primary">
-                Sign up with GitHub
-              </Link>
-              <Link href="/card" className="mk-btn mk-btn-ghost">
+              {/* Single hero CTA — Sign in and GitHub already live in the
+                  primary nav, so the hero doesn't need to repeat them. */}
+              <Link href="/card" className="mk-btn mk-btn-primary">
                 Grab your card
               </Link>
-              <a
-                href="https://github.com/pella-labs/pellametric"
-                className="mk-btn mk-btn-ghost"
-                rel="noreferrer"
-              >
-                View on GitHub
-              </a>
             </div>
           </div>
           <div className="mk-hero-card-slot">
@@ -153,7 +167,9 @@ export default function MarketingHome() {
 
       <section>
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">02 / See the spend · every agent, every token</span>
+          <span className="mk-mono mk-xs">
+            02 / See the spend · every agent, every token
+          </span>
         </div>
         <table className="mk-table">
           <thead>
@@ -168,7 +184,9 @@ export default function MarketingHome() {
               <tr key={row.name}>
                 <td style={{ color: "var(--mk-ink)" }}>{row.name}</td>
                 <td data-label="Status">
-                  <span className={`mk-badge ${row.tone === "warn" ? "warn" : "full"}`}>
+                  <span
+                    className={`mk-badge ${row.tone === "warn" ? "warn" : "full"}`}
+                  >
                     {row.status}
                   </span>
                 </td>
@@ -182,7 +200,9 @@ export default function MarketingHome() {
       </section>
 
       <div className="mk-section-header">
-        <span className="mk-mono mk-xs">03 / See the work · spend tied to merged code</span>
+        <span className="mk-mono mk-xs">
+          03 / See the work · spend tied to merged code
+        </span>
       </div>
       <section className="mk-metric" aria-label="Outcome metric">
         <div className="mk-metric-visual">
@@ -191,7 +211,8 @@ export default function MarketingHome() {
           <div className="mk-metric-label">
             <strong>accepted edits per dollar</strong>
             <br />
-            GitHub App joins sessions to merged PRs. Pricing pinned at capture. Reverts subtract.
+            GitHub App joins sessions to merged PRs. Pricing pinned at capture.
+            Reverts subtract.
           </div>
         </div>
         <div className="mk-metric-details">
@@ -215,7 +236,9 @@ export default function MarketingHome() {
 
       <section aria-label="AI Leverage Score">
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">04 / Scale what ships · AI Leverage Score v1</span>
+          <span className="mk-mono mk-xs">
+            04 / Scale what ships · AI Leverage Score v1
+          </span>
         </div>
         <div className="mk-score-grid">
           {SCORE_DIMENSIONS.map((d) => (
@@ -229,12 +252,17 @@ export default function MarketingHome() {
       </section>
 
       <section className="mk-terminal-wrap" aria-labelledby="install-cta">
-        <span className="mk-sys" style={{ display: "block", marginBottom: 12 }} id="install-cta">
+        <span
+          className="mk-sys"
+          style={{ display: "block", marginBottom: 12 }}
+          id="install-cta"
+        >
           05 / Install
         </span>
         <div className="mk-terminal" style={{ marginBottom: 20 }}>
           <div className="mk-term-comment">
-            # Five minutes to first event — signed binary, no proxy, no API keys.
+            # Five minutes to first event — signed binary, no proxy, no API
+            keys.
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
@@ -243,7 +271,9 @@ export default function MarketingHome() {
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">pnpm --filter @pella/collector start</span>
+            <span className="mk-term-cmd">
+              pnpm --filter @pella/collector start
+            </span>
             <span className="mk-term-comment">&nbsp;&nbsp;# collector</span>
           </div>
         </div>
@@ -252,13 +282,14 @@ export default function MarketingHome() {
       <section className="mk-closing" aria-label="Closing">
         <div className="mk-closing-inner">
           <p className="mk-closing-quote">
-            The most expensive system your engineering org has ever bought may be the one you
-            understand the least.
+            The most expensive system your engineering org has ever bought may
+            be the one you understand the least.
           </p>
           <p className="mk-closing-body">
-            Pellametric measures it. Spend across every agent. Outcomes tied to merged code.
-            The prompts that ship, surfaced and shareable. Open-source, self-hostable, runs against
-            your local sessions on day one. The data was always yours — now it's an instrument.
+            Pellametric measures it. Spend across every agent. Outcomes tied to
+            merged code. The prompts that ship, surfaced and shareable.
+            Open-source, self-hostable, runs against your local sessions on day
+            one. The data was always yours — now it's an instrument.
           </p>
           <div className="mk-closing-actions">
             <Link href="/card" className="mk-btn mk-btn-primary">
@@ -274,7 +305,8 @@ export default function MarketingHome() {
       <section className="mk-license">
         <span className="mk-sys">06 / License</span>
         <div className="mk-license-body">
-          <strong>Apache 2.0</strong> for the collector, dashboard, adapters, schemas, and CLI.
+          <strong>Apache 2.0</strong> for the collector, dashboard, adapters,
+          schemas, and CLI.
         </div>
       </section>
     </>
