@@ -20,13 +20,19 @@ export function Slide05ClosingCta(_props: { totalPages: number }) {
   return (
     <div
       className="slide"
-      style={{ padding: 0, height: "100%", position: "relative", overflow: "hidden" }}
+      style={{
+        padding: 0,
+        height: "100%",
+        position: "relative",
+        overflow: "hidden",
+      }}
     >
       <div className="grid-bg" />
 
       <div className="chrome-row">
         <div className="wordmark">
-          <span className="wordmark-dot" /> pellametric
+          <img className="wordmark-dot" src="/primary-logo.svg" alt="" />{" "}
+          pellametric
         </div>
         <div className="chrome-right">05 / VERDICT</div>
       </div>
@@ -163,7 +169,11 @@ function CtaButton({
   tone: "accent" | "warm" | "ghost";
 }) {
   const isGhost = tone === "ghost";
-  const bg = isGhost ? "transparent" : tone === "accent" ? "var(--accent)" : "var(--warm)";
+  const bg = isGhost
+    ? "transparent"
+    : tone === "accent"
+      ? "var(--accent)"
+      : "var(--warm)";
   const fg = isGhost ? "var(--ink)" : "#0a0b0d";
   const border = isGhost ? "1px solid rgba(255, 255, 255, 0.18)" : "none";
   const descriptionColor = isGhost ? "var(--ink-muted)" : "rgba(10,11,13,0.72)";

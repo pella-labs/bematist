@@ -11,6 +11,12 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
       <div className="mk-container">
         <nav className="mk-nav" aria-label="Primary">
           <Link href="/" className="mk-wordmark">
+            <img
+              src="/primary-logo.svg"
+              alt=""
+              aria-hidden
+              className="mk-wordmark-logo"
+            />
             Pellametric
           </Link>
           <div className="mk-nav-links">
@@ -27,7 +33,11 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
             <Link href="/signin" className="mk-btn mk-btn-ghost">
               Sign in
             </Link>
-            <a href={GITHUB_URL} className="mk-btn mk-btn-primary" rel="noreferrer">
+            <a
+              href={GITHUB_URL}
+              className="mk-btn mk-btn-primary"
+              rel="noreferrer"
+            >
               GitHub
             </a>
           </div>
@@ -35,10 +45,14 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
         {children}
         <footer className="mk-footer">
           <div className="mk-footer-copy">
-            <span className="mk-footer-line">The instrument for agentic engineering output.</span>
-            <span className="mk-footer-sub">
-              See the spend. See the work. Scale what ships. Open-source, self-hostable, runs
-              against your local sessions on day one.
+            <span className="mk-footer-line">
+              <img
+                src="/primary-logo.svg"
+                alt=""
+                aria-hidden
+                className="mk-footer-logo"
+              />
+              The instrument for agentic engineering output.
             </span>
           </div>
           <div>
@@ -58,7 +72,13 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
 
 function XMark() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.654l-5.214-6.817-5.966 6.817H1.683l7.73-8.835L1.254 2.25h6.817l4.713 6.231 5.46-6.231zm-1.161 17.52h1.834L7.084 4.126H5.117l11.966 15.644z" />
     </svg>
   );

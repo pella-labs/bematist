@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="500" viewBox="0 0 1500 500" role="img" aria-label="Pellametric warm signal header">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1500" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ede8de"/>
+      <stop offset="0.44" stop-color="#dce2d4"/>
+      <stop offset="1" stop-color="#6e8a6f"/>
+    </linearGradient>
+    <linearGradient id="dark" x1="0" y1="500" x2="1500" y2="184" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0a0b0d" stop-opacity="0.7"/>
+      <stop offset="0.55" stop-color="#0a0b0d" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#0a0b0d" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="trace" x1="156" y1="350" x2="1412" y2="150" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6e8a6f"/>
+      <stop offset="0.5" stop-color="#6e8a6f"/>
+      <stop offset="1" stop-color="#b07b3e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1500" height="500" fill="url(#bg)"/>
+  <rect width="1500" height="500" fill="url(#dark)"/>
+  <path d="M0 291C187 262 311 237 513 252c258 20 406 80 688 35 123-20 214-54 299-62v275H0z" fill="#0a0b0d" opacity="0.26"/>
+  <path d="M0 257C180 233 320 219 506 233c263 21 418 73 687 38 128-17 215-42 307-44" fill="none" stroke="#ede8de" stroke-width="3" opacity="0.42"/>
+  <path d="M180 340C329 294 449 284 598 301c209 24 306 77 525 29 121-27 199-82 312-81" fill="none" stroke="url(#trace)" stroke-width="8" stroke-linecap="round" opacity="0.86"/>
+  <g fill="#0a0b0d" opacity="0.22">
+    <rect x="905" y="90" width="340" height="2"/>
+    <rect x="905" y="118" width="264" height="2"/>
+    <rect x="905" y="146" width="306" height="2"/>
+  </g>
+  <g fill="#b07b3e">
+    <circle cx="1214" cy="309" r="6"/>
+    <circle cx="1435" cy="249" r="7"/>
+  </g>
+  <g fill="#6e8a6f">
+    <circle cx="598" cy="301" r="5"/>
+    <circle cx="1012" cy="344" r="4"/>
+  </g>
+  <rect x="0" y="280" width="380" height="220" fill="#ede8de" opacity="0.42"/>
+</svg>

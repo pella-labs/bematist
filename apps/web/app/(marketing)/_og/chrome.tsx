@@ -16,11 +16,13 @@ export const OG_COLORS = {
 } as const;
 
 const baseFont: CSSProperties = {
-  fontFamily: '"Inter", "Helvetica Neue", "system-ui", -apple-system, sans-serif',
+  fontFamily:
+    '"Inter", "Helvetica Neue", "system-ui", -apple-system, sans-serif',
 };
 
 const monoFont: CSSProperties = {
-  fontFamily: '"JetBrains Mono", "Menlo", "ui-monospace", "SFMono-Regular", monospace',
+  fontFamily:
+    '"JetBrains Mono", "Menlo", "ui-monospace", "SFMono-Regular", monospace',
 };
 
 /**
@@ -74,15 +76,30 @@ export function OgFrame({ children }: { children: ReactNode }) {
           gap: 18,
         }}
       >
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            background: OG_COLORS.accent,
-            borderRadius: 4,
-            display: "flex",
-          }}
-        />
+        <svg
+          width={36}
+          height={36}
+          viewBox="0 0 120 125"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{ display: "flex" }}
+        >
+          <path
+            fill={OG_COLORS.accent}
+            d="M75.288 0H8.988C8.488 0 7.788 0.5 7.788 1.1V23.4C7.788 23.9 8.188 24.6 8.888 24.6H73.988C79.288 24.6 84.088 26.3 87.388 28.9C92.088 32.6 94.588 37.9 94.588 43.6C95.088 54.1 87.288 62.8 77.888 64.7C76.088 65.3 72.888 66.3 61.588 66.3C61.188 66.3 60.688 66.6 60.488 67L50.488 90.6C50.188 91.2 50.688 92 51.388 92H73.188C81.288 92 88.888 90.8 95.988 87.2C105.488 82.4 119.288 70.7 119.288 48.3C119.388 25.8 104.388 11.4 92.988 4.2C87.188 1.4 82.388 0.2 75.288 0Z"
+          />
+          <path
+            fill={OG_COLORS.accent}
+            d="M73.488 32.6H40.188C39.788 32.6 39.288 32.9 39.088 33.4L0.088 123.3C-0.212 124.1 0.288 124.9 1.088 124.9H26.688C27.188 124.9 27.688 124.6 27.788 124.2L54.988 59.1C55.188 58.7 55.588 58.3 55.988 58.3H73.488C81.188 58.3 86.488 53.2 86.588 46.2C86.788 39 81.588 32.6 73.488 32.6Z"
+          />
+          <path
+            fill={OG_COLORS.accent}
+            d="M75.488 0H8.988C8.488 0 7.788 0.5 7.788 1.1V23.4C7.788 23.9 8.188 24.6 8.888 24.6H73.988C85.288 24.6 94.588 33 94.588 45.2C94.588 55.4 87.288 66.3 72.988 66.3H61.588C61.088 66.3 60.688 66.6 60.488 67L50.488 90.6C50.188 91.2 50.688 92 51.388 92H73.188C95.988 92 119.288 77.5 119.288 45.7C119.288 22.6 100.388 0.5 75.488 0Z"
+          />
+          <path
+            fill={OG_COLORS.accent}
+            d="M38.888 33.8L0.088 123.3C-0.212 124 0.288 124.8 1.088 124.8H26.588C27.088 124.8 27.588 124.5 27.688 124.1L54.988 59.1C55.188 58.7 55.588 58.3 55.988 58.3H73.488C81.188 58.3 86.588 53.1 86.588 45.6C86.588 38.9 81.988 32.6 73.488 32.6H40.088C39.588 32.6 39.088 33 38.888 33.8Z"
+          />
+        </svg>
         <span
           style={{
             color: OG_COLORS.ink,
@@ -167,7 +184,13 @@ export function OgHeadline({
  * Deck-style cover — big wordmark + short tagline. Minimal keynote tone.
  * Vertically centered inside the OgFrame's flex column.
  */
-export function OgCover({ title, beats }: { title: ReactNode; beats?: string[] }) {
+export function OgCover({
+  title,
+  beats,
+}: {
+  title: ReactNode;
+  beats?: string[];
+}) {
   return (
     <div
       style={{
@@ -205,7 +228,8 @@ export function OgCover({ title, beats }: { title: ReactNode; beats?: string[] }
             <span
               key={b}
               style={{
-                color: i === beats.length - 1 ? OG_COLORS.accent : OG_COLORS.ink,
+                color:
+                  i === beats.length - 1 ? OG_COLORS.accent : OG_COLORS.ink,
                 fontStyle: i === beats.length - 1 ? "italic" : "normal",
                 display: "flex",
                 marginRight: i === beats.length - 1 ? 0 : 20,
@@ -220,7 +244,11 @@ export function OgCover({ title, beats }: { title: ReactNode; beats?: string[] }
   );
 }
 
-export function OgStatRow({ stats }: { stats: { label: string; value: string }[] }) {
+export function OgStatRow({
+  stats,
+}: {
+  stats: { label: string; value: string }[];
+}) {
   return (
     <div
       style={{

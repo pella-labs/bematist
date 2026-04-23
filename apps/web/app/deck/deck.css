@@ -18,9 +18,21 @@
   --warm: #b07b3e;
   --warm-muted: rgba(176, 123, 62, 0.15);
 
-  --f-sans: var(--font-mk-sans, "Inter", -apple-system, BlinkMacSystemFont, sans-serif);
+  --f-sans: var(
+    --font-mk-sans,
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif
+  );
   --f-head: var(--font-heading, "IBM Plex Sans", -apple-system, sans-serif);
-  --f-mono: var(--font-mk-mono, "JetBrains Mono", ui-monospace, Menlo, monospace);
+  --f-mono: var(
+    --font-mk-mono,
+    "JetBrains Mono",
+    ui-monospace,
+    Menlo,
+    monospace
+  );
   --f-sys: var(--font-mk-sys, "Space Mono", ui-monospace, monospace);
 
   /* Grid unit — 1920×1080 stage scale */
@@ -167,11 +179,10 @@
   gap: 12px;
 }
 .pellametric-deck .chrome-row .wordmark-dot {
-  width: 12px;
-  height: 12px;
-  background: var(--accent);
-  border-radius: 2px;
+  width: 18px;
+  height: 18px;
   display: inline-block;
+  object-fit: contain;
 }
 .pellametric-deck .chrome-row .chrome-right {
   font-family: var(--f-mono);
@@ -600,8 +611,16 @@
   height: 260px;
   border-radius: 50%;
   background:
-    radial-gradient(120% 90% at 25% 20%, rgba(110, 138, 111, 0.55), transparent 60%),
-    radial-gradient(100% 80% at 85% 90%, rgba(176, 123, 62, 0.45), transparent 55%),
+    radial-gradient(
+      120% 90% at 25% 20%,
+      rgba(110, 138, 111, 0.55),
+      transparent 60%
+    ),
+    radial-gradient(
+      100% 80% at 85% 90%,
+      rgba(176, 123, 62, 0.45),
+      transparent 55%
+    ),
     linear-gradient(160deg, #1a1f1a, #0a0b0d 70%);
   display: flex;
   align-items: center;
@@ -906,7 +925,12 @@
   justify-content: center;
   height: 100%;
   background:
-    radial-gradient(50% 40% at 15% 25%, rgba(110, 138, 111, 0.08), transparent 60%), var(--bg);
+    radial-gradient(
+      50% 40% at 15% 25%,
+      rgba(110, 138, 111, 0.08),
+      transparent 60%
+    ),
+    var(--bg);
   position: relative;
 }
 .pellametric-deck .opener .num {

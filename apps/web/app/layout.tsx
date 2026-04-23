@@ -9,10 +9,7 @@ import {
   Space_Mono,
 } from "next/font/google";
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
-  "http://localhost:3000";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pellametric.com";
 
 const fontSans = Geist({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });

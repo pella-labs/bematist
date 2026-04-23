@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="500" viewBox="0 0 1500 500" role="img" aria-label="Pellametric dark wave header">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1500" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#050506"/>
+      <stop offset="0.58" stop-color="#0a0b0d"/>
+      <stop offset="1" stop-color="#111316"/>
+    </linearGradient>
+    <radialGradient id="field" cx="78%" cy="44%" r="66%">
+      <stop offset="0" stop-color="#6e8a6f" stop-opacity="0.2"/>
+      <stop offset="0.48" stop-color="#6e8a6f" stop-opacity="0.07"/>
+      <stop offset="1" stop-color="#6e8a6f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="wave-fill" x1="0" y1="326" x2="1500" y2="326" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6e8a6f" stop-opacity="0.08"/>
+      <stop offset="0.42" stop-color="#6e8a6f" stop-opacity="0.16"/>
+      <stop offset="0.72" stop-color="#6e8a6f" stop-opacity="0.11"/>
+      <stop offset="1" stop-color="#6e8a6f" stop-opacity="0.18"/>
+    </linearGradient>
+    <linearGradient id="green-wave" x1="0" y1="314" x2="1500" y2="248" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6e8a6f" stop-opacity="0.18"/>
+      <stop offset="0.52" stop-color="#6e8a6f" stop-opacity="0.44"/>
+      <stop offset="1" stop-color="#6e8a6f" stop-opacity="0.3"/>
+    </linearGradient>
+    <linearGradient id="warm-wave" x1="0" y1="362" x2="1500" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#b07b3e" stop-opacity="0.14"/>
+      <stop offset="0.58" stop-color="#b07b3e" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#b07b3e" stop-opacity="0.2"/>
+    </linearGradient>
+    <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M44 0H0v44" fill="none" stroke="#ede8de" stroke-width="1" opacity="0.03"/>
+    </pattern>
+    <filter id="blur">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+  </defs>
+
+  <rect width="1500" height="500" fill="url(#bg)"/>
+  <rect width="1500" height="500" fill="url(#field)"/>
+  <rect width="1500" height="500" fill="url(#grid)"/>
+
+  <path d="M0 332C184 305 310 279 498 294c249 20 395 82 667 38 143-23 236-68 335-76v244H0z" fill="url(#wave-fill)"/>
+  <path d="M0 363C185 340 314 319 500 329c252 13 397 55 664 19 149-20 240-56 336-54v206H0z" fill="#6e8a6f" opacity="0.055"/>
+  <path d="M0 296C178 272 316 254 502 268c261 20 419 73 691 38 128-17 215-43 307-45" fill="none" stroke="url(#green-wave)" stroke-width="56" stroke-linecap="round" opacity="0.28" filter="url(#blur)"/>
+  <path d="M0 314C178 291 316 276 502 289c260 19 417 63 689 30 129-16 217-41 309-43" fill="none" stroke="url(#green-wave)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M0 362C179 342 316 331 502 340c260 13 417 43 688 15 130-13 218-32 310-31" fill="none" stroke="url(#warm-wave)" stroke-width="2" stroke-linecap="round"/>
+  <path d="M0 389C178 374 315 362 503 370c260 11 418 31 687 9 130-11 218-24 310-21" fill="none" stroke="#ede8de" stroke-width="1.5" stroke-linecap="round" opacity="0.1"/>
+
+  <rect x="0" y="278" width="385" height="222" fill="#050506" opacity="0.36"/>
+</svg>

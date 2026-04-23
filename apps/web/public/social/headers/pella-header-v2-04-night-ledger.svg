@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="500" viewBox="0 0 1500 500" role="img" aria-label="Pellametric night ledger header">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1500" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#050506"/>
+      <stop offset="1" stop-color="#0f1411"/>
+    </linearGradient>
+    <linearGradient id="scan" x1="390" y1="0" x2="1360" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6e8a6f" stop-opacity="0"/>
+      <stop offset="0.48" stop-color="#6e8a6f" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#b07b3e" stop-opacity="0.2"/>
+    </linearGradient>
+  </defs>
+  <rect width="1500" height="500" fill="url(#bg)"/>
+  <rect x="420" y="66" width="900" height="368" rx="26" fill="#111316" stroke="#ede8de" stroke-opacity="0.08"/>
+  <rect x="0" y="278" width="380" height="222" fill="#050506" opacity="0.68"/>
+  <path d="M420 158H1320M420 226H1320M420 294H1320M420 362H1320" stroke="#ede8de" stroke-opacity="0.07"/>
+  <path d="M575 66V434M760 66V434M945 66V434M1130 66V434" stroke="#ede8de" stroke-opacity="0.055"/>
+  <rect x="420" y="66" width="900" height="368" rx="26" fill="url(#scan)"/>
+  <g transform="translate(482 126)" fill="#6e8a6f">
+    <rect width="18" height="18" rx="4" opacity="0.22"/>
+    <rect x="32" width="18" height="18" rx="4" opacity="0.52"/>
+    <rect x="64" width="18" height="18" rx="4" opacity="0.78"/>
+    <rect x="96" width="18" height="18" rx="4" opacity="0.36"/>
+    <rect x="128" width="18" height="18" rx="4" opacity="0.9"/>
+    <rect x="160" width="18" height="18" rx="4" opacity="0.62"/>
+    <rect x="192" width="18" height="18" rx="4" opacity="0.28"/>
+    <rect x="224" width="18" height="18" rx="4" opacity="0.68"/>
+    <rect x="256" width="18" height="18" rx="4" opacity="0.42"/>
+    <rect x="288" width="18" height="18" rx="4" opacity="0.8"/>
+  </g>
+  <g transform="translate(482 195)" fill="#6e8a6f">
+    <rect width="18" height="18" rx="4" opacity="0.64"/>
+    <rect x="32" width="18" height="18" rx="4" opacity="0.34"/>
+    <rect x="64" width="18" height="18" rx="4" opacity="0.86"/>
+    <rect x="96" width="18" height="18" rx="4" opacity="0.74"/>
+    <rect x="128" width="18" height="18" rx="4" opacity="0.3"/>
+    <rect x="160" width="18" height="18" rx="4" opacity="0.48"/>
+    <rect x="192" width="18" height="18" rx="4" opacity="0.72"/>
+    <rect x="224" width="18" height="18" rx="4" opacity="0.55"/>
+    <rect x="256" width="18" height="18" rx="4" opacity="0.27"/>
+    <rect x="288" width="18" height="18" rx="4" opacity="0.69"/>
+  </g>
+  <g transform="translate(482 264)" fill="#b07b3e">
+    <rect width="18" height="18" rx="4" opacity="0.5"/>
+    <rect x="32" width="18" height="18" rx="4" opacity="0.22"/>
+    <rect x="64" width="18" height="18" rx="4" opacity="0.68"/>
+    <rect x="96" width="18" height="18" rx="4" opacity="0.36"/>
+    <rect x="128" width="18" height="18" rx="4" opacity="0.78"/>
+    <rect x="160" width="18" height="18" rx="4" opacity="0.46"/>
+    <rect x="192" width="18" height="18" rx="4" opacity="0.28"/>
+    <rect x="224" width="18" height="18" rx="4" opacity="0.62"/>
+    <rect x="256" width="18" height="18" rx="4" opacity="0.4"/>
+    <rect x="288" width="18" height="18" rx="4" opacity="0.72"/>
+  </g>
+  <path d="M840 350C926 304 1001 283 1092 294c87 11 144 48 228 30" fill="none" stroke="#ede8de" stroke-opacity="0.28" stroke-width="3"/>
+  <path d="M840 352C928 303 998 282 1094 293c88 10 144 49 229 30" fill="none" stroke="#6e8a6f" stroke-opacity="0.55" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="1094" cy="293" r="5" fill="#ede8de" opacity="0.58"/>
+  <circle cx="1323" cy="323" r="6" fill="#b07b3e"/>
+</svg>
