@@ -62,7 +62,6 @@ export async function POST() {
       VALUES (${tokenHash}, 'better_auth_user', ${slug}, ${githubUsername}, ${expiresAt}::timestamptz)`;
     return NextResponse.json({ token });
   } catch (e) {
-    console.error("[/api/card/token] failed:", e);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Internal error" },
       { status: 500 },

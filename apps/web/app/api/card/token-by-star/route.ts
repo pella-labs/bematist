@@ -41,7 +41,6 @@ export async function POST(req: Request) {
       VALUES (${tokenHash}, 'github_star', ${slug}, ${username}, ${expiresAt}::timestamptz)`;
     return NextResponse.json({ token });
   } catch (e) {
-    console.error("[/api/card/token-by-star] failed:", e);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Internal error" },
       { status: 500 },

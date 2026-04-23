@@ -42,7 +42,6 @@ export async function POST() {
       { status: ghRes.status === 404 ? 403 : 502 },
     );
   } catch (e) {
-    console.error("[/api/card/star-repo] failed:", e);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Internal error" },
       { status: 500 },
