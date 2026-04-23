@@ -33,9 +33,6 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
             <Link href="/deck" className="mk-btn mk-btn-ghost">
               Deck
             </Link>
-            <Link href="/signin" className="mk-btn mk-btn-ghost">
-              Sign in
-            </Link>
             <a
               href={GITHUB_URL}
               className="mk-btn mk-btn-primary"
@@ -65,7 +62,6 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
             <a href={GITHUB_URL} rel="noreferrer">
               GitHub
             </a>
-            <Link href="/signin">Sign in</Link>
           </div>
         </footer>
       </div>
