@@ -115,7 +115,7 @@ export function Slide06ThankYou(_props: { totalPages: number }) {
           padding: "192px 96px 96px",
           height: "100%",
           boxSizing: "border-box",
-          gap: 72,
+          gap: 64,
         }}
       >
         {/* Headline block */}
@@ -124,13 +124,10 @@ export function Slide06ThankYou(_props: { totalPages: number }) {
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: 18,
+            gap: 24,
             textAlign: "center",
           }}
         >
-          <div className="sys" style={{ color: "var(--accent)" }}>
-            Q &amp; A
-          </div>
           <h2
             className="title"
             style={{
@@ -148,7 +145,6 @@ export function Slide06ThankYou(_props: { totalPages: number }) {
             style={{
               display: "flex",
               gap: 10,
-              marginTop: 12,
               flexWrap: "wrap",
               justifyContent: "center",
             }}
@@ -175,8 +171,8 @@ export function Slide06ThankYou(_props: { totalPages: number }) {
             maxWidth: 1680,
           }}
         >
-          {TEAM.map((m, i) => (
-            <TeamCard key={m.name} member={m} index={i} />
+          {TEAM.map((m) => (
+            <TeamCard key={m.name} member={m} />
           ))}
         </div>
       </div>
@@ -184,10 +180,7 @@ export function Slide06ThankYou(_props: { totalPages: number }) {
   );
 }
 
-function TeamCard({ member, index }: { member: TeamMember; index: number }) {
-  // Negative animation-delay offsets the shimmer start so each portrait's
-  // sweep is out-of-phase — no more synchronised flash across the row.
-  const shimmerDelay = `${index * -1.4}s`;
+function TeamCard({ member }: { member: TeamMember }) {
   return (
     <div
       style={{
@@ -198,10 +191,6 @@ function TeamCard({ member, index }: { member: TeamMember; index: number }) {
       }}
     >
       <div className="deck-team-portrait" aria-hidden>
-        <div
-          className="deck-team-portrait-ring"
-          style={{ animationDelay: shimmerDelay }}
-        />
         <div className="deck-team-portrait-inner">
           <img src={member.photo} alt={member.name} />
         </div>

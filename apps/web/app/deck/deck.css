@@ -1308,30 +1308,18 @@
   width: 220px;
   height: 220px;
   border-radius: 50%;
-  padding: 3px;
+  padding: 2px;
   isolation: isolate;
-}
-/* Base ring: a soft, near-monochrome outline that stays stable while a
-   single sage highlight sweeps around it. This reads more deliberate
-   than the prior multi-color conic, which muddied at portrait size. */
-.pellametric-deck .deck-team-portrait-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background:
-    conic-gradient(
-      from 0deg,
-      transparent 0deg,
-      rgba(110, 138, 111, 0.85) 30deg,
-      rgba(234, 243, 229, 0.75) 45deg,
-      rgba(110, 138, 111, 0.35) 70deg,
-      transparent 110deg,
-      transparent 360deg
-    ),
-    linear-gradient(rgba(237, 232, 222, 0.22), rgba(237, 232, 222, 0.22));
-  animation: deck-team-shimmer 7s linear infinite;
-  filter: drop-shadow(0 0 14px rgba(110, 138, 111, 0.28));
-  z-index: 0;
+  /* Static cream ring + soft sage halo. Uniform across all portraits so
+     the row reads as a clean set at any snapshot moment. */
+  background: linear-gradient(
+    180deg,
+    rgba(237, 232, 222, 0.55),
+    rgba(110, 138, 111, 0.35)
+  );
+  box-shadow:
+    0 0 0 1px rgba(237, 232, 222, 0.08),
+    0 0 32px -4px rgba(110, 138, 111, 0.22);
 }
 .pellametric-deck .deck-team-portrait-inner {
   position: relative;
@@ -1341,18 +1329,12 @@
   border-radius: 50%;
   overflow: hidden;
   background: var(--bg-elev);
-  box-shadow: inset 0 0 0 1px rgba(237, 232, 222, 0.14);
 }
 .pellametric-deck .deck-team-portrait-inner img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
-}
-@keyframes deck-team-shimmer {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1366,8 +1348,7 @@
   .pellametric-deck .deck-bb-ring,
   .pellametric-deck .deck-bb-core,
   .pellametric-deck .deck-bb-logo,
-  .pellametric-deck .deck-bb-logo.is-on,
-  .pellametric-deck .deck-team-portrait-ring {
+  .pellametric-deck .deck-bb-logo.is-on {
     transition: none;
     animation: none;
   }
