@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
+import AuthCta from "@/components/auth-cta";
+import { auth } from "@/lib/auth";
 import { CardMount } from "./_card/CardMount";
 import { DEMO_CARD } from "./_card/demo-data";
 import { BrandMonolith } from "./_components/BrandMonolith";
@@ -94,7 +97,9 @@ const SCORE_DIMENSIONS = [
   { tag: "10%", name: "Team impact", body: "Playbooks this engineer promoted that others adopted." },
 ] as const;
 
-export default function MarketingHome() {
+export default async function MarketingHome() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  const initiallySignedIn = !!session?.user;
   return (
     <>
       <section className="mk-hero">
@@ -112,9 +117,11 @@ export default function MarketingHome() {
               and the rest of your dev-AI stack.
             </p>
             <div className="mk-hero-actions">
-              <Link href="/signin" className="mk-btn mk-btn-primary">
-                Sign up with GitHub
-              </Link>
+              <AuthCta
+                initiallySignedIn={initiallySignedIn}
+                variant="hero"
+                className="mk-btn mk-btn-primary"
+              />
               <Link href="/card" className="mk-btn mk-btn-ghost">
                 Grab your card
               </Link>
