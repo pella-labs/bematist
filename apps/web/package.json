@@ -2,6 +2,7 @@
   "name": "@pella/web",
   "version": "0.0.1",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "dev": "next dev --webpack -p ${PORT:-3000}",
     "build": "next build --webpack",
