@@ -144,38 +144,25 @@ export function Slide06ThankYou(_props: { totalPages: number }) {
               Questions?
             </span>
           </h2>
-          <p
+          <div
             style={{
-              fontFamily: "var(--f-mono)",
-              fontSize: 24,
-              color: "var(--ink-muted)",
-              letterSpacing: "0.04em",
-              margin: "8px 0 0",
-            }}
-          >
-            Built by Pella Labs.
-          </p>
-
-          <a
-            href="https://github.com/pella-labs/pellametric"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
+              display: "flex",
               gap: 10,
-              fontFamily: "var(--f-mono)",
-              fontSize: 16,
-              color: "var(--ink-muted)",
-              textDecoration: "none",
-              padding: "8px 14px",
-              border: "1px solid var(--border)",
-              background: "rgba(237, 232, 222, 0.02)",
-              marginTop: 4,
-              letterSpacing: "0.02em",
+              marginTop: 12,
+              flexWrap: "wrap",
+              justifyContent: "center",
             }}
           >
-            <GitHubGlyph />
-            <span>github.com/pella-labs/pellametric</span>
-          </a>
+            <CompanyLink
+              href="https://github.com/pella-labs/pellametric"
+              label="github.com/pella-labs/pellametric"
+            >
+              <GitHubGlyph />
+            </CompanyLink>
+            <CompanyLink href="https://x.com/pellametric" label="@pellametric">
+              <XGlyph />
+            </CompanyLink>
+          </div>
         </div>
 
         {/* Team row */}
@@ -252,6 +239,38 @@ function TeamCard({ member, index }: { member: TeamMember; index: number }) {
         </HandleLink>
       </div>
     </div>
+  );
+}
+
+function CompanyLink({
+  href,
+  label,
+  children,
+}: {
+  href: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 10,
+        fontFamily: "var(--f-mono)",
+        fontSize: 16,
+        color: "var(--ink-muted)",
+        textDecoration: "none",
+        padding: "8px 14px",
+        border: "1px solid var(--border)",
+        background: "rgba(237, 232, 222, 0.02)",
+        letterSpacing: "0.02em",
+      }}
+    >
+      {children}
+      <span>{label}</span>
+    </a>
   );
 }
 
