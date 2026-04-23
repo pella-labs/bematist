@@ -121,6 +121,13 @@
   align-items: center;
   gap: 10px;
 }
+.pellametric-marketing .mk-wordmark-logo {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  object-fit: contain;
+  transform: translateY(-1px);
+}
 
 .pellametric-marketing .mk-nav-links {
   display: flex;
@@ -740,18 +747,26 @@
 .pellametric-marketing footer.mk-footer .mk-footer-line {
   color: var(--mk-ink);
   font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.pellametric-marketing footer.mk-footer .mk-footer-logo {
+  width: 18px;
+  height: 18px;
+  display: inline-block;
+  object-fit: contain;
 }
 
-.pellametric-marketing footer.mk-footer .mk-footer-sub {
-  color: var(--mk-ink-muted);
-  font-size: 11px;
-  line-height: 1.6;
+.pellametric-marketing footer.mk-footer .mk-footer-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
 }
-
 .pellametric-marketing footer.mk-footer a {
   color: var(--mk-ink-muted);
   text-decoration: none;
-  margin-left: 18px;
   cursor: pointer;
 }
 
@@ -820,8 +835,16 @@
   border-radius: 16px;
   overflow: hidden;
   background:
-    radial-gradient(140% 90% at 20% 0%, rgba(110, 138, 111, 0.18), transparent 55%),
-    radial-gradient(100% 80% at 90% 100%, rgba(176, 123, 62, 0.22), transparent 55%),
+    radial-gradient(
+      140% 90% at 20% 0%,
+      rgba(110, 138, 111, 0.18),
+      transparent 55%
+    ),
+    radial-gradient(
+      100% 80% at 90% 100%,
+      rgba(176, 123, 62, 0.22),
+      transparent 55%
+    ),
     linear-gradient(160deg, #14161a, #0a0b0d 60%);
   box-shadow:
     0 40px 80px -40px rgba(0, 0, 0, 0.8),
@@ -949,7 +972,11 @@
 
 .pellametric-marketing .wrapped-card-bar {
   flex: 1;
-  background: linear-gradient(180deg, var(--mk-accent), rgba(110, 138, 111, 0.3));
+  background: linear-gradient(
+    180deg,
+    var(--mk-accent),
+    rgba(110, 138, 111, 0.3)
+  );
   border-radius: 2px 2px 0 0;
   min-height: 4px;
 }
@@ -1152,7 +1179,9 @@
   flex-shrink: 0;
 }
 
-.pellametric-marketing .mk-getstarted-entry-card > div:not(.mk-getstarted-entry-chevron) {
+.pellametric-marketing
+  .mk-getstarted-entry-card
+  > div:not(.mk-getstarted-entry-chevron) {
   flex: 1;
   min-width: 0;
 }
@@ -1197,7 +1226,9 @@
   color: var(--mk-ink-muted);
 }
 
-.pellametric-marketing .mk-getstarted-entry-alt:hover .mk-getstarted-entry-title {
+.pellametric-marketing
+  .mk-getstarted-entry-alt:hover
+  .mk-getstarted-entry-title {
   color: var(--mk-ink);
 }
 
@@ -1236,7 +1267,9 @@
   transition: transform 0.18s;
 }
 
-.pellametric-marketing .mk-getstarted-entry-primary:hover .mk-getstarted-entry-chevron {
+.pellametric-marketing
+  .mk-getstarted-entry-primary:hover
+  .mk-getstarted-entry-chevron {
   transform: translateX(2px);
 }
 
@@ -1527,7 +1560,11 @@
 
 .pellametric-marketing .mk-dashboard-shot-chart-bar {
   flex: 1;
-  background: linear-gradient(180deg, var(--mk-accent), rgba(110, 138, 111, 0.2));
+  background: linear-gradient(
+    180deg,
+    var(--mk-accent),
+    rgba(110, 138, 111, 0.2)
+  );
   border-radius: 3px 3px 0 0;
 }
 
@@ -1835,9 +1872,9 @@
     justify-content: center;
     flex-wrap: wrap;
   }
-  .pellametric-marketing footer.mk-footer a {
-    margin-left: 10px;
-    margin-right: 10px;
+  .pellametric-marketing footer.mk-footer .mk-footer-links {
+    justify-content: center;
+    gap: 16px;
   }
 }
 

@@ -28,13 +28,27 @@ export default function CardLandingPage() {
   return (
     <section className="mk-demo">
       <div>
-        <div className="mk-sys" style={{ marginBottom: 16 }}>
+        <div
+          className="mk-sys"
+          style={{
+            marginBottom: 16,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <img
+            src="/primary-logo.svg"
+            alt=""
+            aria-hidden
+            style={{ width: 18, height: 18, display: "inline-block" }}
+          />
           {"SYS.CARD // personal card"}
         </div>
         <h1>Get your card.</h1>
         <p>
-          Sign in, star, run one command. Your Claude and Codex history becomes a shareable card.
-          Totals only — no prompts, no code.
+          Sign in, star, run one command. Your Claude and Codex history becomes
+          a shareable card. Totals only — no prompts, no code.
         </p>
         <GetStarted />
       </div>

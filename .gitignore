@@ -20,3 +20,6 @@ apps/collector/bin/
 *.log
 .vscode
 .idea
+
+# Local-only brand social asset exports (manual upload to X/GitHub)
+apps/web/public/social/

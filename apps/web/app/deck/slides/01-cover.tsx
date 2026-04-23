@@ -52,8 +52,9 @@ export function Slide01Cover(_props: { totalPages: number }) {
             </defs>
             <text>
               <textPath href="#deck-cover-ring-path" startOffset="0%">
-                PELLAMETRIC · AI ENGINEERING TELEMETRY · $/PR · ACCEPTED EDITS · AI SPEND · OUTCOMES ·
-                CLUSTERS ·{" "}
+                {"AI ENGINEERING TELEMETRY · $/PR · ACCEPTED EDITS · AI SPEND · OUTCOMES · CLUSTERS · ".repeat(
+                  2,
+                )}
               </textPath>
             </text>
           </svg>
@@ -66,7 +67,7 @@ export function Slide01Cover(_props: { totalPages: number }) {
               backColor="#6e8a6f"
               interactive={false}
               autoRotate
-              autoRotateSpeed={0.005}
+              autoRotateSpeed={0.009}
               float
             />
           </div>
@@ -88,7 +89,10 @@ export function Slide01Cover(_props: { totalPages: number }) {
         </div>
         <div>
           <div className="label">Contact</div>
-          <div className="val" style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+          <div
+            className="val"
+            style={{ display: "inline-flex", alignItems: "center", gap: 10 }}
+          >
             <XGlyph />
             <span>@pellametric</span>
           </div>
