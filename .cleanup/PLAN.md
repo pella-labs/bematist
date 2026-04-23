@@ -1,324 +1,374 @@
 # Execution Plan — Agents 2/3/4
 
-Ordered, independent tasks for cleanup. Agent 2 (Pruner) deletes dead code. Agent 3 (Refactorer) refactors duplicates + large files. Agent 4 (Docs) updates .env.example + README + LICENSE.
+Ordered tasks for cleanup. Agent 2 (Pruner) deletes dead code + working-tree crud. Agent 3 (Refactorer) extracts true duplicates. Agent 4 (Docs) writes `.env.example`, README gaps, LICENSE.
+
+Revised after CHALLENGE.md. Incorporates verified must-fix objections M-1…M-8 and additional findings A-1…A-8. The original P-002 (remove `three`/`motion`/`dotenv`) was deleted — all three are actively imported and removing them would break the build.
 
 ---
 
-## AGENT 2: PRUNER (Deletions & Dependency Cleanup)
+## AGENT 2: PRUNER (Deletions, Secrets, Working-Tree)
 
 ### P-001: Delete Stale Planning Documents
 
-**Files:** `plan.md`, `CURSOR-ADAPTER-PLAN.md`  
-**Action:** Delete both files entirely. They document internal feature branches and migrations (completed months ago) and are not OSS documentation.  
-**Depends on:** None  
+**Files:** `plan.md`, `CURSOR-ADAPTER-PLAN.md`
+**Action:** Delete both files entirely. They document an internal pnpm→bun migration and a merged feature-branch plan (PR #118). Not OSS documentation.
+**Depends on:** None
 **Severity:** Critical
 
 ---
 
-### P-002: Remove Unused Dependencies from apps/web
+### P-002: Delete `scripts/migrate-cards.mjs` — LIVE DB CREDENTIALS + HISTORY SCRUB
 
-**Files:** `apps/web/package.json`  
-**Action:** Remove three unused dependencies:
-- `three` (v0.169.0, no imports found)
-- `motion` (v12.38.0, no imports found)
-- `dotenv` (v16.4.5, Next.js handles .env automatically)
-
-Run: `bun remove three motion dotenv` from `apps/web/`.  
-**Depends on:** None  
-**Severity:** Minor (improves bundle size and clarity)
-
----
-
-## AGENT 3: REFACTORER (Code Restructuring)
-
-### R-001: Consolidate API Auth Middleware
-
-**Files:** 
-- Create: `apps/web/lib/api/require-auth.ts`
-- Modify: `apps/web/app/api/orgs/route.ts`, `app/api/invite/route.ts`, `app/api/tokens/route.ts`, `app/api/card/token/route.ts`, `app/api/card/star-repo/route.ts`, `app/api/invite/accept/route.ts`, `app/api/card/token-by-star/route.ts` (7+ more)
-
+**Files:** `scripts/migrate-cards.mjs` (delete); git history rewrite required.
 **Action:**
 
-1. Create new utility file `apps/web/lib/api/require-auth.ts`:
+1. `scripts/migrate-cards.mjs` is a one-shot migration committed in `d823576` ("feat(card): implement dynamic card loading and API endpoint"). It contains **plaintext production Postgres passwords** for both source and destination Railway DBs (`switchyard.proxy.rlwy.net` and `shinkansen.proxy.rlwy.net`), and a hardcoded absolute path `/Users/san/Desktop/pella-metrics/apps/web/node_modules/postgres/...` that only works on the original author's machine.
+2. Delete the file from the working tree.
+3. **Rotate both Railway DB passwords immediately** (the credentials are in public git history once this repo opens up — assume compromised).
+4. After rotation, run `git filter-repo --path scripts/migrate-cards.mjs --invert-paths` (or BFG) to strip the file from history. Coordinate with the team lead before force-pushing — everyone must re-clone.
+5. If the script is genuinely needed again, rewrite to read from env vars (`SRC_DATABASE_URL`, `DST_DATABASE_URL`) and use the monorepo's `postgres` dep, not an absolute path.
 
-```typescript
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { NextResponse } from "next/server";
-
-export async function requireAuth() {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) {
-    return { error: NextResponse.json({ error: "unauthorized" }, { status: 401 }) };
-  }
-  return { userId: session.user.id };
-}
-```
-
-2. Replace every instance of:
-```typescript
-const session = await auth.api.getSession({ headers: await headers() });
-if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-```
-
-With:
-```typescript
-const auth = await requireAuth();
-if ("error" in auth) return auth.error;
-const userId = auth.userId;
-```
-
-**Depends on:** None  
-**Severity:** Major (eliminates 12 code copies)
+**Depends on:** None (but rotation + history rewrite should happen before the repo is made public).
+**Severity:** CRITICAL — principle 1 violation (secrets). Supersedes the Challenger's M-6 claim that "history is clean" — it is not.
 
 ---
 
-### R-002: Create Unified GitHub Fetch Utility
+### P-003: Remove `.DS_Store` From Working Tree
+
+**Files:** `.DS_Store` at repo root (untracked, 6148 bytes).
+**Action:** `rm /Users/walidkhori/Desktop/pella-labs/pellametric/.DS_Store`. Already in `.gitignore`, never tracked (verified via `git log --all --oneline -- .DS_Store`). Working-tree hygiene only.
+**Depends on:** None
+**Severity:** Minor
+
+---
+
+### P-004: Remove Debug `console.error` in Production API Routes
 
 **Files:**
-- Create: `apps/web/lib/github-fetch.ts`
-- Modify: `apps/web/lib/github-profile.ts`, `apps/web/lib/github-stars.ts`, `apps/web/app/api/card/token/route.ts`
+- `apps/web/app/api/card/token/route.ts:65`
+- `apps/web/app/api/card/star-repo/route.ts:45`
+- `apps/web/app/api/card/token-by-star/route.ts:44`
 
-**Action:**
-
-1. Create `apps/web/lib/github-fetch.ts`:
-
-```typescript
-export async function fetchGithub(
-  path: string,
-  token: string,
-  options?: RequestInit
-): Promise<{ ok: boolean; status: number; data?: any; error?: string }> {
-  const r = await fetch(`https://api.github.com${path}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
-      "User-Agent": "pellametric",
-    },
-    ...options,
-  });
-  if (r.ok) return { ok: true, status: r.status, data: await r.json().catch(() => null) };
-  return { ok: false, status: r.status, error: await r.text() };
-}
-```
-
-2. Replace all three GitHub fetch patterns with calls to this utility.
-
-**Depends on:** None  
-**Severity:** Major (consolidates 3 duplicates)
+**Action:** Each line is a `console.error("[/api/…] failed:", e)` in a `try/catch`. Delete the `console.error` call; keep the `catch` that returns an error response. Next.js already surfaces unhandled throws in server logs; these custom prints are stderr noise for operators of OSS deployments.
+**Depends on:** None (independent of R-001 because these files are edited for auth wrapping anyway, but `console.error` removal is trivial and can happen in the same edit).
+**Severity:** Minor
 
 ---
 
-### R-003: Decompose CardPage.tsx (2036 lines)
+### P-005: Decide: Commit vs. Build-Generate `apps/web/public/collector.mjs`
+
+**Files:** `apps/web/public/collector.mjs` (29 KB, 950 lines, generated by `apps/collector/build.ts`).
+**Action:**
+
+1. The bundle is produced by `bun build` and served at `/collector.mjs` for the legacy `curl … | node` installer (see `app/setup/collector/page.tsx`, `Dockerfile`, `README.md:42`).
+2. Because root `build` runs `bun --filter='./apps/collector' run build` before the web build, the Dockerfile regenerates this on every deploy anyway. There is no runtime need for it to be committed.
+3. **Chosen remediation:** add `apps/web/public/collector.mjs` to `.gitignore`, remove from git tracking (`git rm --cached`), and rely on the build step. This removes 950 lines of minified JS that reviewers would otherwise mistake for source.
+4. If the dev-loop convenience of having the bundle present without running the collector build is valued, fall back to: keep it committed but prepend a `// GENERATED — do not edit. Source: apps/collector/src/*. Regenerate: bun --filter=./apps/collector run build.` header and mark it `linguist-generated=true` in `.gitattributes`.
+
+**Depends on:** None
+**Severity:** Minor (clarity for OSS reviewers)
+
+---
+
+### P-006: Confirm History Is Clean of Other Secret Patterns
+
+**Files:** N/A (audit action).
+**Action:** After P-002's DB-creds removal, run and record the output of:
+```
+git log --all -p -S 'ghp_' -S 'sk-' -S 'AKIA' -S 'BEGIN PRIVATE KEY' -S 'BETTER_AUTH_SECRET=' -- ':!.env.example' ':!.cleanup/*'
+```
+Expect no hits (Challenger claims none; the migrate-cards case proves that grep alone is not sufficient — actually read the script files). Document result in the release checklist.
+**Depends on:** P-002
+**Severity:** Critical (OSS release gate)
+
+---
+
+## AGENT 3: REFACTORER (True Duplicates Only)
+
+### R-001: `withAuth` HOF + `apiError` Helper for API Routes *(combined — was R-001 + R-006)*
+
+**Files:**
+- Create: `apps/web/lib/api/with-auth.ts`
+- Create: `apps/web/lib/api/error.ts`
+- Modify (auth wrapping + apiError): **7 authenticated routes**
+  - `apps/web/app/api/tokens/route.ts`
+  - `apps/web/app/api/prompts/route.ts`
+  - `apps/web/app/api/invite/route.ts`
+  - `apps/web/app/api/invite/accept/route.ts`
+  - `apps/web/app/api/orgs/route.ts`
+  - `apps/web/app/api/card/star-repo/route.ts`
+  - `apps/web/app/api/card/token/route.ts`
+- Modify (apiError only, NO auth wrapping): **5 intentionally-unauthenticated routes**
+  - `apps/web/app/api/auth/[...all]/route.ts` — Better-Auth catch-all
+  - `apps/web/app/api/card/[id]/route.ts` — public card reads
+  - `apps/web/app/api/card/submit/route.ts` — public card submit
+  - `apps/web/app/api/card/token-by-star/route.ts` — public token-by-star lookup
+  - `apps/web/app/api/ingest/route.ts` — bearer-token ingest from collector
+
+**Combined spec (chosen after considering CHALLENGE M-3 + M-4):**
+
+1. `apps/web/lib/api/error.ts`:
+   ```ts
+   import { NextResponse } from "next/server";
+
+   export type ApiError = { error: string; detail?: string };
+
+   export function apiError(error: string, detail?: string, status = 400) {
+     const body: ApiError = detail ? { error, detail } : { error };
+     return NextResponse.json(body, { status });
+   }
+   ```
+   Notes: `status` is NOT in the body (Challenger S-4 — it is already on `NextResponse`). `detail` is omitted from the body when absent to keep responses minimal.
+
+2. `apps/web/lib/api/with-auth.ts`:
+   ```ts
+   import { auth } from "@/lib/auth";
+   import { headers } from "next/headers";
+   import { apiError } from "./error";
+
+   type Ctx = { params?: Promise<Record<string, string>> };
+   type Handler<R> = (req: Request, ctx: Ctx, session: { userId: string }) => Promise<R>;
+
+   export function withAuth<R extends Response>(handler: Handler<R>) {
+     return async (req: Request, ctx: Ctx) => {
+       const s = await auth.api.getSession({ headers: await headers() });
+       if (!s?.user) return apiError("unauthorized", undefined, 401);
+       return handler(req, ctx, { userId: s.user.id });
+     };
+   }
+   ```
+   Chosen over `requireAuth()` early-return shape (Challenger M-3): avoids the `"error" in auth` narrowing dance, keeps handlers pure, and single-sources the 401 response inside `apiError`.
+
+3. For each of the 7 authenticated routes, wrap the exported handler:
+   ```ts
+   export const POST = withAuth(async (req, _ctx, { userId }) => {
+     // existing body, using userId instead of session.user.id
+   });
+   ```
+4. In all 12 routes, replace ad-hoc `NextResponse.json({ error: "..." }, { status: N })` with `apiError("...", detail?, N)`. Special cases:
+   - `ingest/route.ts:77` currently returns `{ error: "validation", issues: [...] }`. The `issues` array is a meaningful zod payload, not a free-form `detail`. Allow it by extending the call-site: `NextResponse.json({ error: "validation", issues }, { status: 400 })` — KEEP as-is OR broaden `apiError` to accept `extra?: Record<string, unknown>`. Pick one; I recommend keeping ingest as-is (it is a single consumer, the collector, and the shape is stable).
+
+5. **Do NOT apply `withAuth` to the 5 unauthenticated routes** listed above. Adding it would break bearer-token ingest, public card reads, and Better-Auth's own catch-all.
+
+**Depends on:** None. Single task now — no collision with any other task.
+**Severity:** Major (consolidates 7 real duplicates + unifies 12 error-response shapes).
+
+---
+
+### R-002: `githubHeaders(token)` Helper (scope-reduced)
+
+**Files:**
+- Create: `apps/web/lib/github-headers.ts` (10 lines)
+- Modify: `apps/web/lib/github-profile.ts`, `apps/web/lib/github-stars.ts`, `apps/web/app/api/card/token/route.ts`
+
+**Action:** The only real duplication is building `{ Authorization: Bearer …, Accept: …, "User-Agent": … }`. Extract just that:
+```ts
+export function githubHeaders(token?: string): HeadersInit {
+  const h: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+    "User-Agent": "pellametric",
+  };
+  if (token) h.Authorization = `Bearer ${token}`;
+  return h;
+}
+```
+Callers continue to use raw `fetch` and native `Response`. Rejected the original R-002 `fetchGithub()` wrapper (Challenger M-8): each callsite has a different response shape, the `{ ok, status, data?, error? }` envelope is strictly weaker than `Response`, and the three call sites are 4–6 lines each — below the 3+-duplicates-on-a-non-trivial-block threshold for a full wrapper.
+**Depends on:** None
+**Severity:** Minor (real reduction, not an API-shape invention).
+
+---
+
+### R-003: Decompose `CardPage.tsx` — icons + co-located slide renderers
 
 **Files:**
 - Create: `apps/web/app/(marketing)/_card/icons.tsx`
-- Create: `apps/web/app/(marketing)/_card/slides/SlideOne.tsx` through `SlideSeven.tsx`
-- Modify: `apps/web/app/(marketing)/_card/CardPage.tsx` (reduce to ~300 lines orchestration)
+- Modify: `apps/web/app/(marketing)/_card/CardPage.tsx` (from 2036 lines to ~400 orchestration + render dispatch)
+- Optional: `apps/web/app/(marketing)/_card/slides.tsx` (one file with `renderSlide1`, `renderSlide2`, … as local functions, not default-exported components)
 
 **Action:**
 
-1. Extract all SVG icon components (`FlameIcon`, `WrenchIcon`, `RocketIcon`, `MonitorIcon`, etc.) to `icons.tsx`.
+1. Extract the inline SVG icons (`FlameIcon`, `WrenchIcon`, `RocketIcon`, `MonitorIcon`, etc.) to `icons.tsx`. Clear win, no duplication risk.
+2. Do NOT create 8 `SlideOne.tsx` … `SlideEight.tsx` component files (Challenger S-1). Each slide shares the same `reveal`/`show`/`transitionDelay` plumbing; 8 files would duplicate those imports and the wrapper JSX.
+3. Instead, keep slides co-located in one file (`slides.tsx`) as local render functions:
+   ```ts
+   export function renderSlide(index: number, data: CardData, anim: Anim) { ... }
+   // dispatches to renderSlide1(data, anim), renderSlide2(...), etc., all in the same module
+   ```
+4. `CardPage.tsx` becomes: data loading + pagination + `renderSlide(currentPage, data, anim)`.
+5. There are **8 slides total** (indices 0–7), not 7 — fix the mis-count in the original plan.
 
-2. Create one component per slide (8 slides total, pages 0-7):
-   - `SlideOne.tsx` — title slide
-   - `SlideTwo.tsx` — top model/tool summary
-   - `SlideThree.tsx` — hourly distribution chart
-   - `SlideFour.tsx` — file breakdown
-   - `SlideFive.tsx` — prompts section
-   - `SlideSix.tsx` — achievements/celebrations
-   - `SeventhSlide.tsx` — ranking stats
-   - `EighthSlide.tsx` — closing call-to-action
-
-3. Refactor `CardPage.tsx` to:
-   - Import slide components + icons
-   - Handle pagination logic
-   - Render `<SlideComponent pageNumber={currentPage} data={data} />` instead of 2000+ lines of inline JSX
-
-4. Extract color/formatting utilities to `card-formatting.ts` if not already present.
-
-**Depends on:** None  
-**Severity:** Major (improves maintainability)
+**Depends on:** None
+**Severity:** Major (maintainability of the largest file in the repo).
 
 ---
 
-### R-004: Consolidate Card Token Utilities
+### R-004: Rename `card-backend.ts` → `card-tokens.ts` (scope-reduced)
 
 **Files:**
-- Modify: `apps/web/lib/card-backend.ts`, `apps/web/lib/card-token-mint.ts`
-- Optionally refactor: `apps/web/lib/card-backend.ts` to export both backend + minting logic
+- Rename: `apps/web/lib/card-backend.ts` → `apps/web/lib/card-tokens.ts`
+- Leave alone: `apps/web/lib/card-token-mint.ts`, `apps/web/app/(marketing)/_card/card-utils.ts`
+- Update imports across the codebase (API routes, card UI).
 
 **Action:**
+1. `card-backend.ts` (36 lines) only contains `hashCardToken`, `isReservedCardSlug`, `toCardSlug`. Rename makes the purpose explicit.
+2. `card-token-mint.ts` (52 lines) is word-list + `mintCardToken()`. Separate concern (generation vs verification). Leave separate — Challenger S-2 is correct that merging them is theme-driven consolidation, not DRY.
+3. `_card/card-utils.ts` is UI formatting — orthogonal. Do not touch.
+4. Rejected the original R-004 claim of "3 files" — only 2 exist in the `lib/` scope.
 
-1. Review both files and consolidate:
-   - `hashCardToken()`, `mintCardToken()`, `toCardSlug()`, `isReservedCardSlug()` into one module or closely related pair
-   - Or rename `card-backend.ts` to `card-utils.ts` if it's now the authoritative source
-   - Update imports across codebase (API routes, CardPage)
-
-2. Ensure clear separation: business logic (`card-backend.ts`) vs UI rendering (`_card/card-utils.ts`)
-
-**Depends on:** None  
-**Severity:** Minor (improves clarity)
+**Depends on:** None
+**Severity:** Minor
 
 ---
 
-### R-005: Create Collector Logger Abstraction
+### R-005 (deleted)
 
-**Files:**
-- Create: `apps/collector/src/logger.ts`
-- Modify: All `apps/collector/src/**/*.ts` files that call `console.log/error/warn`
+The original R-005 proposed a `logger.ts` no-op wrapper around `console.log/error/warn`. Deleted per Challenger M-7: this is a speculative abstraction (principle 2 violation), the signature `log: (msg: string) => console.log(msg)` is narrower than `console.log`'s real signature (no format args, no multiple args) and would introduce bugs. 47 console calls in the collector are distinct user-facing CLI output — exactly where raw `console.*` is idiomatic. If future structured logging is wanted, do it when there is a real second caller for a logger abstraction.
 
-**Action:**
-
-1. Create `logger.ts`:
-
-```typescript
-export const logger = {
-  log: (msg: string) => console.log(msg),
-  error: (msg: string) => console.error(msg),
-  warn: (msg: string) => console.warn(msg),
-};
-```
-
-2. Replace all 53 `console.log/error/warn` calls with `logger.log/error/warn`.
-
-3. Allows future structured logging, testing mocks, and output suppression without code changes.
-
-**Depends on:** None  
-**Severity:** Major (improves testability + consistency)
+If the "50+ progress lines in `runOnce.ts`" case genuinely needs cleanup (S-1-adjacent), extract a single `printProgress(block)` for that specific formatted block — not a generic logger. Not scheduling that here.
 
 ---
 
-### R-006: Standardize API Error Response Shapes
+### R-006 (merged into R-001)
 
-**Files:** All 12 `apps/web/app/api/**/route.ts`
-
-**Action:**
-
-1. Define standard error response type in `apps/web/lib/api/error.ts`:
-
-```typescript
-export type ApiError = {
-  error: string;
-  detail?: string;
-};
-
-export function apiError(message: string, detail?: string, status: number = 400) {
-  return NextResponse.json({ error: message, detail }, { status });
-}
-```
-
-2. Replace all ad-hoc `NextResponse.json({ error: "..." }, { status: ... })` with `apiError(...)`.
-
-3. Ensures consistent shape across all endpoints for client-side error handling.
-
-**Depends on:** None  
-**Severity:** Minor (improves consistency)
+See R-001 above — error-shape standardization and auth wrapping are one task. Combining prevents the two-agent-edits-same-7-files collision (Challenger M-4).
 
 ---
 
 ## AGENT 4: DOCS (Documentation & Configuration)
 
-### D-001: Update `.env.example` with All 13 Variables
+### D-001: Complete `.env.example` (13+ variables, annotated required vs optional)
 
 **Files:** `.env.example`
 
-**Action:** Expand to include all referenced env vars with clear annotations:
+**Action:** Expand to include every `process.env.*` the app or collector reads, with required/optional annotations. Document that `drizzle.config.ts` uses `import "dotenv/config"` which reads `.env` (NOT `.env.local`), so contributors running `bun run db:push` must put `DATABASE_URL` in `.env` or change drizzle's dotenv call (A-7). Content:
 
 ```
-# Database
+# ==================== apps/web (required) ====================
+
+# Postgres connection string. drizzle.config.ts reads this from `.env`
+# (not `.env.local`) because it calls `import "dotenv/config"`.
 DATABASE_URL=postgresql://user:pass@host:5432/db
 
-# Authentication (Next.js app)
-BETTER_AUTH_SECRET=<openssl rand -hex 32 output>
+# Better-Auth server secret (32+ random bytes).
+#   openssl rand -hex 32
+BETTER_AUTH_SECRET=
+
+# Public Better-Auth URL (used server-side).
 BETTER_AUTH_URL=http://localhost:3000
 
-# GitHub OAuth
-GITHUB_CLIENT_ID=<from GitHub Apps>
-GITHUB_CLIENT_SECRET=<from GitHub Apps>
+# GitHub OAuth app credentials — see README "Develop the web app".
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
 
-# Optional: GitHub API rate-limit lifting (requires repo:read scope)
-GITHUB_TOKEN=ghp_...
+# 32-byte base64 key for at-rest encryption of stored prompts
+# (apps/web/lib/crypto/prompts.ts). REQUIRED — throws if missing.
+#   openssl rand -base64 32
+PROMPT_MASTER_KEY=
 
-# Public URLs (for SSR + client)
-NEXT_PUBLIC_SITE_URL=https://pellametric.com
+# ==================== apps/web (public, baked at build) ====================
+
+# Public site URL — used by next/metadata. Defaults to https://pellametric.com.
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# Public Better-Auth URL — used by the browser auth client. Must match
+# BETTER_AUTH_URL in dev.
 NEXT_PUBLIC_BETTER_AUTH_URL=http://localhost:3000
 
-# Encryption for stored prompts (REQUIRED: bun run key-gen or openssl rand -base64 24)
-PROMPT_MASTER_KEY=<32-byte base64-encoded key>
+# ==================== apps/web (optional) ====================
 
-# Collector CLI (optional at build time; developer configures via ~/.pella/config.env)
+# Lifts GitHub API rate limits for repo/star lookups. Optional in dev,
+# strongly recommended in production.
+GITHUB_TOKEN=
+
+# ==================== apps/collector (optional — normally set via `pella login`) ====================
+
+# Default server URL baked into apps/web/public/collector.mjs at build time.
 PELLA_COLLECTOR_DEFAULT_URL=https://pellametric.com
-PELLA_TOKEN=pm_<your-token>
-PELLA_URL=https://pellametric.com
 
-# Feature flags (optional)
+# Collector ingest token (per-user `pm_…`). Usually written to
+# ~/.pella/config.env by `pella login`, not set here.
+PELLA_TOKEN=
+
+# Override the collector's upload URL (points at the Next.js app).
+PELLA_URL=
+
+# Feature flag: skip Cursor session parsing.
 PELLA_SKIP_CURSOR=0
+
+# Dev-only override: path to a pella binary to use (otherwise resolved from PATH).
+PELLA_BIN=
+
+# Note: APPDATA (Windows) and XDG_CONFIG_HOME (Linux) are OS-provided
+# and should not be set manually.
 ```
 
-**Depends on:** None  
-**Severity:** Critical (required for OSS onboarding)
+Include a one-line note at the top:
+```
+# Copy this file to .env for local development. Do not commit .env.
+# drizzle-kit reads `.env`; Next.js also loads `.env.local` if present.
+```
+
+**Depends on:** None
+**Severity:** Critical
 
 ---
 
-### D-002: Add Setup Instructions to README
+### D-002: Augment Existing README (setup gaps, not full rewrite)
 
 **Files:** `README.md`
 
-**Action:** Ensure README includes:
+**Action:** The current README is 82 lines and already has Architecture, Flow, Install, Develop, and Scopes sections (Challenger A-4). Augment — do not rewrite.
 
-1. **Development Setup** section:
-   - Copy `.env.example` to `.env.local`
-   - List required vs optional vars
-   - Point to key-generation command for `PROMPT_MASTER_KEY`
+1. Under **Develop the web app**:
+   - Add "1. `cp .env.example .env`" as step 1.
+   - Call out: "drizzle reads `.env` (not `.env.local`)". Link to D-001.
+   - Add `bun run typecheck` and `bun test` expectations before commits.
+2. Add a short **Running the collector against localhost in dev** section (~8 lines) — `pella login --url http://localhost:3000 --token pm_…` or setting `PELLA_URL` + `PELLA_TOKEN` in the shell.
+3. Add a short **Contributing** subsection in lieu of a separate `CONTRIBUTING.md` (see D-004): "PRs welcome. Before pushing, run `bun run typecheck`, `bun test`, and make sure any new `process.env.*` is in `.env.example`. No committed secrets. Do not commit `.env`."
 
-2. **Collector Setup** section:
-   - Installation from binary releases or `bun build --compile`
-   - Configuration via `pella login --token pm_...`
-   - How to run as daemon (`pella start`, `pella status`, `pella logs`)
-
-3. **Architecture** section:
-   - High-level overview of `apps/web` (Next.js 16 SPA) + `apps/collector` (Bun daemon)
-   - Data flow: collector → `/api/ingest` → database
-   - Auth: GitHub OAuth + token-based collector
-
-**Depends on:** D-001  
-**Severity:** Major (enables new contributors)
+**Depends on:** D-001
+**Severity:** Major
 
 ---
 
-### D-003: Verify or Add LICENSE
+### D-003: Add `LICENSE` (MIT)
 
-**Files:** `LICENSE` (check if exists; if not, determine appropriate license)
+**Files:** Create `LICENSE` at repo root; update `package.json` files.
 
 **Action:**
+1. `LICENSE` does not currently exist (verified). Add standard MIT text with `Copyright (c) 2026 Pella Labs`.
+2. Set `"license": "MIT"` in root `package.json`, `apps/web/package.json`, `apps/collector/package.json`, `packages/shared/package.json`.
+3. No deferral. MIT is the crew brief's explicit default (Challenger M-5).
 
-1. Check if `LICENSE` exists in repo root.
-2. If missing, add appropriate license (likely MIT or Apache 2.0 based on project scope).
-3. If exists, verify it matches project intent and update `package.json` with `"license": "..."`.
-
-**Depends on:** None  
-**Severity:** Major (legal requirement for OSS)
+**Depends on:** None
+**Severity:** Critical (OSS release gate).
 
 ---
 
-### D-004: Create CONTRIBUTING.md
+### D-004: Fold Contributing Into README (don't create CONTRIBUTING.md)
 
-**Files:** Create `CONTRIBUTING.md`
+**Files:** None new (merged into D-002).
 
-**Action:**
+**Action:** A dedicated `CONTRIBUTING.md` is premature for a not-yet-public repo with zero external contributors (Challenger S-3). Covered by the 6-line `## Contributing` block added to README in D-002. Revisit post-launch if contributor volume warrants.
 
-1. Document:
-   - Code style (TypeScript, ESLint config, formatting)
-   - Testing expectations (vitest for unit tests)
-   - PR checklist (no secrets, passing tests, env vars in `.env.example`)
-   - Dependency management (Bun 1.3.9+, no npm/pnpm)
-   - CI/CD expectations (if applicable)
+**Depends on:** D-002
+**Severity:** Minor
 
-2. Reference existing good practices from codebase (proper auth boundaries, no god-files, etc.)
+---
 
-**Depends on:** None  
-**Severity:** Minor (improves contributor experience)
+### D-005: Fix `Dockerfile` Placeholder-Secret Baking (NEW — A-2)
+
+**Files:** `Dockerfile`
+
+**Action:** `Dockerfile:23-28` uses `ENV` to set `BETTER_AUTH_SECRET=build_placeholder_secret`, `GITHUB_CLIENT_ID=build_client_id`, `GITHUB_CLIENT_SECRET=build_client_secret`, and `DATABASE_URL=postgresql://user:pass@localhost:5432/db`. These land in the image layers AND the runtime environment — if Railway's deploy step fails to override any of them, the deployed app runs with forged-session-capable defaults. Principle 1 surprise.
+
+1. Change `ENV` to `ARG` for any variable only needed at build-time (all four above are only read by `bun run build` for static analysis / typechecking — not needed at runtime in the runtime stage).
+2. Do NOT carry them forward into the `runtime` stage (currently `COPY --from=build /app /app` brings the whole filesystem but `ENV` is per-stage, so once changed to `ARG` they will not be inherited — good).
+3. Add a runtime startup check to `apps/web` (e.g. in `lib/auth.ts`) that throws if `BETTER_AUTH_SECRET === "build_placeholder_secret"` or is missing. Fail fast rather than serve a compromised auth surface.
+4. Add a README note in the deployment section pointing at this: "Railway must set `BETTER_AUTH_SECRET`, `DATABASE_URL`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` in the service env. Build-time ARGs do NOT carry to runtime."
+
+**Depends on:** None
+**Severity:** Critical (OSS release gate; security).
 
 ---
 
@@ -326,36 +376,54 @@ PELLA_SKIP_CURSOR=0
 
 ```
 PRUNER (P-*)
-├─ P-001: Delete planning docs (no deps) ✓
-└─ P-002: Remove unused deps (no deps) ✓
+├─ P-001: Delete stale plans               — no deps
+├─ P-002: Delete migrate-cards.mjs +       — rotate DB creds; history rewrite
+│         SCRUB HISTORY (CRITICAL)             coordinate with team lead
+├─ P-003: Remove .DS_Store (working tree)  — no deps
+├─ P-004: Strip 3 console.error from       — no deps (can batch with R-001)
+│         api/card/* routes
+├─ P-005: Gitignore or header-mark         — no deps
+│         public/collector.mjs
+└─ P-006: Verify history clean             — after P-002
 
 REFACTORER (R-*)
-├─ R-001: Auth middleware (no deps, uses lib/api/) ✓
-├─ R-002: GitHub fetch utility (no deps) ✓
-├─ R-003: Decompose CardPage (no deps) ✓
-├─ R-004: Consolidate card utils (no deps) ✓
-├─ R-005: Logger abstraction (no deps) ✓
-└─ R-006: Standard error shapes (no deps, uses R-001 pattern) ✓
+├─ R-001: withAuth + apiError              — no deps (single combined task
+│         (subsumes R-006)                    across 12 route files)
+├─ R-002: githubHeaders helper             — no deps
+├─ R-003: Decompose CardPage.tsx           — no deps (icons.tsx + slides.tsx,
+│                                            not 8 slide components)
+├─ R-004: Rename card-backend.ts           — no deps
+│         → card-tokens.ts
+├─ R-005: (deleted — speculative           — n/a
+│         logger abstraction)
+└─ R-006: (merged into R-001)              — n/a
 
 DOCS (D-*)
-├─ D-001: Update .env.example (no deps) ✓
-├─ D-002: README setup (depends on D-001)
-├─ D-003: LICENSE (no deps) ✓
-└─ D-004: CONTRIBUTING (no deps) ✓
+├─ D-001: Complete .env.example            — no deps
+├─ D-002: Augment README                   — depends on D-001
+├─ D-003: Add LICENSE (MIT)                — no deps
+├─ D-004: (merged into D-002)              — n/a
+└─ D-005: Fix Dockerfile placeholder       — no deps
+          secret baking (NEW)
 ```
 
-All tasks are largely independent. Agents can work in parallel. Only D-002 depends on D-001 (can happen same session).
+Parallelizable groups:
+- Pruner and Refactorer can work simultaneously. P-004 overlaps file-wise with R-001 — give both to the same agent, or do P-004 inside R-001's edit pass.
+- Docs is independent except D-002 waits for D-001.
 
 ---
 
 ## Summary
 
-| Agent | Tasks | LOC Impact | Priority |
-|-------|-------|-----------|----------|
-| **Pruner (P-*)** | 2 | -705 | High |
-| **Refactorer (R-*)** | 6 | -300 (net) | High |
-| **Docs (D-*)** | 4 | +200 | Critical |
-| **TOTAL** | **12** | **-805** | **Ready for OSS** |
+| Agent          | Tasks                     | Severity mix           | Release gate? |
+|----------------|---------------------------|------------------------|----------------|
+| Pruner (P-*)   | 6 (P-001..P-006)          | 2 critical · 4 minor   | Yes (P-002, P-006) |
+| Refactorer (R-*) | 4 (R-001..R-004)        | 1 major · 3 minor      | No |
+| Docs (D-*)     | 4 active (D-001..D-005)   | 3 critical · 1 major   | Yes (D-001, D-003, D-005) |
+| **TOTAL**      | **14 active, 2 merged/deleted** | | |
 
-All tasks enable the following agent in the pipeline to validate and test changes. Tasks are ordered by criticality (secrets/env first, then dead code, then refactoring, then docs).
-
+Critical-path for OSS release:
+1. **P-002 + rotate DB creds + history rewrite** (blocks everything — do first).
+2. D-003 (LICENSE), D-001 (.env.example), D-005 (Dockerfile secrets).
+3. R-001 (auth + error-shape consolidation).
+4. Everything else in parallel.

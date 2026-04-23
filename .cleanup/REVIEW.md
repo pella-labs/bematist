@@ -6,33 +6,38 @@ Comprehensive findings organized by the 6 principles for open-source readiness.
 
 ## 1. Secrets & Surprises
 
-### Critical: Incomplete `.env.example` — Missing 8 Referenced Variables
+### Critical: Incomplete `.env.example` — Missing 9 Referenced Variables
 
-**Severity:** CRITICAL  
-**Location:** `.env.example` (missing entries) vs code references  
-**Finding:** The `.env.example` file lists only 5 variables but the codebase references 13. Developers cannot know what environment variables are required without reading source code.
+**Severity:** CRITICAL
+**Location:** `.env.example` (missing entries) vs code references
+**Finding:** The `.env.example` file lists only 5 variables but the codebase references at least 13 user-configurable env vars. Developers cannot know what environment variables are required without reading source code.
 
 **Missing entries:**
-- `NEXT_PUBLIC_SITE_URL` — `apps/web/app/layout.tsx:1` (defaults to "https://pellametric.com")
-- `NEXT_PUBLIC_BETTER_AUTH_URL` — `apps/web/lib/auth-client.ts:2` (required for client-side auth)
+- `NEXT_PUBLIC_SITE_URL` — `apps/web/app/layout.tsx:12` (defaults to "https://pellametric.com")
+- `NEXT_PUBLIC_BETTER_AUTH_URL` — `apps/web/lib/auth-client.ts:5` (required for client-side auth)
 - `PROMPT_MASTER_KEY` — `apps/web/lib/crypto/prompts.ts:10` (REQUIRED: 32-byte base64, throws if missing)
-- `GITHUB_TOKEN` — `apps/web/lib/github-profile.ts:13`, `github-stars.ts:8` (optional, lifts GitHub API quota)
-- `PELLA_TOKEN` — `apps/collector/src/index.ts:24` (collector: API token for ingestion)
-- `PELLA_URL` — `apps/collector/src/index.ts:25` (collector: backend URL, optional)
-- `PELLA_COLLECTOR_DEFAULT_URL` — `apps/collector/build.ts:11` (build-time default, optional)
-- `PELLA_SKIP_CURSOR` — `apps/collector/src/serve.ts:130` (feature flag, optional)
+- `GITHUB_TOKEN` — `apps/web/lib/github-profile.ts:13`, `github-stars.ts:22` (optional, lifts GitHub API quota)
+- `PELLA_TOKEN` — `apps/collector/src/index.ts:17` (collector: API token for ingestion)
+- `PELLA_URL` — `apps/collector/src/index.ts:20` (collector: backend URL, optional)
+- `PELLA_COLLECTOR_DEFAULT_URL` — `apps/collector/build.ts:13` (build-time default, optional)
+- `PELLA_SKIP_CURSOR` — `apps/collector/src/serve.ts:83` (feature flag, optional)
+- `PELLA_BIN` — `apps/collector/src/daemon.ts:33` (dev-only override, optional)
 
-**Proposed fix:** Update `.env.example` to list all 13 variables with brief descriptions and whether they are required vs optional.
+OS-provided and not user-configurable (do NOT put in `.env.example`): `APPDATA` (Windows), `XDG_CONFIG_HOME` (Linux).
+
+Additional contributor-surprise: `apps/web/drizzle.config.ts:1` does `import "dotenv/config"`, which reads `.env` NOT `.env.local`. A contributor who copies `.env.example → .env.local` (the common Next.js convention) will find `bun run db:push` silently using defaults. Must be loudly documented in `.env.example` and README.
+
+**Proposed fix:** Update `.env.example` to list all 13 user-configurable vars with required-vs-optional annotations. See PLAN D-001 for the exact file content.
 
 ---
 
 ### Minor: `.DS_Store` Exists on Disk (Not Tracked)
 
-**Severity:** MINOR  
-**Location:** `.DS_Store` (working directory)  
-**Finding:** `.DS_Store` is properly gitignored and not tracked, but still exists on macOS. Not a problem for OSS, but clean-up improves hygiene.
+**Severity:** MINOR
+**Location:** `.DS_Store` at repo root, 6148 bytes (working directory only; verified via `git log --all -- .DS_Store` returns no commits).
+**Finding:** `.DS_Store` is gitignored and has never been committed, but still exists on macOS. Working-tree hygiene only.
 
-**Proposed fix:** Remove the file locally before release (`rm .DS_Store`); no .gitignore change needed.
+**Proposed fix:** Remove the file locally before release (`rm .DS_Store`); no `.gitignore` change needed. Tracked as PLAN P-003.
 
 ---
 
@@ -40,15 +45,17 @@ Comprehensive findings organized by the 6 principles for open-source readiness.
 
 ### Major: Duplicated Error Handler Pattern
 
-**Severity:** MAJOR  
-**Location:** API routes (`apps/web/app/api/**/route.ts`)  
-**Finding:** 12 API routes repeat the same session-fetch-and-validate pattern:
+**Severity:** MAJOR
+**Location:** API routes (`apps/web/app/api/**/route.ts`)
+**Finding:** Corrected count — **7** route files repeat the same session-fetch-and-validate pattern (not 12; the original draft conflated total route files with authenticated ones):
 - `const session = await auth.api.getSession({ headers: await headers() })`
 - `if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 })`
 
-This appears in `orgs/route.ts`, `invite/route.ts`, `tokens/route.ts`, `card/token/route.ts`, `card/star-repo/route.ts`, `invite/accept/route.ts` and others.
+Enumerated exactly: `tokens/route.ts`, `prompts/route.ts`, `invite/route.ts`, `invite/accept/route.ts`, `orgs/route.ts`, `card/star-repo/route.ts`, `card/token/route.ts`.
 
-**Proposed fix:** Extract to a shared middleware or utility: `async function requireAuth() => Promise<{ userId: string } | { error: NextResponse }>`. Use in all routes.
+The remaining 5 route files intentionally do NOT authenticate and must not be wrapped: `auth/[...all]/route.ts` (Better-Auth catch-all), `card/[id]/route.ts` (public card reads), `card/submit/route.ts` (public submit), `card/token-by-star/route.ts` (public lookup), `ingest/route.ts` (bearer-token ingest from collector).
+
+**Proposed fix:** Higher-order wrapper `withAuth(handler)` + shared `apiError(error, detail?, status)` helper — see PLAN.md R-001 for the concrete spec. Rejected the original early-return `{ error } | { userId }` shape: it shadows the imported `auth` symbol and forces `"error" in auth` narrowing at every call site.
 
 ---
 
@@ -97,16 +104,18 @@ This appears in `orgs/route.ts`, `invite/route.ts`, `tokens/route.ts`, `card/tok
 
 ---
 
-### Minor: Unused Dependencies
+### Retracted: "Unused Dependencies" (three / motion / dotenv)
 
-**Severity:** MINOR  
-**Location:** `apps/web/package.json`  
-**Finding:** Three dependencies are imported but never used:
-- `three` v0.169.0 (no references in codebase)
-- `motion` v12.38.0 (no references in codebase)
-- `dotenv` v16.4.5 (not used; Next.js handles .env automatically)
+**Severity:** RETRACTED
+**Location:** `apps/web/package.json`
+**Finding:** The original draft claimed `three`, `motion`, and `dotenv` were unused. **All three are imported:**
+- `three` — `apps/web/app/(marketing)/_components/Monogram.tsx:4-6` (plus `three/addons/environments/RoomEnvironment.js`, `three/addons/loaders/SVGLoader.js`) and `apps/web/app/(marketing)/_components/HeroGrid.tsx:4`.
+- `motion` — `apps/web/app/deck/components/slide-frame.tsx:3` (`import … from "motion/react"`; `motion` is the new name for `framer-motion`).
+- `dotenv` — `apps/web/drizzle.config.ts:1` (`import "dotenv/config"`; required by `bun run db:push`, `db:studio`, `db:generate`).
 
-**Proposed fix:** Remove from `package.json`: `bun remove three motion dotenv`.
+The original grep missed subpath imports (`three/addons/*`, `motion/react`) and side-effect imports (`dotenv/config`). Removing these would break the build.
+
+**Proposed fix:** None — do not remove. If a real bundle-size audit is wanted, run `depcheck` or `knip` against the full workspace; listing candidates from a bare grep is not sufficient.
 
 ---
 
@@ -162,14 +171,14 @@ No shared error boundary or middleware. Client/server boundary is clear (no issu
 
 ### Minor: Inconsistent Error Response Shapes
 
-**Severity:** MINOR  
-**Location:** API routes  
+**Severity:** MINOR
+**Location:** API routes
 **Finding:** Error responses vary:
 - `{ error: "msg" }` — most routes
-- `{ error: "validation", issues: […] }` — `ingest/route.ts:77`
+- `{ error: "validation", issues: […] }` — `ingest/route.ts:77` (keep: `issues` is a meaningful zod payload for a single known consumer)
 - `{ error, detail: "..." }` — `orgs/route.ts:27`
 
-**Proposed fix:** Standardize to `{ error: string, detail?: string, status: number }` across all routes.
+**Proposed fix:** Standardize to `{ error: string; detail?: string }` (NOT `{…, status}` — the HTTP status is already on `NextResponse`; duplicating it in the body is a common mistake). Apply across all 12 route files via a shared `apiError(error, detail?, status?)` helper. See PLAN R-001 — this task has been merged with auth-middleware consolidation to avoid both agents editing the same 7 files.
 
 ---
 
@@ -195,15 +204,15 @@ No shared error boundary or middleware. Client/server boundary is clear (no issu
 
 ---
 
-### Major: Collector CLI Uses Bare console.log for UI Output
+### Retracted: Collector CLI `console.*` Usage
 
-**Severity:** MAJOR  
-**Location:** `apps/collector/src/` (53 console.* calls)  
-**Finding:** Commands output via bare `console.log/error` with no structured logging. Hard to test, no way to suppress output.
+**Severity:** RETRACTED (was MAJOR)
+**Location:** `apps/collector/src/` (~47 `console.*` calls across 14 files)
+**Finding:** The original draft proposed wrapping every `console.log/error/warn` in a `logger` abstraction. On review this is a speculative no-op (principle 2 violation) — each call is a distinct user-facing CLI message, the wrapper signature would be narrower than `console.log`'s real variadic signature (introducing bugs), and a CLI that prints progress to stdout is the idiomatic home of raw `console.*`. "Allows future structured logging" is the banned justification.
 
-Examples: `apps/collector/src/commands/runOnce.ts:27-78` prints 50+ lines of progress with no centralized logger.
+The `console.error` calls in 3 API routes (`card/token`, `card/star-repo`, `card/token-by-star`) are a separate, real issue — those are debug prints in production server paths, not CLI output. Tracked as PLAN P-004.
 
-**Proposed fix:** Create `logger.ts` with `{ log, error, warn }` functions; inject into services. Allows testing and future structured output.
+**Proposed fix:** None for the collector. Remove the 3 API-route debug prints (PLAN P-004). Revisit a collector logger only when a second concrete consumer exists.
 
 ---
 
@@ -233,18 +242,30 @@ Examples: `apps/collector/src/commands/runOnce.ts:27-78` prints 50+ lines of pro
 
 ## High-Risk Items (Must Fix Before OSS Release)
 
-1. **Update `.env.example`** with all 13 variables (critical for onboarding)
-2. **Delete planning documents** (`plan.md`, `CURSOR-ADAPTER-PLAN.md`)
-3. **Refactor auth middleware** (eliminate 12 code copies)
-4. **Consolidate GitHub fetch patterns** (3 locations)
-5. **Decompose CardPage.tsx** (2036 lines is unmaintainable)
+1. **DELETE `scripts/migrate-cards.mjs` + ROTATE DB CREDS + HISTORY SCRUB.** The file contains plaintext production Postgres passwords for two Railway DBs (committed in d823576). Highest-priority principle 1 violation. PLAN P-002.
+2. **Dockerfile bakes `BETTER_AUTH_SECRET=build_placeholder_secret` as `ENV`.** If the Railway deploy env does not override it, sessions are forgeable. PLAN D-005.
+3. **Add `LICENSE` (MIT).** No `LICENSE` file exists. PLAN D-003.
+4. **Update `.env.example`** with all 13 user-configurable variables + note that drizzle reads `.env` not `.env.local`. PLAN D-001.
+5. **Delete planning documents** (`plan.md`, `CURSOR-ADAPTER-PLAN.md`). PLAN P-001.
+6. **Consolidate auth middleware + error-response shape** across 7 authenticated routes + 12 total route files (combined into a single task to avoid colliding edits). PLAN R-001.
+7. **Decompose `CardPage.tsx`** (2036 lines). PLAN R-003.
+8. **Evaluate `apps/web/public/collector.mjs`** (950-line build artifact committed to git). PLAN P-005.
 
 ---
 
-## Total Findings: 17
+## Corrections (post-Challenge)
 
-- **Critical:** 2
-- **Major:** 8  
+Retracted or revised after the Challenger pass:
+- "Three unused deps (`three`/`motion`/`dotenv`)" — ALL used. Retracted; removing them would break the build.
+- "12 routes repeat auth pattern" — actually 7 (enumerated above). 5 routes are intentionally public.
+- "Wrap collector `console.*` in a logger" — retracted as a speculative abstraction.
+- "Consolidate 3 card utility files" — only 2 exist in `lib/`. Reduced to a rename of `card-backend.ts` → `card-tokens.ts`.
+- "`fetchGithub()` wrapper over 3 sites" — reduced to a `githubHeaders(token)` helper (only the headers are really duplicated; response shapes differ).
+
+## Total Findings (revised): 16
+
+- **Critical:** 4 (DB creds in history, Dockerfile placeholder secret, LICENSE missing, `.env.example` incomplete)
+- **Major:** 5
 - **Minor:** 7
 
 All findings are actionable and prioritized for Agents 2/3/4 in PLAN.md.
