@@ -1,57 +1,69 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import type { ReactNode } from "react";
+import AuthCta from "@/components/auth-cta";
+import { SignInSheetProvider } from "@/components/sign-in-sheet";
+import { auth } from "@/lib/auth";
 import "./marketing.css";
 
 const TWITTER_URL = "https://x.com/pella_labs";
 const GITHUB_URL = "https://github.com/pella-labs/pellametric";
 
-export default function MarketingLayout({ children }: { children: ReactNode }) {
+export default async function MarketingLayout({ children }: { children: ReactNode }) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  const initiallySignedIn = !!session?.user;
   return (
     <div className="pellametric-marketing">
-      <div className="mk-container">
-        <nav className="mk-nav" aria-label="Primary">
-          <Link href="/" className="mk-wordmark">
-            Pellametric
-          </Link>
-          <div className="mk-nav-links">
-            <a
-              href={TWITTER_URL}
-              className="mk-btn mk-btn-ghost mk-btn-icon"
-              rel="noreferrer"
-              target="_blank"
-              aria-label="Follow on X"
-            >
-              <XMark />
-              <span className="mk-btn-icon-label">Follow</span>
-            </a>
-            <Link href="/signin" className="mk-btn mk-btn-ghost">
-              Sign in
+      <SignInSheetProvider>
+        <div className="mk-container">
+          <nav className="mk-nav" aria-label="Primary">
+            <Link href="/" className="mk-wordmark">
+              Pellametric
             </Link>
-            <a href={GITHUB_URL} className="mk-btn mk-btn-primary" rel="noreferrer">
-              GitHub
-            </a>
-          </div>
-        </nav>
-        {children}
-        <footer className="mk-footer">
-          <div className="mk-footer-copy">
-            <span className="mk-footer-line">The instrument for agentic engineering output.</span>
-            <span className="mk-footer-sub">
-              See the spend. See the work. Scale what ships. Open-source, self-hostable, runs
-              against your local sessions on day one.
-            </span>
-          </div>
-          <div>
-            <a href={TWITTER_URL} rel="noreferrer" target="_blank">
-              Follow on X
-            </a>
-            <a href={GITHUB_URL} rel="noreferrer">
-              GitHub
-            </a>
-            <Link href="/signin">Sign in</Link>
-          </div>
-        </footer>
-      </div>
+            <div className="mk-nav-links">
+              <a
+                href={TWITTER_URL}
+                className="mk-btn mk-btn-ghost mk-btn-icon"
+                rel="noreferrer"
+                target="_blank"
+                aria-label="Follow on X"
+              >
+                <XMark />
+                <span className="mk-btn-icon-label">Follow</span>
+              </a>
+              <AuthCta
+                initiallySignedIn={initiallySignedIn}
+                variant="nav"
+                className="mk-btn mk-btn-ghost"
+              />
+              <a href={GITHUB_URL} className="mk-btn mk-btn-primary" rel="noreferrer">
+                GitHub
+              </a>
+            </div>
+          </nav>
+          {children}
+          <footer className="mk-footer">
+            <div className="mk-footer-copy">
+              <span className="mk-footer-line">
+                The instrument for agentic engineering output.
+              </span>
+              <span className="mk-footer-sub">
+                See the spend. See the work. Scale what ships. Open-source, self-hostable, runs
+                against your local sessions on day one.
+              </span>
+            </div>
+            <div>
+              <a href={TWITTER_URL} rel="noreferrer" target="_blank">
+                Follow on X
+              </a>
+              <a href={GITHUB_URL} rel="noreferrer">
+                GitHub
+              </a>
+              <AuthCta initiallySignedIn={initiallySignedIn} variant="nav" className="" />
+            </div>
+          </footer>
+        </div>
+      </SignInSheetProvider>
     </div>
   );
 }
