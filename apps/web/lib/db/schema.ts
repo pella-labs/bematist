@@ -81,6 +81,7 @@ export const invitation = pgTable("invitation", {
   orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
   githubLogin: text("github_login").notNull(),
   invitedByUserId: text("invited_by").notNull().references(() => user.id),
+  role: text("role").notNull().default("dev"),          // "manager" | "dev"
   status: text("status").notNull().default("pending"),  // "pending" | "accepted" | "revoked"
   createdAt: timestamp("created_at").notNull().defaultNow(),
   acceptedAt: timestamp("accepted_at"),
