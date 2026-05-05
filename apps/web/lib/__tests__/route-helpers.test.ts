@@ -71,7 +71,8 @@ describe("requireManager", () => {
 
   it("returns 404 when the user has no membership in that org", async () => {
     limitMock.mockResolvedValueOnce([]);
-    const result = await requireManager("user-1", "acme");
+    const fakeSession = { user: { id: "user-1" } };
+    const result = await requireManager(fakeSession, "acme");
     expect(result).toBeInstanceOf(Response);
     if (result instanceof Response) {
       expect(result.status).toBe(404);
@@ -82,7 +83,8 @@ describe("requireManager", () => {
     limitMock.mockResolvedValueOnce([
       { org: { id: "org-1", slug: "acme", name: "Acme" }, role: "dev" },
     ]);
-    const result = await requireManager("user-1", "acme");
+    const fakeSession = { user: { id: "user-1" } };
+    const result = await requireManager(fakeSession, "acme");
     expect(result).toBeInstanceOf(Response);
     if (result instanceof Response) {
       expect(result.status).toBe(403);
@@ -93,7 +95,8 @@ describe("requireManager", () => {
     limitMock.mockResolvedValueOnce([
       { org: { id: "org-1", slug: "acme", name: "Acme" }, role: "manager" },
     ]);
-    const result = await requireManager("user-1", "acme");
+    const fakeSession = { user: { id: "user-1" } };
+    const result = await requireManager(fakeSession, "acme");
     expect(result).not.toBeInstanceOf(Response);
     if (!(result instanceof Response)) {
       expect(result.org.id).toBe("org-1");

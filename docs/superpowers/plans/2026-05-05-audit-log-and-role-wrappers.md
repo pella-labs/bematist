@@ -485,7 +485,7 @@ Create `apps/web/lib/route-helpers.ts`:
 // Or for manager-only routes:
 //   const sess = await requireSession();
 //   if (sess instanceof Response) return sess;
-//   const mgr = await requireManager(sess.user.id, body.orgSlug);
+//   const mgr = await requireManager(sess, body.orgSlug);
 //   if (mgr instanceof Response) return mgr;
 //   // ... use mgr.org
 
@@ -843,7 +843,7 @@ export async function POST(req: Request) {
 
   const body = bodySchema.parse(await req.json());
 
-  const mgr = await requireManager(sess.user.id, body.orgSlug);
+  const mgr = await requireManager(sess, body.orgSlug);
   if (mgr instanceof NextResponse) return mgr;
 
   if (sess.user.id === body.targetUserId) {
@@ -1095,7 +1095,7 @@ export async function GET(req: Request) {
   const orgSlug = searchParams.get("orgSlug");
   if (!orgSlug) return NextResponse.json({ error: "orgSlug required" }, { status: 400 });
 
-  const mgr = await requireManager(sess.user.id, orgSlug);
+  const mgr = await requireManager(sess, orgSlug);
   if (mgr instanceof NextResponse) return mgr;
 
   const invites = await db.select().from(schema.invitation).where(eq(schema.invitation.orgId, mgr.org.id));
@@ -1114,7 +1114,7 @@ export async function POST(req: Request) {
 
   const body = inviteSchema.parse(await req.json());
 
-  const mgr = await requireManager(sess.user.id, body.orgSlug);
+  const mgr = await requireManager(sess, body.orgSlug);
   if (mgr instanceof NextResponse) return mgr;
 
   // Verify invitee is actually in the GitHub org

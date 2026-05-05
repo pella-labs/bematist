@@ -10,7 +10,7 @@
 // Or for manager-only routes:
 //   const sess = await requireSession();
 //   if (sess instanceof Response) return sess;
-//   const mgr = await requireManager(sess.user.id, body.orgSlug);
+//   const mgr = await requireManager(sess, body.orgSlug);
 //   if (mgr instanceof Response) return mgr;
 //   // ... use mgr.org
 
@@ -38,15 +38,7 @@ export async function requireSession(): Promise<SessionContext | NextResponse> {
   return { user: session.user as SessionUser };
 }
 
-export interface OrgRow {
-  id: string;
-  slug: string;
-  name: string;
-  githubOrgId?: string;
-  githubAppInstallationId?: number | null;
-  githubAppInstalledAt?: Date | null;
-  createdAt?: Date;
-}
+export type OrgRow = typeof schema.org.$inferSelect;
 
 export interface ManagerContext {
   org: OrgRow;
@@ -54,22 +46,25 @@ export interface ManagerContext {
 }
 
 /**
- * Verify `userId` is a manager of `orgSlug`. Returns:
+ * Verify the session user is a manager of `orgSlug`. Pass the
+ * SessionContext from requireSession() — the type signature enforces
+ * that `requireSession()` ran first, so `session.user.id` is always a
+ * verified id (not a user-controlled body field).
+ *
+ * Returns:
  *   - 404 if the user has no membership in any org with that slug
  *   - 403 if the user is a member but role !== "manager"
  *   - { org, role } when authorized
- *
- * Assumes the caller already passed requireSession().
  */
 export async function requireManager(
-  userId: string,
+  session: SessionContext,
   orgSlug: string,
 ): Promise<ManagerContext | NextResponse> {
   const [row] = await db
     .select({ org: schema.org, role: schema.membership.role })
     .from(schema.membership)
     .innerJoin(schema.org, eq(schema.membership.orgId, schema.org.id))
-    .where(and(eq(schema.membership.userId, userId), eq(schema.org.slug, orgSlug)))
+    .where(and(eq(schema.membership.userId, session.user.id), eq(schema.org.slug, orgSlug)))
     .limit(1);
 
   if (!row) {
@@ -78,5 +73,5 @@ export async function requireManager(
   if (row.role !== "manager") {
     return NextResponse.json({ error: "not a manager of this org" }, { status: 403 });
   }
-  return { org: row.org as OrgRow, role: "manager" };
+  return { org: row.org, role: "manager" };
 }
