@@ -1545,10 +1545,10 @@ EOF
 5. **Test coverage**:
    - `audit.test.ts` — 7 unit tests
    - `route-helpers.test.ts` — 6 unit tests
-   - `membership/role/route.test.ts` — 1 regression test
+   - `membership/role/route.test.ts` — 2 regression tests
    - `invite/route.test.ts` — 2 regression tests
    - `tokens/route.test.ts` — 2 regression tests
-   - **Total new tests: 18**
+   - **Total new tests: 19**
 
 ## What does NOT ship and why
 

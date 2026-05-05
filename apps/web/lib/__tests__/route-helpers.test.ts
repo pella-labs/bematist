@@ -28,8 +28,7 @@ vi.mock("@/lib/db", async () => {
   };
 });
 
-const { requireSession } = await import("../route-helpers");
-const { requireManager } = await import("../route-helpers");
+const { requireSession, requireManager } = await import("../route-helpers");
 
 describe("requireSession", () => {
   beforeEach(() => {
