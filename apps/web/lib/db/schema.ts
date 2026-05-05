@@ -250,3 +250,25 @@ export const uploadBatch = pgTable("upload_batch", {
   collectorVersion: text("collector_version"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// ---------- audit log ----------
+// Append-only record of every privileged action (token mint, invite send,
+// role change, etc). Read by managers; written by `lib/audit.ts`.
+// `orgId` and `actorUserId` are nullable because some events (future:
+// org.create, account.delete) may not have one or the other.
+export const auditLog = pgTable("audit_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").references(() => org.id, { onDelete: "set null" }),
+  actorUserId: text("actor_user_id").references(() => user.id, { onDelete: "set null" }),
+  action: text("action").notNull(),                 // e.g. "role.change", "invite.send", "token.create"
+  targetType: text("target_type"),                  // e.g. "membership", "invitation", "api_token"
+  targetId: text("target_id"),                      // free-form id of the affected row
+  metadata: jsonb("metadata").notNull().default({}),
+  ip: text("ip"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, t => ({
+  byOrg: index("audit_log_by_org").on(t.orgId, t.createdAt),
+  byActor: index("audit_log_by_actor").on(t.actorUserId, t.createdAt),
+  byAction: index("audit_log_by_action").on(t.action, t.createdAt),
+}));
