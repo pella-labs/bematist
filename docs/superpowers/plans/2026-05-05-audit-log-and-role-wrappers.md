@@ -753,7 +753,7 @@ vi.mock("@/lib/db", async () => {
 
 // Re-import db so our mock is the one referenced.
 const { db } = await import("@/lib/db");
-const { POST } = await import("../../route");
+const { POST } = await import("../route");
 
 function makeRequest(body: unknown, headers: Record<string, string> = {}): Request {
   return new Request("http://x.test/api/membership/role", {
@@ -802,6 +802,20 @@ describe("POST /api/membership/role", () => {
     // membership_audit insert still happens (we don't break the existing UI).
     expect(insertValuesMock).toHaveBeenCalledTimes(2);
   });
+
+  it("does NOT emit audit when requireManager rejects", async () => {
+    requireSessionMock.mockResolvedValueOnce({ user: { id: "actor-1" } });
+    requireManagerMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "not a manager" }), { status: 403 }),
+    );
+
+    const res = await POST(makeRequest({
+      orgSlug: "acme", targetUserId: "target-1", role: "manager",
+    }));
+    expect(res.status).toBe(403);
+    expect(logAuditMock).not.toHaveBeenCalled();
+    expect(insertValuesMock).not.toHaveBeenCalled();
+  });
 });
 ```
 
@@ -836,12 +850,12 @@ const bodySchema = z.object({
 
 export async function POST(req: Request) {
   const sess = await requireSession();
-  if (sess instanceof NextResponse) return sess;
+  if (sess instanceof Response) return sess;
 
   const body = bodySchema.parse(await req.json());
 
   const mgr = await requireManager(sess, body.orgSlug);
-  if (mgr instanceof NextResponse) return mgr;
+  if (mgr instanceof Response) return mgr;
 
   if (sess.user.id === body.targetUserId) {
     return NextResponse.json({ error: "you can't change your own role" }, { status: 400 });
@@ -872,13 +886,20 @@ export async function POST(req: Request) {
   // Keep writing to membership_audit so /org/[slug]/members continues to render
   // role-change history without a separate UI change. A follow-up plan migrates
   // that page to read from audit_log and we can drop this dual-write.
-  await db.insert(schema.membershipAudit).values({
-    orgId: mgr.org.id,
-    targetUserId: body.targetUserId,
-    actorUserId: sess.user.id,
-    fromRole: target.role,
-    toRole: body.role,
-  });
+  // Wrapped in try/catch matching logAudit's swallow-on-failure semantics: a
+  // legacy-audit hiccup must not 500 a request whose role mutation already
+  // succeeded.
+  try {
+    await db.insert(schema.membershipAudit).values({
+      orgId: mgr.org.id,
+      targetUserId: body.targetUserId,
+      actorUserId: sess.user.id,
+      fromRole: target.role,
+      toRole: body.role,
+    });
+  } catch (err) {
+    console.error("membership_audit insert failed", { orgId: mgr.org.id, targetUserId: body.targetUserId, err });
+  }
 
   const meta = extractRequestMeta(req);
   await logAudit({
@@ -1086,14 +1107,14 @@ import { logAudit, extractRequestMeta } from "@/lib/audit";
 
 export async function GET(req: Request) {
   const sess = await requireSession();
-  if (sess instanceof NextResponse) return sess;
+  if (sess instanceof Response) return sess;
 
   const { searchParams } = new URL(req.url);
   const orgSlug = searchParams.get("orgSlug");
   if (!orgSlug) return NextResponse.json({ error: "orgSlug required" }, { status: 400 });
 
   const mgr = await requireManager(sess, orgSlug);
-  if (mgr instanceof NextResponse) return mgr;
+  if (mgr instanceof Response) return mgr;
 
   const invites = await db.select().from(schema.invitation).where(eq(schema.invitation.orgId, mgr.org.id));
   return NextResponse.json({ invites });
@@ -1107,12 +1128,12 @@ const inviteSchema = z.object({
 
 export async function POST(req: Request) {
   const sess = await requireSession();
-  if (sess instanceof NextResponse) return sess;
+  if (sess instanceof Response) return sess;
 
   const body = inviteSchema.parse(await req.json());
 
   const mgr = await requireManager(sess, body.orgSlug);
-  if (mgr instanceof NextResponse) return mgr;
+  if (mgr instanceof Response) return mgr;
 
   // Verify invitee is actually in the GitHub org
   const [acc] = await db.select().from(schema.account)
@@ -1365,7 +1386,7 @@ import { logAudit, extractRequestMeta } from "@/lib/audit";
 
 export async function GET() {
   const sess = await requireSession();
-  if (sess instanceof NextResponse) return sess;
+  if (sess instanceof Response) return sess;
 
   const rows = await db.select({
     id: schema.apiToken.id, name: schema.apiToken.name,
@@ -1377,7 +1398,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const sess = await requireSession();
-  if (sess instanceof NextResponse) return sess;
+  if (sess instanceof Response) return sess;
 
   const body = await req.json().catch(() => ({}));
   const name = (body?.name as string) || "collector";

@@ -16,12 +16,12 @@ const bodySchema = z.object({
 
 export async function POST(req: Request) {
   const sess = await requireSession();
-  if (sess instanceof NextResponse) return sess;
+  if (sess instanceof Response) return sess;
 
   const body = bodySchema.parse(await req.json());
 
   const mgr = await requireManager(sess, body.orgSlug);
-  if (mgr instanceof NextResponse) return mgr;
+  if (mgr instanceof Response) return mgr;
 
   if (sess.user.id === body.targetUserId) {
     return NextResponse.json({ error: "you can't change your own role" }, { status: 400 });
@@ -52,13 +52,20 @@ export async function POST(req: Request) {
   // Keep writing to membership_audit so /org/[slug]/members continues to render
   // role-change history without a separate UI change. A follow-up plan migrates
   // that page to read from audit_log and we can drop this dual-write.
-  await db.insert(schema.membershipAudit).values({
-    orgId: mgr.org.id,
-    targetUserId: body.targetUserId,
-    actorUserId: sess.user.id,
-    fromRole: target.role,
-    toRole: body.role,
-  });
+  // Wrapped in try/catch matching logAudit's swallow-on-failure semantics: a
+  // legacy-audit hiccup must not 500 a request whose role mutation already
+  // succeeded.
+  try {
+    await db.insert(schema.membershipAudit).values({
+      orgId: mgr.org.id,
+      targetUserId: body.targetUserId,
+      actorUserId: sess.user.id,
+      fromRole: target.role,
+      toRole: body.role,
+    });
+  } catch (err) {
+    console.error("membership_audit insert failed", { orgId: mgr.org.id, targetUserId: body.targetUserId, err });
+  }
 
   const meta = extractRequestMeta(req);
   await logAudit({

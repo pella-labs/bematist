@@ -93,4 +93,18 @@ describe("POST /api/membership/role", () => {
     // membership_audit insert still happens (we don't break the existing UI).
     expect(insertValuesMock).toHaveBeenCalledTimes(2);
   });
+
+  it("does NOT emit audit when requireManager rejects", async () => {
+    requireSessionMock.mockResolvedValueOnce({ user: { id: "actor-1" } });
+    requireManagerMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "not a manager" }), { status: 403 }),
+    );
+
+    const res = await POST(makeRequest({
+      orgSlug: "acme", targetUserId: "target-1", role: "manager",
+    }));
+    expect(res.status).toBe(403);
+    expect(logAuditMock).not.toHaveBeenCalled();
+    expect(insertValuesMock).not.toHaveBeenCalled();
+  });
 });
