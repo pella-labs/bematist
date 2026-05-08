@@ -17,6 +17,8 @@ export const user = pgTable("user", {
   // extras we attach for convenience
   githubLogin: text("github_login"),
   githubId: text("github_id"),
+  gitlabUsername: text("gitlab_username"),
+  gitlabId: text("gitlab_id"),
 });
 
 export const session = pgTable("session", {

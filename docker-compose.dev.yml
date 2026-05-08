@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: pellametric-pg-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pella
+      POSTGRES_PASSWORD: pella
+      POSTGRES_DB: pellametric
+    ports:
+      - "5433:5432"
+    volumes:
+      - pellametric_pg_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pella -d pellametric"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pellametric_pg_data:
