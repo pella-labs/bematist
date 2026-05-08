@@ -4,11 +4,9 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import Link from "next/link";
-import SignOutButton from "@/components/sign-out-button";
 import { acceptPendingInvites } from "@/lib/invite-accept";
-import { providers } from "@/lib/providers/ui-config";
 import type { ProviderName } from "@/lib/providers/types";
-import { orgHref } from "@/lib/orgs/href";
+import DashboardOrgList from "@/components/dashboard-org-list";
 
 export default async function Dashboard() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -24,26 +22,13 @@ export default async function Dashboard() {
     .where(eq(schema.membership.userId, session.user.id));
 
   return (
-    <main className="max-w-[1600px] mx-auto mt-8 px-6 pb-16">
-      <header className="flex items-end justify-between mb-12 pb-6 border-b border-border">
-        <div>
-          <div className="mk-eyebrow mb-2">pellametric</div>
-          <h1 className="mk-heading text-3xl md:text-4xl font-semibold tracking-[-0.02em]">
-            Welcome back,{" "}
-            <em className="not-italic text-accent">{session.user.name?.split(" ")[0] ?? "dev"}.</em>
-          </h1>
-        </div>
-        <div className="flex items-center gap-3">
-          {session.user.image && (
-            <img
-              src={session.user.image}
-              alt={session.user.name ?? "avatar"}
-              className="size-10 rounded-full border border-border object-cover"
-              referrerPolicy="no-referrer"
-            />
-          )}
-          <SignOutButton />
-        </div>
+    <main className="max-w-[1600px] mx-auto mt-8 px-4 sm:px-6 pb-16 pr-16 sm:pr-20">
+      <header className="mb-10 sm:mb-12 pb-5 sm:pb-6 border-b border-border">
+        <div className="mk-eyebrow mb-2">pellametric</div>
+        <h1 className="mk-heading text-2xl sm:text-3xl md:text-4xl font-semibold tracking-[-0.02em]">
+          Welcome back,{" "}
+          <em className="not-italic text-accent">{session.user.name?.split(" ")[0] ?? "dev"}.</em>
+        </h1>
       </header>
 
       {memberships.length === 0 ? (
@@ -56,47 +41,25 @@ export default async function Dashboard() {
           </Link>
         </section>
       ) : (
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <div className="mk-eyebrow">your orgs</div>
-            <Link href="/setup/org" className="mk-label border border-border px-3 py-2 hover:border-[color:var(--border-hover)] transition">
-              + connect another org
-            </Link>
-          </div>
-          <div className="border border-border">
-            {memberships.map(({ org, role }, i) => {
-              const cfg = providers[(org.provider ?? "github") as ProviderName];
-              return (
-                <Link
-                  key={org.id}
-                  href={orgHref(org.slug)}
-                  className={`flex justify-between items-center px-5 py-5 hover:bg-card transition ${i > 0 ? "border-t border-border" : ""}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span style={{ color: cfg.accent }} aria-label={`${cfg.name} org`} className="shrink-0">
-                      <cfg.Icon width={18} height={18} />
-                    </span>
-                    <div>
-                      <div className="mk-heading font-semibold">{org.name}</div>
-                      <div className="mk-label mt-1">{cfg.name} · {org.slug} · {role}</div>
-                    </div>
-                  </div>
-                  <span className="text-accent mk-label">open →</span>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
+        <DashboardOrgList
+          rows={memberships.map(({ org, role }) => ({
+            id: org.id,
+            slug: org.slug,
+            name: org.name,
+            role,
+            provider: (org.provider ?? "github") as ProviderName,
+          }))}
+        />
       )}
 
-      <section className="mt-12 mk-card p-6">
-        <div className="flex items-start justify-between gap-6">
+      <section className="mt-12 mk-card p-5 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
           <div>
             <div className="mk-eyebrow mb-2">collector</div>
             <h2 className="mk-heading font-semibold text-lg mb-1.5">Run it once</h2>
             <p className="text-sm text-muted-foreground max-w-md">Reads your local Claude Code + Codex sessions, uploads to pellametric.</p>
           </div>
-          <Link href="/setup/collector" className="mk-label border border-border px-3 py-2 hover:border-[color:var(--border-hover)] transition shrink-0">
+          <Link href="/setup/collector" className="mk-label border border-border px-3 py-2 hover:border-[color:var(--border-hover)] transition shrink-0 self-start">
             setup →
           </Link>
         </div>

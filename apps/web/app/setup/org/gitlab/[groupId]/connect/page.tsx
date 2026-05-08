@@ -25,8 +25,8 @@ export default async function GitlabConnectPage({
     : "https://gitlab.com/groups";
 
   return (
-    <main className="max-w-xl mx-auto min-h-[80vh] px-6 pt-12 pb-16">
-      <header className="flex items-start gap-4 mb-6">
+    <main className="max-w-xl mx-auto min-h-[80vh] px-4 sm:px-6 pt-12 pb-16 pr-16 sm:pr-20">
+      <header className="flex items-start gap-3 sm:gap-4 mb-6">
         <BackButton href="/setup/org/gitlab" />
         <div>
           <h1 className="text-xl font-bold">Paste a Group Access Token</h1>

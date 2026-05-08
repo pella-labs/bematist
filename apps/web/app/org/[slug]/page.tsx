@@ -202,19 +202,19 @@ export default async function OrgPage({
   }
 
   return (
-    <main className="max-w-[1600px] mx-auto mt-8 px-6 pb-16">
-      <header className="flex justify-between items-start mb-10 pb-5 border-b border-border">
-        <div className="flex items-start gap-4">
+    <main className="max-w-[1600px] mx-auto mt-8 px-4 sm:px-6 pb-16 pr-16 sm:pr-20">
+      <header className="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-start mb-8 sm:mb-10 pb-5 border-b border-border">
+        <div className="flex items-start gap-3 sm:gap-4 min-w-0">
           <BackButton href="/dashboard" />
-          <div>
+          <div className="min-w-0">
             <div className="mk-eyebrow mb-2 flex items-center gap-2">
               <span style={{ color: providerCfg.accent }} aria-label={`${providerCfg.name} org`}>
                 <providerCfg.Icon width={14} height={14} />
               </span>
               <span>{providerCfg.name} · {row.role}</span>
             </div>
-            <h1 className="mk-heading text-3xl md:text-4xl font-semibold tracking-[-0.02em]">{row.org.name}</h1>
-            <div className="mk-label mt-1.5">
+            <h1 className="mk-heading text-2xl sm:text-3xl md:text-4xl font-semibold tracking-[-0.02em] break-words">{row.org.name}</h1>
+            <div className="mk-label mt-1.5 break-words">
               {row.org.slug}
               <span className="ml-2 text-muted-foreground normal-case tracking-normal">
                 · {(isManager ? allOrgSessions.length : mySessions.length).toLocaleString()} sessions in {windowKey === "all" ? "all time" : windowKey}
@@ -222,7 +222,7 @@ export default async function OrgPage({
             </div>
           </div>
         </div>
-        <div className="flex items-start gap-3">
+        <div className="flex flex-wrap items-start gap-2 sm:gap-3">
           <WindowPicker current={windowKey} />
           {isManager && (
             <>

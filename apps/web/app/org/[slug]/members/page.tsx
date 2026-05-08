@@ -60,12 +60,12 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
   const managerCount = members.filter(m => m.role === "manager").length;
 
   return (
-    <main className="max-w-3xl mx-auto mt-8 px-6 pb-16">
-      <header className="flex items-start gap-4 mb-8 pb-5 border-b border-border">
+    <main className="max-w-3xl mx-auto mt-8 px-4 sm:px-6 pb-16 pr-16 sm:pr-20">
+      <header className="flex items-start gap-3 sm:gap-4 mb-8 pb-5 border-b border-border">
         <BackButton href={`/org/${encodeURIComponent(slug)}`} />
-        <div>
+        <div className="min-w-0">
           <div className="mk-eyebrow mb-2">org · members</div>
-          <h1 className="mk-heading text-2xl font-semibold tracking-[-0.02em]">{callerRow.org.name}</h1>
+          <h1 className="mk-heading text-2xl font-semibold tracking-[-0.02em] break-words">{callerRow.org.name}</h1>
           <p className="text-sm text-muted-foreground mt-1">Promote a dev to manager, or demote a manager back to dev. You can't change your own role.</p>
         </div>
       </header>

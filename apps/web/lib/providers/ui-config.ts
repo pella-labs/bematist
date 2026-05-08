@@ -23,7 +23,9 @@ export const providers: Record<ProviderName, ProviderUiConfig> = {
   github: {
     name: "GitHub",
     Icon: GithubIcon,
-    accent: "#24292f",
+    // Use GitHub's dark-mode foreground (`#f0f6fc`) so the octocat is readable
+    // on our dark theme. Their canonical brand black (#24292f) is invisible here.
+    accent: "#f0f6fc",
     brand: "#0969da",
     nounSingular: "PR",
     nounPlural: "PRs",

@@ -46,8 +46,8 @@ export default function InvitePage({ params }: { params: Promise<{ slug: string 
   }
 
   return (
-    <main className="max-w-xl mx-auto mt-8 px-6 pb-16">
-      <header className="flex items-start gap-4 mb-6">
+    <main className="max-w-xl mx-auto mt-8 px-4 sm:px-6 pb-16 pr-16 sm:pr-20">
+      <header className="flex items-start gap-3 sm:gap-4 mb-6">
         <BackButton href={`/org/${encodeURIComponent(slug)}`} />
         <div>
           <h1 className="text-xl font-bold">Invite to {slug}</h1>
