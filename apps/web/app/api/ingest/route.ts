@@ -15,7 +15,8 @@ import { encryptPrompt, getOrCreateUserDek } from "@/lib/crypto/prompts";
 
 const sessionSchema = z.object({
   externalSessionId: z.string(),
-  repo: z.string(),                           // "owner/name"
+  repo: z.string(),                           // "ownerPath/name" — ownerPath may contain '/' for gitlab subgroups
+  provider: z.enum(["github", "gitlab"]).optional(),  // defaults to 'github' for back-compat
   cwd: z.string().optional(),
   startedAt: z.string(),                      // ISO
   endedAt: z.string(),                        // ISO
@@ -78,27 +79,67 @@ export async function POST(req: Request) {
   }
   const body = parsed.data;
 
-  // resolve repo -> orgId via org slug (owner) and user's memberships
+  // Resolve repo -> orgId via (provider, slug) and user's memberships.
+  //   GitHub: exact match on owner == slug.
+  //   GitLab: longest-prefix match on ownerPath (allows subgroups to live as
+  //           separate orgs while a parent org claims everything else).
+  // See docs/multi-provider.md §8.
   const memberships = await db
-    .select({ orgId: schema.membership.orgId, slug: schema.org.slug, orgRow: schema.org })
+    .select({ orgId: schema.membership.orgId, slug: schema.org.slug, provider: schema.org.provider })
     .from(schema.membership)
     .innerJoin(schema.org, eq(schema.membership.orgId, schema.org.id))
     .where(eq(schema.membership.userId, userId));
-  const slugToOrgId = new Map(memberships.map(m => [m.slug.toLowerCase(), m.orgId]));
+
+  const githubByExact = new Map<string, string>();
+  const gitlabByExact = new Map<string, string>();
+  const gitlabSlugsLower: { slug: string; orgId: string }[] = [];
+  for (const m of memberships) {
+    const lc = m.slug.toLowerCase();
+    if (m.provider === "gitlab") {
+      gitlabByExact.set(lc, m.orgId);
+      gitlabSlugsLower.push({ slug: lc, orgId: m.orgId });
+    } else {
+      githubByExact.set(lc, m.orgId);
+    }
+  }
+  // Sort GitLab slugs by length desc so longest-prefix scan finds most-specific first.
+  gitlabSlugsLower.sort((a, b) => b.slug.length - a.slug.length);
+
+  function resolveOrgId(provider: "github" | "gitlab", repo: string): string | null {
+    const lastSlash = repo.lastIndexOf("/");
+    if (lastSlash < 1) return null;
+    const ownerPathLower = repo.slice(0, lastSlash).toLowerCase();
+    if (provider === "github") {
+      return githubByExact.get(ownerPathLower) ?? null;
+    }
+    // GitLab: exact, then longest prefix that matches under '/' boundary.
+    const exact = gitlabByExact.get(ownerPathLower);
+    if (exact) return exact;
+    for (const cand of gitlabSlugsLower) {
+      if (ownerPathLower === cand.slug || ownerPathLower.startsWith(cand.slug + "/")) {
+        return cand.orgId;
+      }
+    }
+    return null;
+  }
 
   let inserted = 0;
   const accepted: string[] = [];
   const rejected: Array<{ repo: string; reason: string }> = [];
 
   for (const s of body.sessions) {
-    const [owner, name] = s.repo.split("/");
-    if (!owner || !name) { rejected.push({ repo: s.repo, reason: "bad repo format" }); continue; }
-    const orgId = slugToOrgId.get(owner.toLowerCase());
+    const provider = s.provider ?? "github";
+    const lastSlash = s.repo.lastIndexOf("/");
+    if (lastSlash < 1) { rejected.push({ repo: s.repo, reason: "bad repo format" }); continue; }
+    const name = s.repo.slice(lastSlash + 1);
+    if (!name) { rejected.push({ repo: s.repo, reason: "bad repo format" }); continue; }
+    const orgId = resolveOrgId(provider, s.repo);
     if (!orgId) { rejected.push({ repo: s.repo, reason: "no membership for this org" }); continue; }
 
     const row = {
       userId,
       orgId,
+      provider,
       source: body.source,
       externalSessionId: s.externalSessionId,
       repo: s.repo,
@@ -160,8 +201,8 @@ export async function POST(req: Request) {
     const sidToOrg = new Map<string, string>();
     for (const s of body.sessions) {
       if (!acceptedSet.has(s.externalSessionId)) continue;
-      const [owner] = s.repo.split("/");
-      const oid = slugToOrgId.get(owner.toLowerCase());
+      const provider = s.provider ?? "github";
+      const oid = resolveOrgId(provider, s.repo);
       if (oid) sidToOrg.set(s.externalSessionId, oid);
     }
     const dek = await getOrCreateUserDek(userId);

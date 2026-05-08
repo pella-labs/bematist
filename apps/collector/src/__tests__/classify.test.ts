@@ -69,15 +69,28 @@ describe("FRUSTRATION_RE", () => {
   });
 });
 
-describe("parseGithubRemote", () => {
-  it("parses https url", () => {
-    expect(parseGithubRemote("https://github.com/pella-labs/bematist.git")).toEqual({ owner: "pella-labs", repo: "bematist" });
+describe("parseRemote", () => {
+  it("parses GitHub https url", () => {
+    expect(parseGithubRemote("https://github.com/pella-labs/bematist.git"))
+      .toEqual({ provider: "github", owner: "pella-labs", repo: "bematist" });
   });
-  it("parses ssh url", () => {
-    expect(parseGithubRemote("git@github.com:pella-labs/pharos.git")).toEqual({ owner: "pella-labs", repo: "pharos" });
+  it("parses GitHub ssh url", () => {
+    expect(parseGithubRemote("git@github.com:pella-labs/pharos.git"))
+      .toEqual({ provider: "github", owner: "pella-labs", repo: "pharos" });
   });
-  it("returns null for non-github", () => {
-    expect(parseGithubRemote("git@gitlab.com:foo/bar.git")).toBeNull();
+  it("parses GitLab top-level group", () => {
+    expect(parseGithubRemote("git@gitlab.com:pella-labs/foo.git"))
+      .toEqual({ provider: "gitlab", owner: "pella-labs", repo: "foo" });
+  });
+  it("parses GitLab subgroup paths (preserves subgroups in owner)", () => {
+    expect(parseGithubRemote("https://gitlab.com/pella-labs/team-a/svc.git"))
+      .toEqual({ provider: "gitlab", owner: "pella-labs/team-a", repo: "svc" });
+    expect(parseGithubRemote("git@gitlab.com:a/b/c/d.git"))
+      .toEqual({ provider: "gitlab", owner: "a/b/c", repo: "d" });
+  });
+  it("returns null for unknown hosts and bad input", () => {
+    expect(parseGithubRemote("git@bitbucket.org:foo/bar.git")).toBeNull();
     expect(parseGithubRemote("")).toBeNull();
+    expect(parseGithubRemote("just-some-text")).toBeNull();
   });
 });

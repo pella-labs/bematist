@@ -12,9 +12,14 @@ import { windowCutoff, parseWindow, type WindowKey } from "@/lib/window";
 import { aggregateBoth } from "@/lib/aggregate";
 import { costFor } from "@/lib/pricing";
 import { prAggForMember } from "@/lib/gh";
+import { getProvider, ProviderError } from "@/lib/providers";
 import { appConfigured, installUrl } from "@/lib/github-app";
 import { computeOnboardingState } from "@/lib/onboarding";
 import OnboardingOverlay from "@/components/onboarding-overlay";
+import { providers } from "@/lib/providers/ui-config";
+import type { ProviderName } from "@/lib/providers/types";
+import { orgHref } from "@/lib/orgs/href";
+import { gitlabCanWrite } from "@/lib/providers/scopes";
 
 export default async function OrgPage({
   params, searchParams,
@@ -37,6 +42,20 @@ export default async function OrgPage({
     .limit(1);
   if (!row) notFound();
   const isManager = row.role === "manager";
+  const providerName = (row.org.provider ?? "github") as ProviderName;
+  const providerCfg = providers[providerName];
+
+  // For GitLab orgs, check whether the stored GAT has write scope. If not, we
+  // hide invite-from-Pellametric flows and surface a clear "this is read-only"
+  // hint with a path to upgrade the token.
+  let canInvite = true;
+  if (providerName === "gitlab") {
+    const [cred] = await db.select({ scopes: schema.orgCredentials.scopes })
+      .from(schema.orgCredentials)
+      .where(and(eq(schema.orgCredentials.orgId, row.org.id), eq(schema.orgCredentials.kind, "gitlab_gat")))
+      .limit(1);
+    canInvite = gitlabCanWrite(cred?.scopes ?? null);
+  }
 
   // Build org + window filter (cutoff = null ⇒ no lower bound)
   const orgFilter = eq(schema.sessionEvent.orgId, row.org.id);
@@ -145,8 +164,20 @@ export default async function OrgPage({
         wasteTokens: 0, teacherMoments: 0, frustrationSpikes: 0, errors: 0, lastActive: null,
       };
       let pr = null;
-      if (ghToken && m.user.githubLogin) {
-        try { pr = await prAggForMember(row.org.slug, m.user.githubLogin, ghToken, cutoff); } catch {}
+      // Pick the right provider login for each member, then dispatch through
+      // the provider abstraction. Falls back to the OAuth-token path for
+      // GitHub orgs that haven't installed the App yet.
+      const providerLogin = providerName === "gitlab" ? m.user.gitlabUsername : m.user.githubLogin;
+      if (providerLogin) {
+        try {
+          pr = await getProvider(providerName).fetchChangeRequests(row.org.id, providerLogin, cutoff);
+        } catch (e) {
+          if (providerName === "github" && e instanceof ProviderError && e.code === "permission_denied" && ghToken) {
+            // App not installed — legacy OAuth-token PR fetch.
+            try { pr = await prAggForMember(row.org.slug, providerLogin, ghToken, cutoff); } catch {}
+          }
+          // Any other error: leave pr null. Team table renders "—".
+        }
       }
       const cacheDenom = agg.tokensCacheRead + agg.tokensIn;
       const cacheHitPct = cacheDenom > 0 ? +((100 * agg.tokensCacheRead) / cacheDenom).toFixed(1) : 0;
@@ -154,7 +185,7 @@ export default async function OrgPage({
       return {
         userId: m.user.id,
         name: m.user.name,
-        login: m.user.githubLogin,
+        login: providerLogin ?? null,
         image: m.user.image,
         orgSlug: row.org.slug,
         ...agg,
@@ -176,7 +207,12 @@ export default async function OrgPage({
         <div className="flex items-start gap-4">
           <BackButton href="/dashboard" />
           <div>
-            <div className="mk-eyebrow mb-2">org · {row.role}</div>
+            <div className="mk-eyebrow mb-2 flex items-center gap-2">
+              <span style={{ color: providerCfg.accent }} aria-label={`${providerCfg.name} org`}>
+                <providerCfg.Icon width={14} height={14} />
+              </span>
+              <span>{providerCfg.name} · {row.role}</span>
+            </div>
             <h1 className="mk-heading text-3xl md:text-4xl font-semibold tracking-[-0.02em]">{row.org.name}</h1>
             <div className="mk-label mt-1.5">
               {row.org.slug}
@@ -190,16 +226,25 @@ export default async function OrgPage({
           <WindowPicker current={windowKey} />
           {isManager && (
             <>
-              <Link href={`/org/${row.org.slug}/members`} className="mk-label border border-border px-3 py-2 hover:border-accent transition">
+              <Link href={orgHref(row.org.slug, "members")} className="mk-label border border-border px-3 py-2 hover:border-accent transition">
                 Members →
               </Link>
-              <Link
-                href={`/org/${row.org.slug}/invite`}
-                data-onboarding="invite"
-                className="mk-label bg-accent text-accent-foreground px-3 py-2 hover:opacity-90 transition"
-              >
-                Invite →
-              </Link>
+              {canInvite ? (
+                <Link
+                  href={orgHref(row.org.slug, "invite")}
+                  data-onboarding="invite"
+                  className="mk-label bg-accent text-accent-foreground px-3 py-2 hover:opacity-90 transition"
+                >
+                  Invite →
+                </Link>
+              ) : (
+                <span
+                  title="This GitLab token is read-only. Add `api` scope (or rotate the token) to enable invites from here."
+                  className="mk-label border border-border px-3 py-2 text-muted-foreground cursor-not-allowed"
+                >
+                  Invite (read-only)
+                </span>
+              )}
             </>
           )}
         </div>
@@ -240,6 +285,7 @@ export default async function OrgPage({
 
       <OrgViewSwitcher
         isManager={isManager}
+        provider={providerName}
         myData={myData}
         mySessions={(mySessions as any[]).map((s: any) => ({
           id: s.id,

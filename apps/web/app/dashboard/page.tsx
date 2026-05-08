@@ -6,6 +6,9 @@ import { eq } from "drizzle-orm";
 import Link from "next/link";
 import SignOutButton from "@/components/sign-out-button";
 import { acceptPendingInvites } from "@/lib/invite-accept";
+import { providers } from "@/lib/providers/ui-config";
+import type { ProviderName } from "@/lib/providers/types";
+import { orgHref } from "@/lib/orgs/href";
 
 export default async function Dashboard() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -61,19 +64,27 @@ export default async function Dashboard() {
             </Link>
           </div>
           <div className="border border-border">
-            {memberships.map(({ org, role }, i) => (
-              <Link
-                key={org.id}
-                href={`/org/${org.slug}`}
-                className={`flex justify-between items-center px-5 py-5 hover:bg-card transition ${i > 0 ? "border-t border-border" : ""}`}
-              >
-                <div>
-                  <div className="mk-heading font-semibold">{org.name}</div>
-                  <div className="mk-label mt-1">{org.slug} · {role}</div>
-                </div>
-                <span className="text-accent mk-label">open →</span>
-              </Link>
-            ))}
+            {memberships.map(({ org, role }, i) => {
+              const cfg = providers[(org.provider ?? "github") as ProviderName];
+              return (
+                <Link
+                  key={org.id}
+                  href={orgHref(org.slug)}
+                  className={`flex justify-between items-center px-5 py-5 hover:bg-card transition ${i > 0 ? "border-t border-border" : ""}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span style={{ color: cfg.accent }} aria-label={`${cfg.name} org`} className="shrink-0">
+                      <cfg.Icon width={18} height={18} />
+                    </span>
+                    <div>
+                      <div className="mk-heading font-semibold">{org.name}</div>
+                      <div className="mk-label mt-1">{cfg.name} · {org.slug} · {role}</div>
+                    </div>
+                  </div>
+                  <span className="text-accent mk-label">open →</span>
+                </Link>
+              );
+            })}
           </div>
         </section>
       )}

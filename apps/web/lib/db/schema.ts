@@ -2,6 +2,7 @@ import {
   pgTable, text, timestamp, integer, bigint, boolean,
   uuid, jsonb, index, uniqueIndex, primaryKey,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // ---------- better-auth core tables ----------
 // Names & shapes per https://www.better-auth.com/docs/concepts/database
@@ -61,15 +62,52 @@ export const verification = pgTable("verification", {
 
 export const org = pgTable("org", {
   id: uuid("id").primaryKey().defaultRandom(),
-  githubOrgId: text("github_org_id").notNull().unique(),
-  slug: text("slug").notNull().unique(),         // e.g. "pella-labs"
+  // Provider discriminator. New columns and code branch on this.
+  provider: text("provider").notNull().default("github"),  // 'github' | 'gitlab'
+  // External provider identity. Stored as text (matches existing data; GitHub/GitLab both expose numeric ids).
+  // Nullable for the inactive provider on each row.
+  githubOrgId: text("github_org_id"),                       // present when provider='github'
+  gitlabGroupId: text("gitlab_group_id"),                   // present when provider='gitlab'
+  gitlabGroupPath: text("gitlab_group_path"),               // full_path, e.g. "pella-labs/team-a"
+  slug: text("slug").notNull(),                             // single-segment for github, possibly multi-segment for gitlab
   name: text("name").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-  // Pellametric GitHub App install — present once an org owner installs the app on this org.
-  // Server-to-server calls (invite, PR fetch) use this installation's tokens instead of a user OAuth token.
+  // GitHub App install — present once an org owner installs the app on this org.
   githubAppInstallationId: bigint("github_app_installation_id", { mode: "number" }),
   githubAppInstalledAt: timestamp("github_app_installed_at"),
-});
+}, t => ({
+  // Same slug across different providers is allowed.
+  providerSlugUniq: uniqueIndex("org_provider_slug_uniq").on(t.provider, t.slug),
+  // Partial uniques: each provider's external id is unique per provider.
+  providerGithubIdUniq: uniqueIndex("org_provider_github_id_uniq")
+    .on(t.provider, t.githubOrgId)
+    .where(sql`${t.provider} = 'github'`),
+  providerGitlabIdUniq: uniqueIndex("org_provider_gitlab_id_uniq")
+    .on(t.provider, t.gitlabGroupId)
+    .where(sql`${t.provider} = 'gitlab'`),
+}));
+
+// Per-org provider credentials (GitLab GAT today; future: bitbucket OAuth, github PAT, …).
+// One row per (org_id, kind). Rotation = insert new + delete old in a transaction.
+// `tokenEnc` reuses the AES-256-GCM envelope from lib/crypto/prompts.ts (iv.tag.ciphertext).
+export const orgCredentials = pgTable("org_credentials", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),                              // 'gitlab_gat' | future kinds
+  tokenEnc: text("token_enc").notNull(),
+  /**
+   * Comma-separated provider scopes this credential was granted at issue time
+   * (e.g. "read_api,api"). Used by the UI to gate write-flow features (invites,
+   * MR comments) when the customer pasted a read-only token. NULL means
+   * unknown — treat as minimal-scope.
+   */
+  scopes: text("scopes"),
+  expiresAt: timestamp("expires_at"),
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, t => ({
+  uniq: uniqueIndex("org_credentials_org_kind_uniq").on(t.orgId, t.kind),
+}));
 
 // role: "manager" can invite + view all; "dev" sees own + shared org rollups
 export const membership = pgTable("membership", {
@@ -126,9 +164,10 @@ export const sessionEvent = pgTable("session_event", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
   orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull().default("github"),  // 'github' | 'gitlab' — matches org.provider
   source: text("source").notNull(),              // "claude" | "codex"
   externalSessionId: text("external_session_id").notNull(),
-  repo: text("repo").notNull(),                  // owner/name
+  repo: text("repo").notNull(),                  // ownerPath/name (slashes allowed in ownerPath for gitlab subgroups)
   cwd: text("cwd"),
   startedAt: timestamp("started_at").notNull(),
   endedAt: timestamp("ended_at").notNull(),
@@ -159,11 +198,12 @@ export const sessionEvent = pgTable("session_event", {
   uniqExternal: uniqueIndex("sess_uniq_external").on(t.userId, t.source, t.externalSessionId),
 }));
 
-// PRs pulled via GitHub API for each org (cached)
+// PRs (GitHub) / MRs (GitLab) pulled via provider API for each org. Cached.
 export const pr = pgTable("pr", {
   id: uuid("id").primaryKey().defaultRandom(),
   orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
-  repo: text("repo").notNull(),                  // owner/name
+  provider: text("provider").notNull().default("github"),  // 'github' | 'gitlab'
+  repo: text("repo").notNull(),                  // ownerPath/name
   number: integer("number").notNull(),
   title: text("title"),
   authorLogin: text("author_login"),

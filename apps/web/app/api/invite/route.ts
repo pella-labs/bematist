@@ -8,6 +8,8 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { appFetch, appConfigured, installUrl } from "@/lib/github-app";
+import { getProvider, ProviderError } from "@/lib/providers";
+import type { ProviderName } from "@/lib/providers/types";
 
 async function requireManager(userId: string, orgSlug: string) {
   const [row] = await db
@@ -35,7 +37,7 @@ export async function GET(req: Request) {
 
 const inviteSchema = z.object({
   orgSlug: z.string(),
-  githubLogin: z.string().min(1),
+  githubLogin: z.string().min(1),       // legacy field name; for GitLab orgs this is username or email
   role: z.enum(["manager", "dev"]).default("dev"),
 });
 
@@ -47,6 +49,39 @@ export async function POST(req: Request) {
   const org = await requireManager(session.user.id, body.orgSlug);
   if (!org) return NextResponse.json({ error: "not a manager of this org" }, { status: 403 });
 
+  const providerName = (org.provider ?? "github") as ProviderName;
+
+  // GitLab path: dispatch through the provider abstraction. (GitHub stays on the
+  // legacy code path below until Phase 7 migrates it.)
+  if (providerName === "gitlab") {
+    const identifier = body.githubLogin.trim();
+    try {
+      const result = await getProvider("gitlab").inviteMember(org.id, identifier);
+      const [inv] = await db.insert(schema.invitation).values({
+        orgId: org.id,
+        githubLogin: result.identifier,
+        invitedByUserId: session.user.id,
+        role: body.role,
+      }).onConflictDoNothing().returning();
+      return NextResponse.json({
+        invitation: inv ?? null,
+        gitlab: { ok: true, status: result.status, identifier: result.identifier },
+      });
+    } catch (e) {
+      if (e instanceof ProviderError) {
+        const status = e.code === "expired_credential" ? 401
+          : e.code === "permission_denied" ? 403
+            : e.code === "not_found" ? 404
+              : 500;
+        return NextResponse.json({
+          gitlab: { ok: false, code: e.code, error: e.message },
+        }, { status });
+      }
+      throw e;
+    }
+  }
+
+  // GitHub path (legacy):
   // Verify invitee is actually in the GitHub org
   const [acc] = await db.select().from(schema.account)
     .where(and(eq(schema.account.userId, session.user.id), eq(schema.account.providerId, "github")))

@@ -80,7 +80,7 @@ export default async function DevDetailPage({
     <main className="max-w-[1600px] mx-auto mt-8 px-6 pb-16">
       <header className="flex items-start justify-between gap-4 mb-6">
         <div className="flex items-start gap-4">
-          <BackButton href={`/org/${slug}`} label="back to team" />
+          <BackButton href={`/org/${encodeURIComponent(slug)}`} label="back to team" />
           <div>
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Dev · {viewer.org.name}</div>
             <h1 className="text-2xl font-bold mt-1">{targetUser.name}</h1>

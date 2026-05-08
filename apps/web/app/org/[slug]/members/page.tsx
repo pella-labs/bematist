@@ -21,7 +21,7 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
     .where(and(eq(schema.membership.userId, session.user.id), eq(schema.org.slug, slug)))
     .limit(1);
   if (!callerRow) notFound();
-  if (callerRow.role !== "manager") redirect(`/org/${slug}`);
+  if (callerRow.role !== "manager") redirect(`/org/${encodeURIComponent(slug)}`);
 
   const members = await db
     .select({
@@ -62,7 +62,7 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
   return (
     <main className="max-w-3xl mx-auto mt-8 px-6 pb-16">
       <header className="flex items-start gap-4 mb-8 pb-5 border-b border-border">
-        <BackButton href={`/org/${slug}`} />
+        <BackButton href={`/org/${encodeURIComponent(slug)}`} />
         <div>
           <div className="mk-eyebrow mb-2">org · members</div>
           <h1 className="mk-heading text-2xl font-semibold tracking-[-0.02em]">{callerRow.org.name}</h1>

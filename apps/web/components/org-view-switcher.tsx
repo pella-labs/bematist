@@ -3,6 +3,7 @@ import { useState } from "react";
 import OrgDashboard from "./org-dashboard";
 import TeamTables, { type TeamRow } from "./team-tables";
 import MyProjectSessions from "./my-project-sessions";
+import type { ProviderName } from "@/lib/providers/types";
 
 type MySess = {
   id: string;
@@ -25,12 +26,14 @@ export default function OrgViewSwitcher({
   mySessions,
   teamRows,
   myName,
+  provider = "github",
 }: {
   isManager: boolean;
   myData: any;
   mySessions: MySess[];
   teamRows: TeamRow[];
   myName: string;
+  provider?: ProviderName;
 }) {
   const [view, setView] = useState<"team" | "me">(isManager ? "team" : "me");
 
@@ -49,7 +52,7 @@ export default function OrgViewSwitcher({
         <TopTab active={view === "team"} label="Team" sub="Everyone in the org" onClick={() => setView("team")} />
         <TopTab active={view === "me"} label={`Myself (${myName})`} sub="Your sessions — charts & data" onClick={() => setView("me")} />
       </div>
-      {view === "team" ? <TeamTables rows={teamRows} /> : myPanel}
+      {view === "team" ? <TeamTables rows={teamRows} provider={provider} /> : myPanel}
     </div>
   );
 }
