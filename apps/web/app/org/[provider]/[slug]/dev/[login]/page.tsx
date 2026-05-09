@@ -29,10 +29,11 @@ type ViewKey = "overview" | "skills" | "mcp" | "prs" | "sessions" | "files" | "t
 export default async function DevDetailPage({
   params, searchParams,
 }: {
-  params: Promise<{ slug: string; login: string }>;
+  params: Promise<{ provider: string; slug: string; login: string }>;
   searchParams: Promise<{ view?: string; window?: string }>;
 }) {
-  const { slug, login } = await params;
+  const { provider, slug, login } = await params;
+  if (provider !== "github" && provider !== "gitlab") notFound();
   const sp = await searchParams;
   const view = (sp.view as ViewKey) ?? "overview";
   const windowKey: WindowKey = parseWindow(sp.window);
@@ -45,7 +46,11 @@ export default async function DevDetailPage({
     .select({ org: schema.org, role: schema.membership.role })
     .from(schema.membership)
     .innerJoin(schema.org, eq(schema.membership.orgId, schema.org.id))
-    .where(and(eq(schema.membership.userId, session.user.id), eq(schema.org.slug, slug)))
+    .where(and(
+      eq(schema.membership.userId, session.user.id),
+      eq(schema.org.slug, slug),
+      eq(schema.org.provider, provider),
+    ))
     .limit(1);
   if (!viewer) notFound();
 
@@ -54,7 +59,7 @@ export default async function DevDetailPage({
   const targetUser = target ?? (await db.select().from(schema.user).where(eq(schema.user.id, decoded)).limit(1))[0];
   if (!targetUser) notFound();
 
-  if (targetUser.id !== session.user.id && viewer.role !== "manager") redirect(`/org/${slug}`);
+  if (targetUser.id !== session.user.id && viewer.role !== "manager") redirect(`/org/${provider}/${encodeURIComponent(slug)}`);
 
   const baseFilter = and(eq(schema.sessionEvent.orgId, viewer.org.id), eq(schema.sessionEvent.userId, targetUser.id));
   const sessions = await db.select().from(schema.sessionEvent)
@@ -80,7 +85,7 @@ export default async function DevDetailPage({
     <main className="max-w-[1600px] mx-auto pt-20 sm:pt-24 px-4 sm:px-6 pb-16">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 mb-6">
         <div className="flex items-start gap-3 sm:gap-4 min-w-0">
-          <BackButton href={`/org/${encodeURIComponent(slug)}`} label="back to team" />
+          <BackButton href={`/org/${provider}/${encodeURIComponent(slug)}`} label="back to team" />
           <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Dev · {viewer.org.name}</div>
             <h1 className="text-2xl font-bold mt-1 break-words">{targetUser.name}</h1>
@@ -145,7 +150,7 @@ export default async function DevDetailPage({
           canViewPrompts={targetUser.id === session.user.id}
         />
       )}
-      {view === "prs" && <PrsView orgSlug={slug} login={targetUser.githubLogin} viewerId={session.user.id} sessions={sessions} cutoff={cutoff} />}
+      {view === "prs" && <PrsView provider={provider} orgSlug={slug} login={targetUser.githubLogin} viewerId={session.user.id} sessions={sessions} cutoff={cutoff} />}
     </main>
   );
 }
@@ -391,7 +396,10 @@ function SessionsView({ sessions }: { sessions: any[] }) {
   );
 }
 
-async function PrsView({ orgSlug, login, viewerId, sessions, cutoff }: { orgSlug: string; login: string | null; viewerId: string; sessions: any[]; cutoff: Date | null }) {
+async function PrsView({ provider, orgSlug, login, viewerId, sessions, cutoff }: { provider: "github" | "gitlab"; orgSlug: string; login: string | null; viewerId: string; sessions: any[]; cutoff: Date | null }) {
+  if (provider === "gitlab") {
+    return <Empty msg="GitLab MR-per-dev detail isn't wired up yet — check the team page for aggregate MR counts." />;
+  }
   if (!login) return <Empty msg="No GitHub login on account." />;
   const [acc] = await db.select().from(schema.account)
     .where(and(eq(schema.account.userId, viewerId), eq(schema.account.providerId, "github")))

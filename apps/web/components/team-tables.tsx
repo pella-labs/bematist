@@ -59,6 +59,7 @@ export type TeamRow = {
   name: string;
   login: string | null;
   image: string | null;
+  orgProvider: ProviderName;
   orgSlug: string;
   sessions: number;
   tokensIn: number;
@@ -118,7 +119,7 @@ export default function TeamTables({ rows, provider = "github" }: { rows: TeamRo
 }
 
 function devHref(r: TeamRow, view?: string) {
-  const base = `/org/${r.orgSlug}/dev/${encodeURIComponent(r.login ?? r.userId)}`;
+  const base = `/org/${r.orgProvider}/${encodeURIComponent(r.orgSlug)}/dev/${encodeURIComponent(r.login ?? r.userId)}`;
   return view ? `${base}?view=${view}` : base;
 }
 

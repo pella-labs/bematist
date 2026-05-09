@@ -162,6 +162,6 @@ export async function GET(req: Request): Promise<NextResponse> {
     // ignore — surfaced separately if needed
   }
 
-  const next = new URL(`/org/${encodeURIComponent(slug)}`, req.url);
+  const next = new URL(`/org/gitlab/${encodeURIComponent(slug)}`, req.url);
   return NextResponse.redirect(next);
 }

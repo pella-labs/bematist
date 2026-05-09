@@ -89,12 +89,8 @@ export default async function GitlabOauthSetupPage({
             <Field label="Scopes">
               <span className="text-xs text-muted-foreground inline-flex items-center gap-1.5 flex-wrap">
                 <CheckIcon />
-                <code className="font-mono bg-card border border-border rounded px-1.5 py-0.5">read_api</code>
-                <span>(read-only)</span>
-                <span className="text-[color:var(--ink-faint)] mx-1">·</span>
-                <span>Add</span>
                 <code className="font-mono bg-card border border-border rounded px-1.5 py-0.5">api</code>
-                <span>only if you also want to invite members from Pellametric.</span>
+                <span>(full read+write — required so Pellametric can invite members on your behalf)</span>
               </span>
             </Field>
           </dl>

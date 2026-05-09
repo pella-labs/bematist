@@ -58,7 +58,7 @@ export async function startGitlabOauth(formData: FormData): Promise<void> {
     redirect_uri: redirectUri,
     response_type: "code",
     state,
-    scope: "read_api",  // Default scope; customer can pick `api` in their App settings if they want write access.
+    scope: "api",  // Full read+write — needed so we can invite members. The OAuth App must also list `api` in its allowed scopes.
   });
 
   redirect(`${GITLAB}/oauth/authorize?${params.toString()}`);

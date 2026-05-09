@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { providers } from "@/lib/providers/ui-config";
 import type { ProviderName } from "@/lib/providers/types";
+import { orgHref } from "@/lib/orgs/href";
 
 export type OrgRow = {
   id: string;
@@ -73,7 +74,7 @@ export default function DashboardOrgList({ rows }: { rows: OrgRow[] }) {
           return (
             <Link
               key={org.id}
-              href={`/org/${encodeURIComponent(org.slug)}`}
+              href={orgHref(org.provider, org.slug)}
               className={`flex justify-between items-center gap-3 px-4 sm:px-5 py-4 sm:py-5 hover:bg-card transition ${i > 0 ? "border-t border-border" : ""}`}
             >
               <div className="flex items-center gap-3 min-w-0">
