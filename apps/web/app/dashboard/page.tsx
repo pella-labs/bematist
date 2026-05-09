@@ -22,7 +22,7 @@ export default async function Dashboard() {
     .where(eq(schema.membership.userId, session.user.id));
 
   return (
-    <main className="max-w-[1600px] mx-auto mt-8 px-4 sm:px-6 pb-16 pr-16 sm:pr-20">
+    <main className="max-w-[1600px] mx-auto pt-20 sm:pt-24 px-4 sm:px-6 pb-16">
       <header className="mb-10 sm:mb-12 pb-5 sm:pb-6 border-b border-border">
         <div className="mk-eyebrow mb-2">pellametric</div>
         <h1 className="mk-heading text-2xl sm:text-3xl md:text-4xl font-semibold tracking-[-0.02em]">

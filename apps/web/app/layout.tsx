@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import UserMenu from "@/components/user-menu";
+import AppBrand from "@/components/app-brand";
 import {
   Geist,
   Geist_Mono,
@@ -99,6 +100,7 @@ export default function RootLayout({
     >
       <body className="min-h-screen bg-background text-foreground">
         {children}
+        <AppBrand />
         <UserMenu />
       </body>
     </html>

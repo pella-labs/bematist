@@ -60,7 +60,7 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
   const managerCount = members.filter(m => m.role === "manager").length;
 
   return (
-    <main className="max-w-3xl mx-auto mt-8 px-4 sm:px-6 pb-16 pr-16 sm:pr-20">
+    <main className="max-w-3xl mx-auto pt-20 sm:pt-24 px-4 sm:px-6 pb-16">
       <header className="flex items-start gap-3 sm:gap-4 mb-8 pb-5 border-b border-border">
         <BackButton href={`/org/${encodeURIComponent(slug)}`} />
         <div className="min-w-0">

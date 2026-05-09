@@ -41,7 +41,7 @@ export default async function GitlabGroupListPage({
   }
 
   return (
-    <main className="max-w-xl mx-auto min-h-[80vh] px-4 sm:px-6 pt-12 pb-16 pr-16 sm:pr-20">
+    <main className="max-w-xl mx-auto min-h-[80vh] px-4 sm:px-6 pt-20 sm:pt-24 pb-16">
       <header className="flex items-start gap-3 sm:gap-4 mb-8">
         <BackButton href="/setup/org" />
         <div>

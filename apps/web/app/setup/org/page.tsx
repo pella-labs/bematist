@@ -77,7 +77,7 @@ export default async function SetupOrgPage() {
   const cards = githubFirst ? [githubCard, gitlabCard] : [gitlabCard, githubCard];
 
   return (
-    <main className="max-w-xl mx-auto min-h-[80vh] px-4 sm:px-6 pt-12 pb-16 flex flex-col pr-16 sm:pr-20">
+    <main className="max-w-xl mx-auto min-h-[80vh] px-4 sm:px-6 pt-20 sm:pt-24 pb-16 flex flex-col">
       <header className="flex items-start gap-3 sm:gap-4 mb-8">
         <BackButton href="/dashboard" />
         <div>

@@ -202,7 +202,7 @@ export default async function OrgPage({
   }
 
   return (
-    <main className="max-w-[1600px] mx-auto mt-8 px-4 sm:px-6 pb-16 pr-16 sm:pr-20">
+    <main className="max-w-[1600px] mx-auto pt-20 sm:pt-24 px-4 sm:px-6 pb-16">
       <header className="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-start mb-8 sm:mb-10 pb-5 border-b border-border">
         <div className="flex items-start gap-3 sm:gap-4 min-w-0">
           <BackButton href="/dashboard" />
