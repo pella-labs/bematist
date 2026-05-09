@@ -18,9 +18,8 @@ import { computeOnboardingState } from "@/lib/onboarding";
 import OnboardingOverlay from "@/components/onboarding-overlay";
 import { providers } from "@/lib/providers/ui-config";
 import type { ProviderName } from "@/lib/providers/types";
-import { orgHref } from "@/lib/orgs/href";
 import { gitlabCanWrite } from "@/lib/providers/scopes";
-import DisconnectOrgModal from "@/components/disconnect-org-modal";
+import OrgActionsMenu from "@/components/org-actions-menu";
 
 export default async function OrgPage({
   params, searchParams,
@@ -235,28 +234,12 @@ export default async function OrgPage({
         <div className="flex flex-wrap items-start gap-2 sm:gap-3">
           <WindowPicker current={windowKey} />
           {isManager && (
-            <>
-              <Link href={orgHref(providerName, row.org.slug, "members")} className="mk-label border border-border px-3 py-2 hover:border-accent transition">
-                Members →
-              </Link>
-              {canInvite ? (
-                <Link
-                  href={orgHref(providerName, row.org.slug, "invite")}
-                  data-onboarding="invite"
-                  className="mk-label bg-accent text-accent-foreground px-3 py-2 hover:opacity-90 transition"
-                >
-                  Invite →
-                </Link>
-              ) : (
-                <span
-                  title="This GitLab token is read-only. Add `api` scope (or rotate the token) to enable invites from here."
-                  className="mk-label border border-border px-3 py-2 text-muted-foreground cursor-not-allowed"
-                >
-                  Invite (read-only)
-                </span>
-              )}
-              <DisconnectOrgModal provider={providerName} slug={row.org.slug} orgName={row.org.name} />
-            </>
+            <OrgActionsMenu
+              provider={providerName}
+              slug={row.org.slug}
+              orgName={row.org.name}
+              canInvite={canInvite}
+            />
           )}
         </div>
       </header>
