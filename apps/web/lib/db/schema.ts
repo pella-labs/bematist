@@ -71,6 +71,8 @@ export const org = pgTable("org", {
   gitlabGroupPath: text("gitlab_group_path"),               // full_path, e.g. "pella-labs/team-a"
   slug: text("slug").notNull(),                             // single-segment for github, possibly multi-segment for gitlab
   name: text("name").notNull(),
+  promptRetentionDays: integer("prompt_retention_days").notNull().default(30),
+  promptRetentionUpdatedAt: timestamp("prompt_retention_updated_at").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   // GitHub App install — present once an org owner installs the app on this org.
   githubAppInstallationId: bigint("github_app_installation_id", { mode: "number" }),
@@ -277,9 +279,11 @@ export const promptEvent = pgTable("prompt_event", {
   iv: text("iv").notNull(),
   tag: text("tag").notNull(),
   ciphertext: text("ciphertext").notNull(),
+  expiresAt: timestamp("expires_at").notNull().default(sql`now() + interval '30 days'`),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, t => ({
   byUserSession: index("prompt_by_user_session").on(t.userId, t.externalSessionId, t.tsPrompt),
+  byExpiresAt: index("prompt_by_expires_at").on(t.expiresAt),
   // Dedup the same prompt on re-ingest: (user,source,external,timestamp) is unique.
   uniq: uniqueIndex("prompt_uniq").on(t.userId, t.source, t.externalSessionId, t.tsPrompt),
 }));
@@ -297,9 +301,11 @@ export const responseEvent = pgTable("response_event", {
   iv: text("iv").notNull(),
   tag: text("tag").notNull(),
   ciphertext: text("ciphertext").notNull(),
+  expiresAt: timestamp("expires_at").notNull().default(sql`now() + interval '30 days'`),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, t => ({
   byUserSession: index("response_by_user_session").on(t.userId, t.externalSessionId, t.tsResponse),
+  byExpiresAt: index("response_by_expires_at").on(t.expiresAt),
   uniq: uniqueIndex("response_uniq").on(t.userId, t.source, t.externalSessionId, t.tsResponse),
 }));
 

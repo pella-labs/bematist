@@ -11,7 +11,8 @@
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "retention:cleanup": "bun run ./scripts/cleanup-retention.ts"
   },
   "dependencies": {
     "@pella/shared": "workspace:*",
@@ -21,15 +22,17 @@
     "clsx": "^2.1.1",
     "dotenv": "^16.4.5",
     "drizzle-orm": "^0.45.2",
+    "exceljs": "^4.4.0",
     "html-to-image": "^1.11.13",
     "lucide-react": "^0.468.0",
     "motion": "^12.38.0",
-    "tailwind-merge": "^2.5.4",
     "next": "^16.0.0",
+    "pdf-lib": "^1.17.1",
     "postgres": "^3.4.5",
     "react": "^19.0.0",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^19.0.0",
+    "tailwind-merge": "^2.5.4",
     "three": "^0.169.0",
     "zod": "^4.0.0"
   },

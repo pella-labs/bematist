@@ -152,6 +152,14 @@ export default function OrgActionsMenu({
                   <span className="text-[10px] uppercase tracking-wider">read-only</span>
                 </span>
               )}
+              <Link
+                role="menuitem"
+                href={orgHref(provider, slug, "policy")}
+                onClick={() => setOpen(false)}
+                className="block px-4 py-2 text-sm hover:bg-card transition"
+              >
+                Policy & exports
+              </Link>
             </div>
             <div className="border-t border-border py-1">
               <button

@@ -5,7 +5,7 @@
 
 import { auth } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, gt } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { decryptPrompt, getOrCreateUserDek } from "@/lib/crypto/prompts";
@@ -32,6 +32,7 @@ export async function GET(req: Request) {
         eq(schema.promptEvent.userId, session.user.id),
         eq(schema.promptEvent.source, source),
         eq(schema.promptEvent.externalSessionId, sid),
+        gt(schema.promptEvent.expiresAt, new Date()),
       ))
       .orderBy(asc(schema.promptEvent.tsPrompt)),
     db.select().from(schema.responseEvent)
@@ -39,6 +40,7 @@ export async function GET(req: Request) {
         eq(schema.responseEvent.userId, session.user.id),
         eq(schema.responseEvent.source, source),
         eq(schema.responseEvent.externalSessionId, sid),
+        gt(schema.responseEvent.expiresAt, new Date()),
       ))
       .orderBy(asc(schema.responseEvent.tsResponse)),
   ]);
