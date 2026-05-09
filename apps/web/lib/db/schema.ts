@@ -314,3 +314,28 @@ export const uploadBatch = pgTable("upload_batch", {
   collectorVersion: text("collector_version"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// ---------- /card flow tables ----------
+// Accessed via raw SQL from app/api/card/* routes — this definition exists
+// only so drizzle-kit push knows the tables are intentional. Column shapes
+// and the PK-only index set match prod exactly; no FKs in prod either.
+
+export const cardTokens = pgTable("card_tokens", {
+  tokenHash: text("token_hash").primaryKey(),
+  subjectKind: text("subject_kind").notNull(),       // 'better_auth_user' | 'github_star'
+  subjectId: text("subject_id").notNull(),
+  githubUsername: text("github_username"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const cards = pgTable("cards", {
+  cardId: text("card_id").primaryKey(),
+  ownerUserId: text("owner_user_id"),
+  githubUsername: text("github_username"),
+  displayName: text("display_name"),
+  avatarUrl: text("avatar_url"),
+  stats: jsonb("stats").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
