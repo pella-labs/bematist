@@ -15,8 +15,15 @@ import { registerWebhooksForOrg } from "@/lib/providers/gitlab-webhooks";
 
 const GITLAB = "https://gitlab.com";
 
+// Behind Railway's proxy, req.url reports the internal :8080 hostname which
+// makes browser-following redirects unreachable. Prefer BETTER_AUTH_URL
+// (the canonical public origin) and fall back to req.url for local dev.
+function publicOrigin(req: Request): string {
+  return process.env.BETTER_AUTH_URL || new URL(req.url).origin;
+}
+
 function errorRedirect(req: Request, message: string): NextResponse {
-  const url = new URL("/setup/org/gitlab/oauth", req.url);
+  const url = new URL("/setup/org/gitlab/oauth", publicOrigin(req));
   url.searchParams.set("error", message);
   return NextResponse.redirect(url);
 }
@@ -162,6 +169,6 @@ export async function GET(req: Request): Promise<NextResponse> {
     // ignore — surfaced separately if needed
   }
 
-  const next = new URL(`/org/gitlab/${encodeURIComponent(slug)}`, req.url);
+  const next = new URL(`/org/gitlab/${encodeURIComponent(slug)}`, publicOrigin(req));
   return NextResponse.redirect(next);
 }
