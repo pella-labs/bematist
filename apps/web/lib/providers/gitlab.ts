@@ -45,23 +45,99 @@ async function gitlabGatApi<T = any>(path: string, gat: string): Promise<T> {
   return r.json() as Promise<T>;
 }
 
-/** Look up the org's GitLab GAT from org_credentials and decrypt it. */
+/**
+ * Get a valid GitLab access token for the org, regardless of credential kind.
+ *
+ * - kind='gitlab_oauth_app': returns the access_token, refreshing it transparently
+ *   if it's within 60s of expiry. Persists the new tokens.
+ * - kind='gitlab_gat': returns the GAT/PAT plaintext. No refresh; returns
+ *   expired_credential if the stored expiry has passed.
+ *
+ * Routes/callers call this and don't have to know which kind backs the org.
+ */
 async function getOrgGat(orgId: string): Promise<{ gat: string; groupId: string; scopes: string | null }> {
   const [org] = await db.select().from(schema.org).where(eq(schema.org.id, orgId)).limit(1);
   if (!org) throw new ProviderError("not_found", undefined, undefined, `Org not found: ${orgId}`);
   if (org.provider !== "gitlab" || !org.gitlabGroupId) {
     throw new ProviderError("permission_denied", undefined, undefined, "Org is not a GitLab org");
   }
-  const [cred] = await db.select().from(schema.orgCredentials)
+  // Try OAuth-app credential first (preferred), else fall back to GAT/PAT.
+  const [oauth] = await db.select().from(schema.orgCredentials)
+    .where(and(eq(schema.orgCredentials.orgId, orgId), eq(schema.orgCredentials.kind, "gitlab_oauth_app")))
+    .limit(1);
+  if (oauth) {
+    const token = await getValidOauthAccessToken(oauth);
+    return { gat: token, groupId: org.gitlabGroupId, scopes: oauth.scopes };
+  }
+  const [gat] = await db.select().from(schema.orgCredentials)
     .where(and(eq(schema.orgCredentials.orgId, orgId), eq(schema.orgCredentials.kind, "gitlab_gat")))
     .limit(1);
-  if (!cred) {
-    throw new ProviderError("expired_credential", undefined, undefined, "No GitLab GAT for this org");
+  if (!gat) {
+    throw new ProviderError("expired_credential", undefined, undefined, "No GitLab credential for this org");
   }
-  if (cred.expiresAt && cred.expiresAt.getTime() <= Date.now()) {
+  if (gat.expiresAt && gat.expiresAt.getTime() <= Date.now()) {
     throw new ProviderError("expired_credential", undefined, undefined, "GAT expired");
   }
-  return { gat: decryptOrgCredential(cred.tokenEnc), groupId: org.gitlabGroupId, scopes: cred.scopes };
+  return { gat: decryptOrgCredential(gat.tokenEnc), groupId: org.gitlabGroupId, scopes: gat.scopes };
+}
+
+/**
+ * For an OAuth-app credential row, return a valid access token. If the stored
+ * access token is within 60s of expiry, exchange the refresh token for a new
+ * one and persist the result before returning.
+ */
+async function getValidOauthAccessToken(cred: typeof schema.orgCredentials.$inferSelect): Promise<string> {
+  const REFRESH_BUFFER_MS = 60_000;
+  const now = Date.now();
+  const expiresAt = cred.expiresAt?.getTime() ?? 0;
+  if (expiresAt - now > REFRESH_BUFFER_MS) {
+    return decryptOrgCredential(cred.tokenEnc);
+  }
+  // Refresh required.
+  if (!cred.refreshTokenEnc || !cred.clientId || !cred.clientSecretEnc) {
+    throw new ProviderError("expired_credential", undefined, undefined,
+      "OAuth access token expired and no refresh token stored — reconnect the org");
+  }
+  const refreshToken = decryptOrgCredential(cred.refreshTokenEnc);
+  const clientSecret = decryptOrgCredential(cred.clientSecretEnc);
+  const r = await fetch(`${GITLAB}/oauth/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      client_id: cred.clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+    cache: "no-store",
+  });
+  if (!r.ok) {
+    // Mark as expired so the next caller surfaces a "reconnect" UX.
+    await db.update(schema.orgCredentials)
+      .set({ expiresAt: new Date() })
+      .where(eq(schema.orgCredentials.id, cred.id));
+    throw mapHttpStatusToProviderError(r.status, r.headers.get("retry-after"));
+  }
+  const tok = await r.json() as {
+    access_token: string;
+    refresh_token?: string;
+    expires_in?: number;
+  };
+  if (!tok.access_token) {
+    throw new ProviderError("expired_credential", undefined, undefined, "Refresh returned no access_token");
+  }
+  const newAccessExpiresAt = tok.expires_in
+    ? new Date(Date.now() + tok.expires_in * 1000)
+    : new Date(Date.now() + 2 * 60 * 60 * 1000);
+  await db.update(schema.orgCredentials)
+    .set({
+      tokenEnc: encryptOrgCredential(tok.access_token),
+      refreshTokenEnc: tok.refresh_token ? encryptOrgCredential(tok.refresh_token) : cred.refreshTokenEnc,
+      expiresAt: newAccessExpiresAt,
+      lastUsedAt: new Date(),
+    })
+    .where(eq(schema.orgCredentials.id, cred.id));
+  return tok.access_token;
 }
 
 /** Mark the org's GAT as effectively expired so the UI shows the reconnect banner. */

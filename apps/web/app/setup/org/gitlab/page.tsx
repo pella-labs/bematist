@@ -58,6 +58,27 @@ export default async function GitlabGroupListPage({
 
       {errorMsg && <p className="text-sm text-destructive mb-4">{errorMsg}</p>}
 
+      {/* Always-visible recommendation: OAuth Application is the durable path. */}
+      <Link
+        href="/setup/org/gitlab/oauth"
+        className="bg-card border border-border rounded-md p-4 hover:border-accent transition flex items-center gap-3 mb-6"
+      >
+        <div className="size-10 rounded-md bg-[#fc6d26]/10 flex items-center justify-center text-[#fc6d26] text-lg shrink-0">⌥</div>
+        <div className="flex-1 min-w-0">
+          <div className="font-medium">Connect via OAuth Application <span className="ml-2 text-[10px] uppercase tracking-wider text-accent">recommended</span></div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            One-time GitLab App setup. Tokens auto-refresh. Survives offboarding. Webhooks auto-register.
+          </div>
+        </div>
+        <span className="text-xs uppercase tracking-wider text-[#fc6d26] shrink-0">Setup →</span>
+      </Link>
+
+      <div className="flex items-center gap-3 mb-4">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">or use a token (less durable)</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
       {needsManual ? (
         <ManualForm />
       ) : (
