@@ -9,8 +9,9 @@ import MembersClient from "./members-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function MembersPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+export default async function MembersPage({ params }: { params: Promise<{ provider: string; slug: string }> }) {
+  const { provider, slug } = await params;
+  if (provider !== "github" && provider !== "gitlab") notFound();
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) redirect("/");
 
@@ -18,10 +19,14 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
     .select({ org: schema.org, role: schema.membership.role })
     .from(schema.membership)
     .innerJoin(schema.org, eq(schema.membership.orgId, schema.org.id))
-    .where(and(eq(schema.membership.userId, session.user.id), eq(schema.org.slug, slug)))
+    .where(and(
+      eq(schema.membership.userId, session.user.id),
+      eq(schema.org.slug, slug),
+      eq(schema.org.provider, provider),
+    ))
     .limit(1);
   if (!callerRow) notFound();
-  if (callerRow.role !== "manager") redirect(`/org/${encodeURIComponent(slug)}`);
+  if (callerRow.role !== "manager") redirect(`/org/${provider}/${encodeURIComponent(slug)}`);
 
   const members = await db
     .select({
@@ -62,7 +67,7 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
   return (
     <main className="max-w-3xl mx-auto pt-20 sm:pt-24 px-4 sm:px-6 pb-16">
       <header className="flex items-start gap-3 sm:gap-4 mb-8 pb-5 border-b border-border">
-        <BackButton href={`/org/${encodeURIComponent(slug)}`} />
+        <BackButton href={`/org/${provider}/${encodeURIComponent(slug)}`} />
         <div className="min-w-0">
           <div className="mk-eyebrow mb-2">org · members</div>
           <h1 className="mk-heading text-2xl font-semibold tracking-[-0.02em] break-words">{callerRow.org.name}</h1>

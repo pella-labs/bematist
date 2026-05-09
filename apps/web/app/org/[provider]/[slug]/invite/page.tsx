@@ -3,8 +3,8 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import BackButton from "@/components/back-button";
 
-export default function InvitePage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = use(params);
+export default function InvitePage({ params }: { params: Promise<{ provider: string; slug: string }> }) {
+  const { provider, slug } = use(params);
   const [invites, setInvites] = useState<any[]>([]);
   const [login, setLogin] = useState("");
   const [role, setRole] = useState<"manager" | "dev">("dev");
@@ -12,7 +12,7 @@ export default function InvitePage({ params }: { params: Promise<{ slug: string 
   const [installUrl, setInstallUrl] = useState<string | null>(null);
 
   async function load() {
-    const r = await fetch(`/api/invite?orgSlug=${slug}`);
+    const r = await fetch(`/api/invite?orgSlug=${encodeURIComponent(slug)}&provider=${provider}`);
     const j = await r.json();
     setInvites(j.invites ?? []);
   }
@@ -25,7 +25,7 @@ export default function InvitePage({ params }: { params: Promise<{ slug: string 
     const r = await fetch("/api/invite", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ orgSlug: slug, githubLogin: login.trim(), role }),
+      body: JSON.stringify({ orgSlug: slug, provider, githubLogin: login.trim(), role }),
     });
     const j = await r.json();
     if (!r.ok) { setMsg(j.error ?? "failed"); return; }
@@ -48,7 +48,7 @@ export default function InvitePage({ params }: { params: Promise<{ slug: string 
   return (
     <main className="max-w-xl mx-auto pt-20 sm:pt-24 px-4 sm:px-6 pb-16">
       <header className="flex items-start gap-3 sm:gap-4 mb-6">
-        <BackButton href={`/org/${encodeURIComponent(slug)}`} />
+        <BackButton href={`/org/${provider}/${encodeURIComponent(slug)}`} />
         <div>
           <h1 className="text-xl font-bold">Invite to {slug}</h1>
           <p className="text-sm text-muted-foreground mt-1">Invited devs need to be in the GitHub org and sign in here with GitHub to accept.</p>

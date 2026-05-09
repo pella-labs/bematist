@@ -11,12 +11,15 @@ import { appFetch, appConfigured, installUrl } from "@/lib/github-app";
 import { getProvider, ProviderError } from "@/lib/providers";
 import type { ProviderName } from "@/lib/providers/types";
 
-async function requireManager(userId: string, orgSlug: string) {
+async function requireManager(userId: string, orgSlug: string, provider?: string) {
+  const baseFilter = provider
+    ? and(eq(schema.membership.userId, userId), eq(schema.org.slug, orgSlug), eq(schema.org.provider, provider))
+    : and(eq(schema.membership.userId, userId), eq(schema.org.slug, orgSlug));
   const [row] = await db
     .select({ org: schema.org, role: schema.membership.role })
     .from(schema.membership)
     .innerJoin(schema.org, eq(schema.membership.orgId, schema.org.id))
-    .where(and(eq(schema.membership.userId, userId), eq(schema.org.slug, orgSlug)))
+    .where(baseFilter)
     .limit(1);
   if (!row || row.role !== "manager") return null;
   return row.org;
@@ -27,8 +30,9 @@ export async function GET(req: Request) {
   if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const orgSlug = searchParams.get("orgSlug");
+  const providerFilter = searchParams.get("provider") ?? undefined;
   if (!orgSlug) return NextResponse.json({ error: "orgSlug required" }, { status: 400 });
-  const org = await requireManager(session.user.id, orgSlug);
+  const org = await requireManager(session.user.id, orgSlug, providerFilter);
   if (!org) return NextResponse.json({ error: "not a manager of this org" }, { status: 403 });
 
   const invites = await db.select().from(schema.invitation).where(eq(schema.invitation.orgId, org.id));
@@ -37,6 +41,7 @@ export async function GET(req: Request) {
 
 const inviteSchema = z.object({
   orgSlug: z.string(),
+  provider: z.enum(["github", "gitlab"]).optional(),  // disambiguates same-slug orgs across providers
   githubLogin: z.string().min(1),       // legacy field name; for GitLab orgs this is username or email
   role: z.enum(["manager", "dev"]).default("dev"),
 });
@@ -46,7 +51,7 @@ export async function POST(req: Request) {
   if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const body = inviteSchema.parse(await req.json());
 
-  const org = await requireManager(session.user.id, body.orgSlug);
+  const org = await requireManager(session.user.id, body.orgSlug, body.provider);
   if (!org) return NextResponse.json({ error: "not a manager of this org" }, { status: 403 });
 
   const providerName = (org.provider ?? "github") as ProviderName;

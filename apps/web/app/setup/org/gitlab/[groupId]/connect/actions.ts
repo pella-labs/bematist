@@ -52,5 +52,5 @@ export async function connectGitlabGroup(formData: FormData): Promise<void> {
     .from(schema.org)
     .where(eq(schema.org.id, orgId))
     .limit(1);
-  redirect(`/org/${encodeURIComponent(row!.slug)}`);
+  redirect(`/org/gitlab/${encodeURIComponent(row!.slug)}`);
 }

@@ -2,36 +2,34 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import BackButton from "@/components/back-button";
-import { connectGitlabGroup } from "./actions";
+import CopyButton from "@/components/copy-button";
+import { startGitlabOauth } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 const GITLAB_ORANGE = "#fc6d26";
 
-export default async function GitlabConnectPage({
-  params, searchParams,
+export default async function GitlabOauthSetupPage({
+  searchParams,
 }: {
-  params: Promise<{ groupId: string }>;
-  searchParams: Promise<{ path?: string; error?: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) redirect("/");
 
-  const { groupId } = await params;
   const sp = await searchParams;
-  const path = sp.path ?? "";
   const errorMsg = sp.error;
 
-  const tokensUrl = path
-    ? `https://gitlab.com/groups/${path}/-/settings/access_tokens`
-    : "https://gitlab.com/groups";
+  // Display the redirect URI the customer must paste into their GitLab OAuth App.
+  const baseUrl = (process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const redirectUri = `${baseUrl}/api/gitlab-oauth/callback`;
 
   return (
     <main className="max-w-2xl mx-auto pt-20 sm:pt-24 px-4 sm:px-6 pb-20">
       <header className="flex items-start gap-3 sm:gap-4 mb-8">
         <BackButton href="/setup/org/gitlab" />
         <div className="min-w-0">
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <div className="flex items-center gap-2 mb-2">
             <span
               className="inline-flex items-center justify-center w-7 h-7 rounded-full"
               style={{ backgroundColor: `${GITLAB_ORANGE}1f`, border: `1px solid ${GITLAB_ORANGE}59` }}
@@ -39,71 +37,75 @@ export default async function GitlabConnectPage({
             >
               <GitlabMark />
             </span>
-            <span className="mk-label" style={{ color: GITLAB_ORANGE }}>
-              GitLab · Group Access Token
-            </span>
-            {path && (
-              <>
-                <span className="text-[color:var(--ink-faint)]">·</span>
-                <code className="font-mono text-xs text-foreground bg-card border border-border rounded px-2 py-0.5 max-w-full truncate">
-                  {path}
-                </code>
-              </>
-            )}
+            <span className="mk-label" style={{ color: GITLAB_ORANGE }}>GitLab · OAuth Application</span>
           </div>
           <h1 className="mk-heading text-2xl sm:text-3xl font-semibold tracking-[-0.02em]">
-            Paste your Group Access Token
+            Connect via OAuth
           </h1>
           <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-            A server-side token, not your personal account — the connection survives if you leave the org.
+            One-time setup. Tokens auto-refresh and survive if you leave the org —
+            we never store a long-lived secret after this.
           </p>
         </div>
       </header>
 
       <ol className="space-y-4 mb-8">
-        <Step n={1} title="Open the group's access-token settings">
+        <Step n={1} title="Open GitLab Applications">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Go to{" "}
+            Head to{" "}
             <a
               className="underline decoration-dotted underline-offset-2 text-foreground hover:text-[color:var(--accent)] transition"
-              href={tokensUrl}
+              href="https://gitlab.com/-/user_settings/applications"
               target="_blank"
               rel="noopener noreferrer"
             >
-              {path || "the group settings"} → Access tokens
-            </a>
-            . You'll need <strong className="text-foreground">Maintainer</strong> on the group to mint one.
+              Edit profile → Applications
+            </a>{" "}
+            (or your group's <em className="not-italic text-foreground">Settings → Applications</em> for a group-owned App).
           </p>
         </Step>
 
-        <Step n={2} title="Add a new token">
-          <p className="text-sm text-muted-foreground mb-3">
-            Click <strong className="text-foreground">Add new token</strong> and pick:
-          </p>
+        <Step n={2} title="Add a new application">
+          <p className="text-sm text-muted-foreground mb-3">Click <strong className="text-foreground">Add new application</strong> and fill in:</p>
           <dl className="space-y-3 text-sm">
-            <Field label="Role">
-              <span className="text-xs text-muted-foreground inline-flex items-center gap-1.5 flex-wrap">
+            <Field label="Name">
+              <span className="font-mono text-xs bg-card border border-border rounded px-2 py-1">Pellametric</span>
+              <span className="text-xs text-muted-foreground ml-2">(or anything you like)</span>
+            </Field>
+            <Field label="Redirect URI">
+              <div className="flex items-stretch gap-2 w-full">
+                <code className="flex-1 bg-card border border-border rounded-md px-3 py-2 font-mono text-xs text-foreground break-all leading-relaxed select-all min-w-0">
+                  {redirectUri}
+                </code>
+                <CopyButton text={redirectUri} label="copy URI" />
+              </div>
+            </Field>
+            <Field label="Confidential">
+              <span className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
                 <CheckIcon />
-                <code className="font-mono bg-card border border-border rounded px-1.5 py-0.5">Reporter</code>
-                <span>or higher.</span>
+                Keep <strong className="text-foreground">checked</strong>
               </span>
             </Field>
-            <Field label="Scope">
+            <Field label="Scopes">
               <span className="text-xs text-muted-foreground inline-flex items-center gap-1.5 flex-wrap">
                 <CheckIcon />
-                <code className="font-mono bg-card border border-border rounded px-1.5 py-0.5">read_api</code>
-                <span className="text-[color:var(--ink-faint)] mx-1">·</span>
-                <span>or pick</span>
                 <code className="font-mono bg-card border border-border rounded px-1.5 py-0.5">api</code>
-                <span>if you also want to invite members from Pellametric.</span>
+                <span>(full read+write — required so Pellametric can invite members on your behalf)</span>
               </span>
             </Field>
           </dl>
         </Step>
 
-        <Step n={3} title="Copy the token and paste below" last>
+        <Step n={3} title="Save the application">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            GitLab shows the token once. We encrypt it at rest with AES-256-GCM and only use it server-side.
+            Copy the <strong className="text-foreground">Application ID</strong> and{" "}
+            <strong className="text-foreground">Secret</strong>. The secret is shown once — grab it now.
+          </p>
+        </Step>
+
+        <Step n={4} title="Paste them below" last>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Add the group you want to connect and we'll bounce you through GitLab to authorize.
           </p>
         </Step>
       </ol>
@@ -114,28 +116,34 @@ export default async function GitlabConnectPage({
         </div>
       )}
 
-      <form action={connectGitlabGroup} className="mk-card p-5 sm:p-6 flex flex-col gap-4 rounded-lg">
-        <input type="hidden" name="groupId" value={groupId} />
-        <input type="hidden" name="path" value={path} />
+      <form action={startGitlabOauth} className="mk-card p-5 sm:p-6 flex flex-col gap-4 rounded-lg">
+        <FormField
+          label="Application ID"
+          hint="client_id"
+          name="client_id"
+          required
+          minLength={10}
+          placeholder="64-character hex"
+        />
+        <FormField
+          label="Secret"
+          hint="shown once when you save the app"
+          name="client_secret"
+          type="password"
+          required
+          minLength={10}
+          placeholder="gloas-…"
+        />
+        <FormField
+          label="Group"
+          hint="path or numeric ID"
+          name="group"
+          required
+          minLength={1}
+          placeholder="pella-labs   ·   pella-labs/team-a   ·   12345"
+        />
 
-        <label className="block">
-          <div className="flex items-baseline justify-between mb-1.5">
-            <span className="text-sm font-medium text-foreground">Group Access Token</span>
-            <span className="text-[11px] font-mono text-muted-foreground">starts with glpat-</span>
-          </div>
-          <textarea
-            name="gat"
-            required
-            minLength={20}
-            rows={3}
-            placeholder="glpat-…"
-            autoComplete="off"
-            spellCheck={false}
-            className="w-full font-mono text-sm bg-background/60 border border-border rounded-md px-3 py-2.5 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition placeholder:text-[color:var(--ink-faint)] resize-y"
-          />
-        </label>
-
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-3">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-3 mt-2">
           <a
             href="/setup/org/gitlab"
             className="mk-label inline-flex items-center justify-center h-11 px-4 rounded-lg border border-border hover:border-[color:var(--border-hover)] transition"
@@ -151,7 +159,7 @@ export default async function GitlabConnectPage({
             }}
           >
             <GitlabMark />
-            <span>Connect group</span>
+            <span>Authorize on GitLab</span>
             <span aria-hidden>→</span>
           </button>
         </div>
@@ -159,8 +167,8 @@ export default async function GitlabConnectPage({
         <div className="flex items-start gap-2 text-xs text-muted-foreground border border-border rounded-md px-3 py-2.5 bg-[color:var(--background)]/40">
           <ShieldIcon />
           <span className="leading-relaxed">
-            Encrypted at rest with <strong className="text-foreground">AES-256-GCM</strong>. We never log it,
-            and you can rotate or revoke it in GitLab any time.
+            Clicking <strong className="text-foreground">Authorize</strong> sends you to GitLab.
+            Sign in as a <strong className="text-foreground">Maintainer</strong> of the group and approve the request — we never see your password.
           </span>
         </div>
       </form>
@@ -188,9 +196,35 @@ function Step({ n, title, children, last }: { n: number; title: string; children
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
-      <dt className="mk-label text-muted-foreground sm:w-20 shrink-0">{label}</dt>
+      <dt className="mk-label text-muted-foreground sm:w-28 shrink-0">{label}</dt>
       <dd className="flex-1 min-w-0">{children}</dd>
     </div>
+  );
+}
+
+function FormField({
+  label, hint, name, type = "text", required, minLength, placeholder,
+}: {
+  label: string; hint?: string; name: string; type?: string;
+  required?: boolean; minLength?: number; placeholder?: string;
+}) {
+  return (
+    <label className="block">
+      <div className="flex items-baseline justify-between mb-1.5">
+        <span className="text-sm font-medium text-foreground">{label}</span>
+        {hint && <span className="text-[11px] font-mono text-muted-foreground">{hint}</span>}
+      </div>
+      <input
+        name={name}
+        type={type}
+        required={required}
+        minLength={minLength}
+        placeholder={placeholder}
+        autoComplete="off"
+        spellCheck={false}
+        className="w-full font-mono text-sm bg-background/60 border border-border rounded-md px-3 py-2.5 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition placeholder:text-[color:var(--ink-faint)]"
+      />
+    </label>
   );
 }
 

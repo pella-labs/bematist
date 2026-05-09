@@ -93,18 +93,40 @@ export const org = pgTable("org", {
 export const orgCredentials = pgTable("org_credentials", {
   id: uuid("id").primaryKey().defaultRandom(),
   orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
-  kind: text("kind").notNull(),                              // 'gitlab_gat' | future kinds
+  /**
+   * Credential kind — drives which other columns are populated:
+   *   'gitlab_gat'        → tokenEnc=GAT/PAT plaintext, scopes set, no refresh token
+   *   'gitlab_oauth_app'  → tokenEnc=access token, refreshTokenEnc, clientId, clientSecretEnc, refresh/access expiry
+   *   (future: 'github_pat', 'bitbucket_oauth', …)
+   */
+  kind: text("kind").notNull(),
+  /** Provider's bearer token (PAT or OAuth access_token). Always populated. */
   tokenEnc: text("token_enc").notNull(),
   /**
    * Comma-separated provider scopes this credential was granted at issue time
    * (e.g. "read_api,api"). Used by the UI to gate write-flow features (invites,
-   * MR comments) when the customer pasted a read-only token. NULL means
-   * unknown — treat as minimal-scope.
+   * MR comments). NULL means unknown — treat as minimal-scope.
    */
   scopes: text("scopes"),
+  /** Access-token expiry (OAuth: ~2h, refreshable; GAT/PAT: ~1y, not refreshable). */
   expiresAt: timestamp("expires_at"),
   lastUsedAt: timestamp("last_used_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  // ----- OAuth-application columns (only populated for kind='gitlab_oauth_app') -----
+  /** Public OAuth client_id of the customer's GitLab Application. */
+  clientId: text("client_id"),
+  /** OAuth client_secret, encrypted. */
+  clientSecretEnc: text("client_secret_enc"),
+  /** OAuth refresh_token, encrypted. Used to mint new access tokens. */
+  refreshTokenEnc: text("refresh_token_enc"),
+  /** Refresh-token expiry. NULL = no documented expiry. */
+  refreshExpiresAt: timestamp("refresh_expires_at"),
+  /**
+   * Webhook secret for HMAC verification of inbound events for this org.
+   * Generated at OAuth-app connect time, sent to GitLab when registering hooks.
+   * Encrypted at rest because it grants the ability to forge events to us.
+   */
+  webhookSecretEnc: text("webhook_secret_enc"),
 }, t => ({
   uniq: uniqueIndex("org_credentials_org_kind_uniq").on(t.orgId, t.kind),
 }));

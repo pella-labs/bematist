@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
-import { and, eq, gte } from "drizzle-orm";
+import { and, eq, gte, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
@@ -20,14 +20,17 @@ import { providers } from "@/lib/providers/ui-config";
 import type { ProviderName } from "@/lib/providers/types";
 import { orgHref } from "@/lib/orgs/href";
 import { gitlabCanWrite } from "@/lib/providers/scopes";
+import DisconnectOrgModal from "@/components/disconnect-org-modal";
 
 export default async function OrgPage({
   params, searchParams,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ provider: string; slug: string }>;
   searchParams: Promise<{ window?: string }>;
 }) {
-  const { slug } = await params;
+  const { provider: providerParam, slug } = await params;
+  if (providerParam !== "github" && providerParam !== "gitlab") notFound();
+  const providerName = providerParam as ProviderName;
   const sp = await searchParams;
   const windowKey: WindowKey = parseWindow(sp.window);
   const cutoff = windowCutoff(windowKey);
@@ -38,11 +41,14 @@ export default async function OrgPage({
     .select({ org: schema.org, role: schema.membership.role })
     .from(schema.membership)
     .innerJoin(schema.org, eq(schema.membership.orgId, schema.org.id))
-    .where(and(eq(schema.membership.userId, session.user.id), eq(schema.org.slug, slug)))
+    .where(and(
+      eq(schema.membership.userId, session.user.id),
+      eq(schema.org.slug, slug),
+      eq(schema.org.provider, providerName),
+    ))
     .limit(1);
   if (!row) notFound();
   const isManager = row.role === "manager";
-  const providerName = (row.org.provider ?? "github") as ProviderName;
   const providerCfg = providers[providerName];
 
   // For GitLab orgs, check whether the stored GAT has write scope. If not, we
@@ -52,7 +58,10 @@ export default async function OrgPage({
   if (providerName === "gitlab") {
     const [cred] = await db.select({ scopes: schema.orgCredentials.scopes })
       .from(schema.orgCredentials)
-      .where(and(eq(schema.orgCredentials.orgId, row.org.id), eq(schema.orgCredentials.kind, "gitlab_gat")))
+      .where(and(
+        eq(schema.orgCredentials.orgId, row.org.id),
+        inArray(schema.orgCredentials.kind, ["gitlab_gat", "gitlab_oauth_app"]),
+      ))
       .limit(1);
     canInvite = gitlabCanWrite(cred?.scopes ?? null);
   }
@@ -81,7 +90,7 @@ export default async function OrgPage({
     orgId: row.org.id,
     isManager,
     appConfigured: appConfigured(),
-    hasInstallationId: row.org.githubAppInstallationId != null,
+    hasInstallationId: providerName === "github" ? row.org.githubAppInstallationId != null : true,
   });
 
   // ------- Team aggregates (manager only) -------
@@ -187,6 +196,7 @@ export default async function OrgPage({
         name: m.user.name,
         login: providerLogin ?? null,
         image: m.user.image,
+        orgProvider: providerName,
         orgSlug: row.org.slug,
         ...agg,
         cacheHitPct,
@@ -226,12 +236,12 @@ export default async function OrgPage({
           <WindowPicker current={windowKey} />
           {isManager && (
             <>
-              <Link href={orgHref(row.org.slug, "members")} className="mk-label border border-border px-3 py-2 hover:border-accent transition">
+              <Link href={orgHref(providerName, row.org.slug, "members")} className="mk-label border border-border px-3 py-2 hover:border-accent transition">
                 Members →
               </Link>
               {canInvite ? (
                 <Link
-                  href={orgHref(row.org.slug, "invite")}
+                  href={orgHref(providerName, row.org.slug, "invite")}
                   data-onboarding="invite"
                   className="mk-label bg-accent text-accent-foreground px-3 py-2 hover:opacity-90 transition"
                 >
@@ -245,12 +255,13 @@ export default async function OrgPage({
                   Invite (read-only)
                 </span>
               )}
+              <DisconnectOrgModal provider={providerName} slug={row.org.slug} orgName={row.org.name} />
             </>
           )}
         </div>
       </header>
 
-      {isManager && appConfigured() && row.org.githubAppInstallationId == null && installUrl(row.org.slug) && (
+      {providerName === "github" && isManager && appConfigured() && row.org.githubAppInstallationId == null && installUrl(row.org.slug) && (
         <div className="mb-4 flex items-center justify-between bg-card border border-warning/40 rounded-md px-4 py-3">
           <div className="text-sm">
             <span className="font-medium">Install Pellametric on GitHub.</span>
