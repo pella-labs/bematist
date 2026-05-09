@@ -2,6 +2,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { money } from "@/lib/pricing";
+import type { ProviderName } from "@/lib/providers/types";
+import { providers } from "@/lib/providers/ui-config";
 
 function fmt(n: number) {
   if (!n) return "—";
@@ -87,13 +89,13 @@ export type TeamRow = {
   deletions?: number;
 };
 
-export default function TeamTables({ rows }: { rows: TeamRow[] }) {
+export default function TeamTables({ rows, provider = "github" }: { rows: TeamRow[]; provider?: ProviderName }) {
   return (
     <section className="mt-8 space-y-6">
       <div>
         <h2 className="text-sm uppercase tracking-wider text-muted-foreground font-semibold mb-3">Delivery + spend</h2>
         <div className="bg-card border border-border rounded-lg overflow-x-auto">
-          <DeliveryTable rows={rows} />
+          <DeliveryTable rows={rows} provider={provider} />
         </div>
       </div>
 
@@ -163,7 +165,7 @@ function timeAgo(iso: string | null) {
 
 type DeliveryKey = "name" | "prOpened" | "prOpenNow" | "prMerged" | "prClosed" | "tokensIn" | "tokensOut" | "additions" | "deletions" | "sessions";
 
-function DeliveryTable({ rows }: { rows: TeamRow[] }) {
+function DeliveryTable({ rows, provider }: { rows: TeamRow[]; provider: ProviderName }) {
   const [sort, setSort] = useState<SortState<DeliveryKey> | null>(null);
   const sorted = useMemo(() => sortRows<TeamRow, DeliveryKey>(rows, sort, (r, k) => {
     if (k === "name") return r.name.toLowerCase();
@@ -171,12 +173,13 @@ function DeliveryTable({ rows }: { rows: TeamRow[] }) {
   }), [rows, sort]);
   const active = (k: DeliveryKey) => sort?.key === k ? sort.dir : null;
   const click = (k: DeliveryKey) => () => setSort(prev => toggleSort(prev, k));
+  const noun = providers[provider].nounPlural;
   return (
     <table className="w-full text-xs">
       <thead className="text-muted-foreground">
         <tr className="border-b border-border">
           <SortTh label="Dev"          align="left"  active={active("name")}       onClick={click("name")} />
-          <SortTh label="PRs total"    active={active("prOpened")}   onClick={click("prOpened")} />
+          <SortTh label={`${noun} total`}    active={active("prOpened")}   onClick={click("prOpened")} />
           <SortTh label="Open"         active={active("prOpenNow")}  onClick={click("prOpenNow")} />
           <SortTh label="Merged"       active={active("prMerged")}   onClick={click("prMerged")} />
           <SortTh label="Closed"       active={active("prClosed")}   onClick={click("prClosed")} />

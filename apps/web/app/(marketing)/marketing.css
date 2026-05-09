@@ -1951,48 +1951,101 @@
 .pellametric-marketing .mk-sheet-panel {
   position: relative;
   width: 100%;
-  max-width: 420px;
-  padding: 40px 32px 32px;
+  max-width: 440px;
+  padding: 32px 32px 28px;
   background: var(--mk-bg-elevated);
   border: 1px solid var(--mk-border);
+  border-radius: 16px;
   color: var(--mk-ink);
   display: flex;
   flex-direction: column;
   gap: 14px;
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.04) inset,
+    0 24px 60px -12px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(110, 138, 111, 0.08);
+  overflow: hidden;
   animation: mk-sheet-rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.pellametric-marketing .mk-sheet-glow {
+  position: absolute;
+  inset: -40% -10% auto -10%;
+  height: 220px;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 0%, rgba(110, 138, 111, 0.25), rgba(110, 138, 111, 0) 70%);
+  z-index: 0;
+}
+
+.pellametric-marketing .mk-sheet-panel > *:not(.mk-sheet-glow):not(.mk-sheet-close) {
+  position: relative;
+  z-index: 1;
 }
 
 .pellametric-marketing .mk-sheet-close {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 28px;
-  height: 28px;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: 1px solid transparent;
+  background: rgba(237, 232, 222, 0.02);
+  border: 1px solid var(--mk-border);
+  border-radius: 999px;
   color: var(--mk-ink-muted);
   cursor: pointer;
   transition:
     color 0.15s,
-    border-color 0.15s;
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.15s;
+  z-index: 2;
 }
 
 .pellametric-marketing .mk-sheet-close:hover {
   color: var(--mk-ink);
-  border-color: var(--mk-border);
+  background: rgba(237, 232, 222, 0.06);
+  border-color: rgba(237, 232, 222, 0.3);
+  transform: rotate(90deg);
 }
 
-.pellametric-marketing .mk-sheet-eyebrow {
-  color: var(--mk-ink-muted);
+.pellametric-marketing .mk-sheet-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 4px;
+}
+
+.pellametric-marketing .mk-sheet-brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(110, 138, 111, 0.12);
+  border: 1px solid rgba(110, 138, 111, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pellametric-marketing .mk-sheet-brand-mark img {
+  width: 14px;
+  height: auto;
+  display: block;
+}
+
+.pellametric-marketing .mk-sheet-brand-text {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--mk-ink-muted);
+  font-weight: 500;
 }
 
 .pellametric-marketing .mk-sheet-title {
   font-family: var(--font-mk-sys, "Space Mono", monospace);
-  font-size: 24px;
+  font-size: 26px;
   letter-spacing: -0.02em;
   line-height: 1.15;
   font-weight: 500;
@@ -2001,30 +2054,114 @@
 
 .pellametric-marketing .mk-sheet-body {
   font-size: 14px;
-  line-height: 1.55;
+  line-height: 1.6;
   color: var(--mk-ink-muted);
 }
 
+.pellametric-marketing .mk-sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
 .pellametric-marketing .mk-sheet-cta {
-  height: 44px;
+  height: 46px;
   gap: 10px;
   padding: 0 22px;
   font-size: 13px;
-  margin-top: 8px;
+  border-radius: 10px;
   justify-content: center;
+  transition:
+    transform 0.12s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.pellametric-marketing .mk-sheet-cta:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.pellametric-marketing .mk-sheet-cta.mk-btn-primary {
+  box-shadow: 0 8px 24px -10px rgba(110, 138, 111, 0.55);
+}
+
+.pellametric-marketing .mk-sheet-cta-secondary {
+  background: rgba(237, 232, 222, 0.02);
+  border: 1px solid var(--mk-border);
+  color: var(--mk-ink);
+}
+
+.pellametric-marketing .mk-sheet-cta-secondary:not(:disabled):hover {
+  border-color: rgba(237, 232, 222, 0.3);
+  background: rgba(237, 232, 222, 0.05);
+}
+
+.pellametric-marketing .mk-sheet-cta-gitlab svg {
+  color: #fc6d26;
+}
+
+.pellametric-marketing .mk-sheet-cta-gitlab:not(:disabled):hover {
+  border-color: rgba(252, 109, 38, 0.45);
+  background: rgba(252, 109, 38, 0.06);
 }
 
 .pellametric-marketing .mk-sheet-cta:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+  transform: none;
+}
+
+.pellametric-marketing .mk-sheet-divider {
+  position: relative;
+  text-align: center;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--mk-ink-faint);
+  margin: 2px 0;
+}
+
+.pellametric-marketing .mk-sheet-divider::before,
+.pellametric-marketing .mk-sheet-divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: calc(50% - 24px);
+  height: 1px;
+  background: var(--mk-border);
+}
+
+.pellametric-marketing .mk-sheet-divider::before { left: 0; }
+.pellametric-marketing .mk-sheet-divider::after  { right: 0; }
+
+.pellametric-marketing .mk-sheet-divider span {
+  background: var(--mk-bg-elevated);
+  padding: 0 8px;
+  position: relative;
 }
 
 .pellametric-marketing .mk-sheet-scope {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
   font-size: 11px;
   color: var(--mk-ink-faint);
-  line-height: 1.55;
-  margin-top: 4px;
+  line-height: 1.6;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--mk-border);
+  border-radius: 8px;
+  background: rgba(237, 232, 222, 0.02);
+}
+
+.pellametric-marketing .mk-sheet-scope > svg {
+  color: rgba(110, 138, 111, 0.85);
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .pellametric-marketing .mk-sheet-scope code {
@@ -2033,6 +2170,8 @@
   background: rgba(237, 232, 222, 0.05);
   padding: 1px 5px;
   border: 1px solid var(--mk-border);
+  border-radius: 4px;
+  margin: 0 1px;
 }
 
 @keyframes mk-sheet-fade {

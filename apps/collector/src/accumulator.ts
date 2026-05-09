@@ -52,6 +52,7 @@ function toWire(s: SessionState, info: RepoInfo): IngestSession {
   return {
     externalSessionId: s.sid,
     repo: `${info.owner}/${info.repo}`,
+    provider: info.provider,
     cwd: s.cwd,
     startedAt: s.start!.toISOString(),
     endedAt: s.end!.toISOString(),

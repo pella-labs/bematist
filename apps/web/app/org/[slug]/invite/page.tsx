@@ -46,9 +46,9 @@ export default function InvitePage({ params }: { params: Promise<{ slug: string 
   }
 
   return (
-    <main className="max-w-xl mx-auto mt-8 px-6 pb-16">
-      <header className="flex items-start gap-4 mb-6">
-        <BackButton href={`/org/${slug}`} />
+    <main className="max-w-xl mx-auto pt-20 sm:pt-24 px-4 sm:px-6 pb-16">
+      <header className="flex items-start gap-3 sm:gap-4 mb-6">
+        <BackButton href={`/org/${encodeURIComponent(slug)}`} />
         <div>
           <h1 className="text-xl font-bold">Invite to {slug}</h1>
           <p className="text-sm text-muted-foreground mt-1">Invited devs need to be in the GitHub org and sign in here with GitHub to accept.</p>
@@ -59,7 +59,7 @@ export default function InvitePage({ params }: { params: Promise<{ slug: string 
         <input
           value={login}
           onChange={e => setLogin(e.target.value)}
-          placeholder="github login (e.g. alice)"
+          placeholder="username (e.g. alice)"
           className="flex-1 h-10 px-3 rounded-md bg-card border border-border text-sm leading-none focus:outline-none focus:border-accent transition"
         />
         <select

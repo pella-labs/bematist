@@ -1,6 +1,11 @@
+export type ProviderName = "github" | "gitlab";
+
 export interface IngestSession {
   externalSessionId: string;
-  repo: string;                          // "owner/name"
+  /** "ownerPath/name". Server splits on the last "/" — multi-segment ownerPath supported for GitLab subgroups. */
+  repo: string;
+  /** Provider hosting the repo. Defaults to 'github' on the server when unset (back-compat). */
+  provider?: ProviderName;
   cwd?: string;
   startedAt: string;                     // ISO
   endedAt: string;

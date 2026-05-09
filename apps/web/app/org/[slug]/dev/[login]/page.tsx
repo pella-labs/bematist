@@ -77,17 +77,17 @@ export default async function DevDetailPage({
   }), 0);
 
   return (
-    <main className="max-w-[1600px] mx-auto mt-8 px-6 pb-16">
-      <header className="flex items-start justify-between gap-4 mb-6">
-        <div className="flex items-start gap-4">
-          <BackButton href={`/org/${slug}`} label="back to team" />
-          <div>
+    <main className="max-w-[1600px] mx-auto pt-20 sm:pt-24 px-4 sm:px-6 pb-16">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 mb-6">
+        <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+          <BackButton href={`/org/${encodeURIComponent(slug)}`} label="back to team" />
+          <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Dev · {viewer.org.name}</div>
-            <h1 className="text-2xl font-bold mt-1">{targetUser.name}</h1>
-            <p className="text-xs text-muted-foreground mt-1 font-mono">{targetUser.githubLogin ?? targetUser.id}</p>
+            <h1 className="text-2xl font-bold mt-1 break-words">{targetUser.name}</h1>
+            <p className="text-xs text-muted-foreground mt-1 font-mono truncate">{targetUser.githubLogin ?? targetUser.id}</p>
           </div>
         </div>
-        <WindowPicker current={windowKey} />
+        <div className="self-start"><WindowPicker current={windowKey} /></div>
       </header>
 
       {/* Header KPIs always visible */}

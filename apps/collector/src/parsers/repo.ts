@@ -2,9 +2,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
 
+export type ProviderName = "github" | "gitlab";
+
 export interface RepoInfo {
+  /** Backwards-compatible "owner" — for GitLab this is the full ownerPath (may include slashes). */
   owner: string;
   repo: string;
+  /** Provider host detected from the remote URL. Defaults to 'github' when omitted. */
+  provider?: ProviderName;
 }
 
 export type RepoCache = Map<string, RepoInfo | null>;
@@ -14,23 +19,68 @@ export function makeRepoCache(): RepoCache {
 }
 
 /**
- * Parse a GitHub remote URL → { owner, repo } or null. Handles both
- * https://github.com/foo/bar.git and git@github.com:foo/bar.git.
+ * Self-hosted GitLab support: respect a comma-separated `PELLA_GITLAB_HOSTS`
+ * env var. `gitlab.com` is always recognized.
  */
-export function parseGithubRemote(url: string): RepoInfo | null {
-  const m = url.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
-  if (!m) return null;
-  return { owner: m[1], repo: m[2] };
+function gitlabHosts(): Set<string> {
+  const set = new Set<string>(["gitlab.com"]);
+  const extra = process.env.PELLA_GITLAB_HOSTS;
+  if (extra) for (const h of extra.split(",").map(s => s.trim()).filter(Boolean)) set.add(h);
+  return set;
 }
 
 /**
- * Resolve a working-directory path to the GitHub owner/repo pair via
- * `git remote get-url origin`. Returns null for cwds that aren't under a
- * git repo, or whose origin isn't a github.com remote. Results are
- * memoized into `cache` so repeated lookups are free.
+ * Parse any git remote URL → { provider, owner, repo } or null.
  *
- * Strips Claude Code's per-session agent worktree segments before walking
- * up — those are scratch copies of the real repo and share its origin.
+ * Handles:
+ *   git@host:path.git
+ *   ssh://git@host/path.git
+ *   https://host/path.git
+ *
+ * For GitHub: owner = first segment, repo = second.
+ * For GitLab: owner = everything except the last segment (preserves subgroups), repo = last.
+ */
+export function parseRemote(url: string): RepoInfo | null {
+  // Normalize: strip .git suffix, trim trailing slashes.
+  const stripped = url.replace(/\.git$/, "").replace(/\/+$/, "");
+
+  // Split into host + path. Three URL forms:
+  //   git@HOST:PATH
+  //   ssh://git@HOST/PATH
+  //   https://HOST/PATH
+  let host: string | null = null;
+  let p: string | null = null;
+
+  let m = stripped.match(/^git@([^:]+):(.+)$/);
+  if (m) { host = m[1]; p = m[2]; }
+  if (!host) {
+    m = stripped.match(/^(?:ssh|https?):\/\/(?:[^@/]+@)?([^/]+)\/(.+)$/);
+    if (m) { host = m[1]; p = m[2]; }
+  }
+  if (!host || !p) return null;
+
+  const segments = p.split("/").filter(Boolean);
+  if (segments.length < 2) return null;
+
+  const gitlabSet = gitlabHosts();
+  const isGithub = host === "github.com";
+  const isGitlab = gitlabSet.has(host);
+  if (!isGithub && !isGitlab) return null;
+
+  const repo = segments[segments.length - 1];
+  const owner = segments.slice(0, -1).join("/");
+  if (!owner || !repo) return null;
+
+  return { provider: isGithub ? "github" : "gitlab", owner, repo };
+}
+
+/** Back-compat alias — pre-multi-provider code calls this name. */
+export const parseGithubRemote = parseRemote;
+
+/**
+ * Resolve a working-directory path to repo info via `git remote get-url origin`.
+ * Returns null for cwds that aren't under a git repo, or whose origin host
+ * isn't a recognized provider host.
  */
 export function resolveRepo(cwd: string, cache: RepoCache): RepoInfo | null {
   if (!cwd) return null;
@@ -56,7 +106,7 @@ export function resolveRepo(cwd: string, cache: RepoCache): RepoInfo | null {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
-    const info = parseGithubRemote(url);
+    const info = parseRemote(url);
     cache.set(cwd, info);
     return info;
   } catch {

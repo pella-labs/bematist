@@ -179,3 +179,8 @@ body {
   0%, 100% { box-shadow: 0 0 0 2px #6e8a6f, 0 0 0 8px rgba(110, 138, 111, 0.30); }
   50%      { box-shadow: 0 0 0 2px #6e8a6f, 0 0 0 14px rgba(110, 138, 111, 0.06); }
 }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
