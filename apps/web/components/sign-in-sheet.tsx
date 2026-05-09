@@ -79,6 +79,7 @@ function SignInSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
       }}
     >
       <div ref={panelRef} className="mk-sheet-panel">
+        <span className="mk-sheet-glow" aria-hidden />
         <button
           type="button"
           className="mk-sheet-close"
@@ -87,38 +88,59 @@ function SignInSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
         >
           <CloseIcon />
         </button>
-        <div className="mk-sheet-eyebrow mk-sys">pellametric</div>
+        <div className="mk-sheet-brand">
+          <span className="mk-sheet-brand-mark" aria-hidden>
+            <img src="/primary-logo.svg" alt="" />
+          </span>
+          <span className="mk-sheet-brand-text mk-sys">pellametric</span>
+        </div>
         <h2 id="mk-sheet-title" className="mk-sheet-title">
           Sign in
         </h2>
         <p className="mk-sheet-body">
-          We use GitHub or GitLab to scope data to your orgs. No passwords, no email lists.
+          Use GitHub or GitLab — we only read what's needed to scope data to your orgs. No passwords, no email lists.
         </p>
-        <button
-          ref={buttonRef}
-          type="button"
-          onClick={() => handleSignIn("github")}
-          disabled={loading !== null}
-          className="mk-btn mk-btn-primary mk-sheet-cta"
-        >
-          {loading === "github" ? <SpinnerIcon /> : <GithubIcon />}
-          {loading === "github" ? "Redirecting…" : "Continue with GitHub"}
-        </button>
-        <button
-          type="button"
-          onClick={() => handleSignIn("gitlab")}
-          disabled={loading !== null}
-          className="mk-btn mk-sheet-cta"
-          style={{ marginTop: 8 }}
-        >
-          {loading === "gitlab" ? <SpinnerIcon /> : <GitlabIcon />}
-          {loading === "gitlab" ? "Redirecting…" : "Continue with GitLab"}
-        </button>
-        <p className="mk-sheet-scope">
-          GitHub: <code>read:org</code>, <code>repo</code>. GitLab: <code>read_user</code>, <code>read_api</code>. Read-only, revocable in provider settings.
-        </p>
+        <div className="mk-sheet-actions">
+          <button
+            ref={buttonRef}
+            type="button"
+            onClick={() => handleSignIn("github")}
+            disabled={loading !== null}
+            className="mk-btn mk-btn-primary mk-sheet-cta"
+          >
+            {loading === "github" ? <SpinnerIcon /> : <GithubIcon />}
+            {loading === "github" ? "Redirecting…" : "Continue with GitHub"}
+          </button>
+          <div className="mk-sheet-divider" aria-hidden>
+            <span>or</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleSignIn("gitlab")}
+            disabled={loading !== null}
+            className="mk-btn mk-sheet-cta mk-sheet-cta-secondary mk-sheet-cta-gitlab"
+          >
+            {loading === "gitlab" ? <SpinnerIcon /> : <GitlabIcon />}
+            {loading === "gitlab" ? "Redirecting…" : "Continue with GitLab"}
+          </button>
+        </div>
+        <div className="mk-sheet-scope">
+          <ShieldIcon />
+          <span>
+            Read-only access · <code>read:org</code> <code>repo</code> on GitHub · <code>read_user</code> <code>read_api</code> on GitLab · revocable any time in provider settings.
+          </span>
+        </div>
       </div>
     </div>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 1.5l5.5 2v4.2c0 3.1-2.3 5.9-5.5 6.8-3.2-.9-5.5-3.7-5.5-6.8V3.5L8 1.5z" />
+      <path d="M5.8 8.2l1.6 1.6 3-3" />
+    </svg>
   );
 }
 
