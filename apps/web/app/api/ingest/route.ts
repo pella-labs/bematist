@@ -85,7 +85,12 @@ export async function POST(req: Request) {
   //           separate orgs while a parent org claims everything else).
   // See docs/multi-provider.md §8.
   const memberships = await db
-    .select({ orgId: schema.membership.orgId, slug: schema.org.slug, provider: schema.org.provider })
+    .select({
+      orgId: schema.membership.orgId,
+      slug: schema.org.slug,
+      provider: schema.org.provider,
+      promptRetentionDays: schema.org.promptRetentionDays,
+    })
     .from(schema.membership)
     .innerJoin(schema.org, eq(schema.membership.orgId, schema.org.id))
     .where(eq(schema.membership.userId, userId));
@@ -93,8 +98,10 @@ export async function POST(req: Request) {
   const githubByExact = new Map<string, string>();
   const gitlabByExact = new Map<string, string>();
   const gitlabSlugsLower: { slug: string; orgId: string }[] = [];
+  const retentionByOrgId = new Map<string, number>();
   for (const m of memberships) {
     const lc = m.slug.toLowerCase();
+    retentionByOrgId.set(m.orgId, Math.min(365, Math.max(7, m.promptRetentionDays ?? 30)));
     if (m.provider === "gitlab") {
       gitlabByExact.set(lc, m.orgId);
       gitlabSlugsLower.push({ slug: lc, orgId: m.orgId });
@@ -212,6 +219,8 @@ export async function POST(req: Request) {
         if (!orgId) continue;
         const enc = encryptPrompt(dek, p.text);
         try {
+          const retentionDays = retentionByOrgId.get(orgId) ?? 30;
+          const expiresAt = new Date(Date.now() + (retentionDays * 24 * 60 * 60 * 1000));
           await db.insert(schema.promptEvent).values({
             userId, orgId,
             source: body.source,
@@ -219,6 +228,7 @@ export async function POST(req: Request) {
             tsPrompt: new Date(p.tsPrompt),
             wordCount: p.wordCount,
             iv: enc.iv, tag: enc.tag, ciphertext: enc.ciphertext,
+            expiresAt,
           }).onConflictDoNothing();
           promptsInserted++;
         } catch { /* skip malformed */ }
@@ -230,6 +240,8 @@ export async function POST(req: Request) {
         if (!orgId) continue;
         const enc = encryptPrompt(dek, r.text);
         try {
+          const retentionDays = retentionByOrgId.get(orgId) ?? 30;
+          const expiresAt = new Date(Date.now() + (retentionDays * 24 * 60 * 60 * 1000));
           await db.insert(schema.responseEvent).values({
             userId, orgId,
             source: body.source,
@@ -237,6 +249,7 @@ export async function POST(req: Request) {
             tsResponse: new Date(r.tsResponse),
             wordCount: r.wordCount,
             iv: enc.iv, tag: enc.tag, ciphertext: enc.ciphertext,
+            expiresAt,
           }).onConflictDoNothing();
           responsesInserted++;
         } catch { /* skip malformed */ }
