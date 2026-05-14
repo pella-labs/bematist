@@ -530,6 +530,46 @@ export const cohortQueryLog = pgTable("cohort_query_log", {
   byOrgMetric: index("cohort_query_log_by_org_metric").on(t.orgId, t.metric, t.queriedAt),
 }));
 
+// F2.11 — saved insights (PostHog-style builder). Per locked decision §7.3:
+// scope='org' rows are visible+editable by every manager in the org; scope='user'
+// rows are visible only to their owning user. Dev rows are always scope='user'.
+export const savedInsight = pgTable("saved_insight", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  scope: text("scope").notNull(),  // 'org' | 'user'
+  name: text("name").notNull(),
+  description: text("description"),
+  queryJson: jsonb("query_json").notNull().default({}),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, t => ({
+  byOrg: index("saved_insight_by_org").on(t.orgId, t.scope),
+  byUser: index("saved_insight_by_user").on(t.userId, t.createdAt),
+}));
+
+export const savedDashboard = pgTable("saved_dashboard", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  scope: text("scope").notNull(),  // 'org' | 'user'
+  name: text("name").notNull(),
+  layoutJson: jsonb("layout_json").notNull().default({}),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, t => ({
+  byOrg: index("saved_dashboard_by_org").on(t.orgId, t.scope),
+}));
+
+export const dashboardPinnedInsight = pgTable("dashboard_pinned_insight", {
+  dashboardId: uuid("dashboard_id").notNull().references(() => savedDashboard.id, { onDelete: "cascade" }),
+  insightId: uuid("insight_id").notNull().references(() => savedInsight.id, { onDelete: "cascade" }),
+  position: integer("position").notNull().default(0),
+}, t => ({
+  pk: primaryKey({ columns: [t.dashboardId, t.insightId] }),
+  byDashboard: index("dashboard_pinned_by_dash").on(t.dashboardId, t.position),
+}));
+
 // Resumable backfill cursor (P23).
 export const backfillState = pgTable("backfill_state", {
   orgId: uuid("org_id").primaryKey().references(() => org.id, { onDelete: "cascade" }),
