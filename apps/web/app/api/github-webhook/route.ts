@@ -8,9 +8,12 @@
 import { NextResponse } from "next/server";
 import { verifyWebhookSignature, parseEventName } from "@/lib/github-webhook";
 import { db } from "@/lib/db";
-import { org } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { org, pr as prTbl } from "@/lib/db/schema";
+import { and, eq } from "drizzle-orm";
 import { hydratePrFromWebhook, handleForcePush } from "@/lib/github-pr-hydrate";
+
+// P30: dedup synchronize events for the same PR within 60s.
+const SYNC_DEDUP_MS = 60_000;
 
 export async function POST(req: Request): Promise<NextResponse> {
   const secret = process.env.GITHUB_APP_WEBHOOK_SECRET ?? "";
@@ -56,6 +59,22 @@ export async function POST(req: Request): Promise<NextResponse> {
     if (event === "pull_request") {
       const action: string = payload.action;
       if (action === "opened" || action === "synchronize" || action === "closed" || action === "reopened" || action === "edited") {
+        if (action === "synchronize") {
+          const recent = await db
+            .select({ lastSyncedAt: prTbl.lastSyncedAt })
+            .from(prTbl)
+            .where(
+              and(
+                eq(prTbl.orgId, orgRow.id),
+                eq(prTbl.repo, payload.repository.full_name),
+                eq(prTbl.number, payload.pull_request.number),
+              ),
+            )
+            .limit(1);
+          if (recent[0] && Date.now() - recent[0].lastSyncedAt.getTime() < SYNC_DEDUP_MS) {
+            return NextResponse.json({ ok: true, deduped: "synchronize within 60s" });
+          }
+        }
         await hydratePrFromWebhook(
           { orgId: orgRow.id, installationId, useCursor: orgRow.useCursor },
           payload.repository,
