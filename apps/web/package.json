@@ -12,7 +12,8 @@
     "db:generate": "drizzle-kit generate",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "retention:cleanup": "bun run ./scripts/cleanup-retention.ts"
+    "retention:cleanup": "bun run ./scripts/cleanup-retention.ts",
+    "seed:demo": "bun run ./scripts/seed-demo.ts"
   },
   "dependencies": {
     "@pella/shared": "workspace:*",

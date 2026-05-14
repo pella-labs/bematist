@@ -9,6 +9,7 @@ import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { insightsRevampEnabled } from "@/lib/feature-flags";
 import { ManagerNavRail } from "@/components/insights/manager-nav-rail";
+import { KeyboardChords } from "@/components/insights/keyboard-chords";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,7 @@ export default async function OrgLayout({
         meBase={meBase}
       />
       <main className="flex-1 min-w-0">{children}</main>
+      <KeyboardChords base={base} />
     </div>
   );
 }
