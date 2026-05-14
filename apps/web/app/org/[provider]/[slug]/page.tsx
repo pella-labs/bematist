@@ -65,6 +65,7 @@ export default async function OrgPage({
         attribution={data.attribution}
         topPrs={data.topPrs}
         topDevs={data.topDevs}
+        backfill={data.backfill}
       />
     );
   }

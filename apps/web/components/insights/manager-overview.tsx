@@ -51,6 +51,10 @@ export type ManagerOverviewProps = {
     prsMerged: number;
     spendUsd: number;
   }>;
+  backfill?: {
+    status: "pending" | "running" | "done" | "error" | null;
+    lastDay: string | null;
+  };
 };
 
 function money(x: number): string {
@@ -66,6 +70,7 @@ export function ManagerOverview({
   attribution,
   topPrs,
   topDevs,
+  backfill,
 }: ManagerOverviewProps): React.ReactElement {
   return (
     <div className="p-6 space-y-6">
@@ -81,6 +86,19 @@ export function ManagerOverview({
           Open insight builder →
         </Link>
       </header>
+
+      {/* F4.31 — backfill progress banner */}
+      {backfill && (backfill.status === "pending" || backfill.status === "running") && (
+        <div className="mk-panel border-(--warning)">
+          <p className="mk-label">Backfilling historical PRs</p>
+          <p className="mk-table-cell text-(--muted-foreground) mt-1">
+            We're pulling recent merged PRs from your GitHub App installation so cost-per-PR and
+            attribution backfill. Status: {backfill.status}
+            {backfill.lastDay ? ` · last day fetched: ${backfill.lastDay}` : ""}. Refresh this page
+            in a few minutes for updated data.
+          </p>
+        </div>
+      )}
 
       {/* KPI strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

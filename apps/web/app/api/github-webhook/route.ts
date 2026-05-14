@@ -96,8 +96,21 @@ export async function POST(req: Request): Promise<NextResponse> {
         );
       }
     } else if (event === "installation" || event === "installation_repositories") {
-      // App install lifecycle is handled by /api/github-app/install (interactive).
-      // For now, ack.
+      // F4.29 / T6.1 — when the App is freshly installed (or added to new
+      // repos), enqueue a backfill_state row so the next backfill cycle picks
+      // up this org's recent merged PRs. We only act on the `created` action;
+      // the interactive install flow already creates the org row.
+      const action: string = payload.action;
+      if (action === "created" || action === "added") {
+        const { backfillState } = await import("@/lib/db/schema");
+        await db
+          .insert(backfillState)
+          .values({ orgId: orgRow.id, status: "pending" })
+          .onConflictDoUpdate({
+            target: backfillState.orgId,
+            set: { status: "pending", updatedAt: new Date() },
+          });
+      }
     }
   } catch (err) {
     // Best-effort: log + ack to avoid GitHub retry storms.

@@ -5,7 +5,7 @@
 // OAuth orgs.
 
 import { db } from "@/lib/db";
-import { sessionEvent, pr, costPerPr, user } from "@/lib/db/schema";
+import { sessionEvent, pr, costPerPr, user, backfillState } from "@/lib/db/schema";
 import { and, eq, gte, inArray } from "drizzle-orm";
 import { costFor } from "@/lib/pricing";
 
@@ -50,6 +50,10 @@ export type ManagerOverviewData = {
     prsMerged: number;
     spendUsd: number;
   }>;
+  backfill: {
+    status: "pending" | "running" | "done" | "error" | null;
+    lastDay: string | null;
+  };
 };
 
 function fmtDay(d: Date): string {
@@ -282,6 +286,13 @@ export async function getManagerOverviewData(orgId: string, days = 30): Promise<
     })
     .sort((a, b) => b.sessions - a.sessions);
 
+  // F4.31 — backfill status banner data.
+  const [bf] = await db
+    .select()
+    .from(backfillState)
+    .where(eq(backfillState.orgId, orgId))
+    .limit(1);
+
   return {
     windowLabel: `last ${days}d`,
     kpi: {
@@ -304,5 +315,9 @@ export async function getManagerOverviewData(orgId: string, days = 30): Promise<
     attribution,
     topPrs: prsByCost,
     topDevs,
+    backfill: {
+      status: (bf?.status as ManagerOverviewData["backfill"]["status"]) ?? null,
+      lastDay: bf?.lastDay ?? null,
+    },
   };
 }
