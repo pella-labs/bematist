@@ -114,3 +114,29 @@ export function resolveRepo(cwd: string, cache: RepoCache): RepoInfo | null {
     return null;
   }
 }
+
+/**
+ * Resolve current git branch for cwd. Returns null if outside a repo or in a
+ * detached HEAD. Insights revamp P9.
+ */
+export function resolveBranch(cwd: string): string | null {
+  if (!cwd) return null;
+  try {
+    const out = execSync(`git -C "${cwd}" rev-parse --abbrev-ref HEAD`, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    if (!out || out === "HEAD") return null;
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Convert a RepoInfo into the canonical `owner/name` form used by `session_event.cwdResolvedRepo`.
+ */
+export function repoToCwdResolved(info: RepoInfo | null): string | null {
+  if (!info) return null;
+  return `${info.owner}/${info.repo}`;
+}

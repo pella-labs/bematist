@@ -18,6 +18,8 @@ const sessionSchema = z.object({
   repo: z.string(),                           // "ownerPath/name" — ownerPath may contain '/' for gitlab subgroups
   provider: z.enum(["github", "gitlab"]).optional(),  // defaults to 'github' for back-compat
   cwd: z.string().optional(),
+  branch: z.string().optional(),                       // P9
+  cwdResolvedRepo: z.string().optional(),              // P14
   startedAt: z.string(),                      // ISO
   endedAt: z.string(),                        // ISO
   model: z.string().optional(),
@@ -151,6 +153,8 @@ export async function POST(req: Request) {
       externalSessionId: s.externalSessionId,
       repo: s.repo,
       cwd: s.cwd ?? null,
+      branch: s.branch ?? null,
+      cwdResolvedRepo: s.cwdResolvedRepo ?? null,
       startedAt: new Date(s.startedAt),
       endedAt: new Date(s.endedAt),
       model: s.model ?? null,
@@ -192,6 +196,8 @@ export async function POST(req: Request) {
           frustrationSpikes: row.frustrationSpikes,
           promptWordsMedian: row.promptWordsMedian,
           promptWordsP95: row.promptWordsP95,
+          branch: row.branch,
+          cwdResolvedRepo: row.cwdResolvedRepo,
         },
       });
     inserted++;
