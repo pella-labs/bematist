@@ -176,15 +176,15 @@ export function InsightBuilder({
   const isError = result && !result.ok;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] min-h-screen bg-(--background) text-(--foreground)">
-      <aside className="border-r border-(--border) p-4 space-y-6">
-        <div>
-          <p className="mk-eyebrow">Pellametric</p>
-          <p className="mk-table-cell text-(--foreground)">{orgDisplayName}</p>
-        </div>
+    <div className="min-h-screen bg-(--background) text-(--foreground)">
+      <div className="p-6 space-y-6">
+        <header className="space-y-2">
+          <p className="mk-eyebrow">{scope === "org" ? "Manager view" : "Personal view"}</p>
+          <h1 className="mk-heading text-2xl">Insights</h1>
+        </header>
 
-        <nav className="space-y-1">
-          <p className="mk-label mb-2">Modes</p>
+        {/* Mode pills — horizontal so this page composes inside the outer nav-rail layout. */}
+        <div className="flex flex-wrap items-center gap-1.5">
           {MODES.map(m => {
             const active = query.metric === m.metric && query.breakdown === m.breakdown;
             return (
@@ -195,57 +195,39 @@ export function InsightBuilder({
                   if ("comingSoon" in m && m.comingSoon) return;
                   updateQuery({ metric: m.metric, breakdown: m.breakdown });
                 }}
-                className={`w-full text-left px-2 py-1.5 mk-table-cell rounded-[var(--radius)] flex items-center gap-2 ${
+                className={`mk-table-cell border border-(--border) rounded-[var(--radius)] px-2.5 py-1 flex items-center gap-1.5 ${
                   active
-                    ? "bg-(--secondary) text-(--foreground)"
-                    : "text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--secondary)"
+                    ? "bg-(--secondary) text-(--foreground) border-(--border-hover)"
+                    : "text-(--muted-foreground) hover:text-(--foreground) hover:border-(--border-hover)"
                 }`}
+                disabled={"comingSoon" in m && m.comingSoon}
               >
-                <span className="text-(--accent)">{m.icon}</span>
-                <span className="flex-1">{m.label}</span>
+                <span className="text-(--accent)" aria-hidden>{m.icon}</span>
+                {m.label}
                 {"comingSoon" in m && m.comingSoon && (
-                  <span className="mk-table-cell text-(--ink-faint)">soon</span>
+                  <span className="text-(--ink-faint)">· soon</span>
                 )}
               </button>
             );
           })}
-        </nav>
-
-        <div className="space-y-1">
-          <p className="mk-label mb-2">Saved insights</p>
+          <span className="text-(--ink-faint) mx-2">|</span>
+          <span className="mk-label text-(--muted-foreground)">Saved:</span>
           {saved.length === 0 && (
-            <p className="mk-table-cell text-(--ink-faint)">none yet — save your first query</p>
+            <span className="mk-table-cell text-(--ink-faint)">none yet</span>
           )}
-          {saved.map(s => (
+          {saved.slice(0, 5).map(s => (
             <button
               key={s.id}
               type="button"
               onClick={() => setQuery(s.queryJson)}
-              className="w-full text-left px-2 py-1.5 mk-table-cell rounded-[var(--radius)] text-(--muted-foreground) hover:text-(--foreground) hover:bg-(--secondary) flex items-center gap-2"
+              className="mk-table-cell border border-(--border) hover:border-(--border-hover) rounded-[var(--radius)] px-2 py-1 inline-flex items-center gap-1"
               title={s.description ?? s.name}
             >
-              <span aria-hidden>•</span>
-              <span className="flex-1 truncate">{s.name}</span>
-              {s.scope === "org" && (
-                <span className="mk-table-cell text-(--ink-faint)">org</span>
-              )}
+              <span className="truncate max-w-[120px]">{s.name}</span>
+              {s.scope === "org" && <span className="text-(--ink-faint)">·org</span>}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={() => setSaveOpen(true)}
-            className="w-full text-left px-2 py-1.5 mk-table-cell rounded-[var(--radius)] text-(--accent) hover:bg-(--secondary)"
-          >
-            + New insight
-          </button>
         </div>
-      </aside>
-
-      <main className="p-6 space-y-6">
-        <header className="space-y-2">
-          <p className="mk-eyebrow">{scope === "org" ? "Manager view" : "Personal view"}</p>
-          <h1 className="mk-heading text-2xl">Insights</h1>
-        </header>
 
         {/* Builder */}
         <section className="mk-panel grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -400,8 +382,7 @@ export function InsightBuilder({
             <BreakdownTable rows={result.breakdown} metric={query.metric} />
           )}
         </section>
-      </main>
-
+      </div>
       {saveOpen && (
         <SaveModal
           onClose={() => setSaveOpen(false)}

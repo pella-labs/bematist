@@ -27,6 +27,7 @@ export default async function Layout({
           {slug} · me
         </div>
         <Link href={base} className="block mk-table-cell hover:text-(--primary)">Overview</Link>
+        <Link href={`${base}/insights`} className="block mk-table-cell hover:text-(--primary)">Insights</Link>
         <Link href={`${base}/sessions`} className="block mk-table-cell hover:text-(--primary)">Sessions</Link>
         <Link href={`${base}/prs`} className="block mk-table-cell hover:text-(--primary)">My PRs</Link>
         <div className="pt-3 mt-3 border-t border-(--border)">
