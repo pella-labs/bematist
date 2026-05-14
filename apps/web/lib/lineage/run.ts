@@ -9,6 +9,9 @@ import { db } from "@/lib/db";
 import { pr, prCommit, sessionEvent, sessionPrLink, org, user } from "@/lib/db/schema";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { scoreLineage, type PrCommit } from "@/lib/lineage/score";
+import { refreshCostPerPr } from "@/lib/insights/refresh-cost-per-pr";
+import { refreshDailyUserStats } from "@/lib/insights/refresh-daily-user-stats";
+import { refreshDailyOrgStats } from "@/lib/insights/refresh-daily-org-stats";
 
 export type LineageRunResult = {
   prId: string;
@@ -160,6 +163,38 @@ export async function runLineageForPr(prId: string): Promise<LineageRunResult> {
     .update(pr)
     .set({ linkComputedAt: new Date() })
     .where(eq(pr.id, prId));
+
+  // Trigger rollups (Phase 3 wiring, T3.5). Best-effort — log + continue on fail.
+  try {
+    await refreshCostPerPr(prId);
+  } catch (err) {
+    console.error("refreshCostPerPr failed", err);
+  }
+  // Collect distinct (userId, day) pairs from the candidate sessions we linked.
+  const userDays = new Map<string, Set<string>>();
+  for (const c of candidates) {
+    const userId = c.userId;
+    if (!userDays.has(userId)) userDays.set(userId, new Set());
+    const days = userDays.get(userId)!;
+    days.add(c.startedAt.toISOString().slice(0, 10));
+    days.add(c.endedAt.toISOString().slice(0, 10));
+  }
+  const orgDays = new Set<string>();
+  for (const [userId, days] of userDays) {
+    try {
+      await refreshDailyUserStats(userId, prRow.orgId, Array.from(days));
+      for (const d of days) orgDays.add(d);
+    } catch (err) {
+      console.error("refreshDailyUserStats failed", { userId, err });
+    }
+  }
+  for (const d of orgDays) {
+    try {
+      await refreshDailyOrgStats(prRow.orgId, d);
+    } catch (err) {
+      console.error("refreshDailyOrgStats failed", { day: d, err });
+    }
+  }
 
   return { prId, linksCreated, linksUpdated, candidates: candidates.length, dropped };
 }

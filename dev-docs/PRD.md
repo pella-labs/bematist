@@ -60,6 +60,11 @@ Phases 3 and 4 can run in parallel after Phase 2. Phase 7 can start once Phase 3
 - `apps/web/lib/__tests__/redaction.test.ts` — AWS key, `ghp_`, high-entropy strings redacted; benign commits untouched; truncation at 1024 chars.
 - Verify all new indexes exist on a real PG instance.
 
+### Data safety (non-negotiable)
+- [ ] `pg_dump` snapshot taken BEFORE first `db:push` (T1.12a). Snapshot path recorded in commit body.
+- [ ] Drizzle-kit dry-run inspected (T1.12b). Proposed SQL contains ONLY `CREATE TABLE`, `ALTER TABLE … ADD COLUMN` (nullable or with DEFAULT), and `CREATE INDEX`. Any `DROP`, `RENAME`, `ALTER COLUMN … TYPE`, `ALTER COLUMN … SET NOT NULL` (without DEFAULT), or `TRUNCATE` is a STOP.
+- [ ] Post-push row counts on `session_event`, `pr`, `prompt_event`, `user`, `org` match pre-push baseline exactly. No row loss.
+
 ### Acceptance
 - `bun run typecheck && bun run test` green.
 - `psql … -c "\d pr_commit"` shows the right columns + indexes (no `byEmail`).

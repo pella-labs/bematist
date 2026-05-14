@@ -14,10 +14,14 @@
 
 ## Totals
 
-- **~116 atomic tasks** across 8 phases.
+- **~118 atomic tasks** across 8 phases.
 - **27 sequential waves**, ~3-5 tasks parallel per wave on average.
-- **5 hard gates** that block parallelism: W4 (`bun run db:push`), W12 (webhook E2E), W14 (rollups end-to-end), W19 (a11y), W22 (dev-view E2E).
+- **5 hard gates** that block parallelism: W4 (`bun run db:push`, preceded by data-safety gates **T1.12a snapshot** + **T1.12b dry-run inspection**), W12 (webhook E2E), W14 (rollups end-to-end), W19 (a11y), W22 (dev-view E2E).
 - **22 consistency-audit patches** applied retroactively to earlier phases (see `build/04` final section).
+
+## Data safety
+
+Phase 1 has non-negotiable data-safety gates: **T1.12a** takes a `pg_dump` snapshot of the live database BEFORE any `db:push`, and **T1.12b** runs drizzle-kit in dry-run and blocks if the proposed SQL contains any `DROP`, `RENAME`, `ALTER COLUMN … TYPE`, or `NOT NULL` without default. **T1.13** post-push verification asserts row counts on `session_event`, `pr`, `prompt_event`, `user`, `org` are unchanged. See `dev-docs/build/02-phase-1-2-tasks.md` Phase 1 preamble and tasks T1.12a / T1.12b / T1.13 for the full procedure.
 
 ## Reading order for an orchestrator
 
