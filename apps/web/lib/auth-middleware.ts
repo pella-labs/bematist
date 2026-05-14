@@ -4,6 +4,7 @@
 // auth — that leaks org existence.
 
 import { headers } from "next/headers";
+import { timingSafeEqual } from "node:crypto";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { membership, org } from "@/lib/db/schema";
@@ -65,6 +66,10 @@ export async function requireMembership(
 
 /**
  * Internal-API gate. Accepts current OR previous secret (quarterly rotation).
+ *
+ * H7 fix: compare with timingSafeEqual after a length pre-check. The previous
+ * `===` comparison short-circuits character-by-character and leaks the secret
+ * length and per-byte mismatch timing.
  */
 export function checkInternalSecret(req: Request): boolean {
   const auth = req.headers.get("authorization") ?? "";
@@ -74,5 +79,11 @@ export function checkInternalSecret(req: Request): boolean {
   const cur = process.env.INTERNAL_API_SECRET ?? "";
   const prev = process.env.INTERNAL_API_SECRET_PREVIOUS ?? "";
   if (!cur && !prev) return false;
-  return got === cur || (prev !== "" && got === prev);
+  return safeMatch(got, cur) || safeMatch(got, prev);
+}
+
+function safeMatch(a: string, b: string): boolean {
+  if (b.length === 0) return false;
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
 }

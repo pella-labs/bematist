@@ -79,6 +79,10 @@ export async function runLineageForPr(prId: string): Promise<LineageRunResult> {
   let linksUpdated = 0;
   let dropped = 0;
 
+  // C5 fix: thread pr.previous_filenames into scoreLineage so renamed files
+  // expand the Jaccard target set (P10).
+  const prevFilenames = (prRow.previousFilenames as string[]) ?? [];
+
   for (const c of candidates) {
     const result = scoreLineage(
       {
@@ -97,6 +101,7 @@ export async function runLineageForPr(prId: string): Promise<LineageRunResult> {
       },
       prCommitsTyped,
       loginByUser.get(c.userId) ?? null,
+      prevFilenames,
     );
 
     if (result.bucket === "drop") {
@@ -201,26 +206,38 @@ export async function runLineageForPr(prId: string): Promise<LineageRunResult> {
 
 /**
  * Drain up to `limit` jobs from lineage_job by (priority asc, scheduledFor asc).
- * Marks each job running → done/failed. Caller writes a system_health heartbeat
- * separately.
+ * H6 fix: claim each job atomically with FOR UPDATE SKIP LOCKED so concurrent
+ * /run + /sweep callers cannot pick the same job. The previous
+ * SELECT-then-UPDATE was a TOCTOU race.
  */
 export async function drainLineageJobs(limit: number): Promise<LineageRunResult[]> {
   const { lineageJob } = await import("@/lib/db/schema");
-  const jobs = await db
-    .select()
-    .from(lineageJob)
-    .where(and(eq(lineageJob.status, "pending"), lte(lineageJob.scheduledFor, new Date())))
-    .orderBy(lineageJob.priority, lineageJob.scheduledFor)
-    .limit(limit);
-
   const results: LineageRunResult[] = [];
-  for (const job of jobs) {
-    await db
-      .update(lineageJob)
-      .set({ status: "running", attempts: sql`${lineageJob.attempts} + 1`, updatedAt: new Date() })
-      .where(eq(lineageJob.id, job.id));
+
+  for (let i = 0; i < limit; i++) {
+    // Single atomic claim. Returns at most one row.
+    const claimed = await db.execute<{ id: string; pr_id: string }>(sql`
+      UPDATE lineage_job
+      SET status = 'running',
+          attempts = attempts + 1,
+          updated_at = now()
+      WHERE id = (
+        SELECT id FROM lineage_job
+        WHERE status = 'pending' AND scheduled_for <= now()
+        ORDER BY priority ASC, scheduled_for ASC
+        FOR UPDATE SKIP LOCKED
+        LIMIT 1
+      )
+      RETURNING id, pr_id
+    `);
+    // drizzle returns { rows } for node-postgres but raw array for postgres-js;
+    // tolerate either shape.
+    const rows = Array.isArray(claimed) ? claimed : (claimed as { rows?: unknown[] }).rows ?? [];
+    const job = rows[0] as { id: string; pr_id: string } | undefined;
+    if (!job) break;
+
     try {
-      const r = await runLineageForPr(job.prId);
+      const r = await runLineageForPr(job.pr_id);
       await db
         .update(lineageJob)
         .set({ status: "done", updatedAt: new Date() })

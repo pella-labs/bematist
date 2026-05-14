@@ -258,6 +258,10 @@ export const pr = pgTable("pr", {
   kind: text("kind").notNull().default("standard"),   // 'standard' | 'revert'
   revertsPrId: uuid("reverts_pr_id"),
   stackedOn: uuid("stacked_on"),
+  // C5 fix (P10): renamed-away filenames captured from /pulls/N/files
+  // `previous_filename` field. Threaded into scoreLineage so sessions that
+  // edited a file before it was renamed still get a Jaccard hit.
+  previousFilenames: jsonb("previous_filenames").notNull().default([]),
 }, t => ({
   byOrg: index("pr_by_org").on(t.orgId, t.createdAt),
   uniqPr: uniqueIndex("pr_uniq").on(t.orgId, t.repo, t.number),

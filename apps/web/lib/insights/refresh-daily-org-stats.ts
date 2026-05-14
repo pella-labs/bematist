@@ -10,6 +10,7 @@ import {
   prCommit,
 } from "@/lib/db/schema";
 import { and, eq, sql, gte, lt } from "drizzle-orm";
+import { buildDailyOrgStatsRows } from "@/lib/insights/rollup-math";
 
 function startOfUtcDay(day: string): Date {
   return new Date(`${day}T00:00:00.000Z`);
@@ -79,28 +80,16 @@ export async function refreshDailyOrgStats(orgId: string, day: string): Promise<
     }
   }
 
-  // Sources are union of seen sources in sums + at least 'claude'/'codex'/'cursor'.
-  const allSources = new Set<string>([...sums.map(r => r.source)]);
-  if (allSources.size === 0) allSources.add("claude");
+  // C3 fix: PR counts → synthetic `_meta` row; per-source rows carry 0 PR
+  // counts. Math in buildDailyOrgStatsRows(); see rollup-math.ts.
+  const rows = buildDailyOrgStatsRows(
+    sums,
+    { prsMerged, prsMergedAiAssisted, prsMergedBot, prsReverted },
+  );
+  const computedAt = new Date();
 
-  for (const source of allSources) {
-    const s = sums.find(r => r.source === source);
-    const values = {
-      orgId,
-      day,
-      source,
-      sessions: s?.sessions ?? 0,
-      activeHoursCenti: s?.activeHoursCenti ?? 0,
-      tokensIn: s?.tokensIn ?? 0,
-      tokensOut: s?.tokensOut ?? 0,
-      tokensCacheRead: s?.tokensCacheRead ?? 0,
-      tokensCacheWrite: s?.tokensCacheWrite ?? 0,
-      prsMerged,
-      prsMergedAiAssisted,
-      prsMergedBot,
-      prsReverted,
-      computedAt: new Date(),
-    };
+  for (const r of rows) {
+    const values = { orgId, day, computedAt, ...r };
     await db
       .insert(dailyOrgStats)
       .values(values)
@@ -117,7 +106,7 @@ export async function refreshDailyOrgStats(orgId: string, day: string): Promise<
           prsMergedAiAssisted: values.prsMergedAiAssisted,
           prsMergedBot: values.prsMergedBot,
           prsReverted: values.prsReverted,
-          computedAt: values.computedAt,
+          computedAt,
         },
       });
   }

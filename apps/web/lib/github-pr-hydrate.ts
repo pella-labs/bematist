@@ -88,19 +88,27 @@ async function fetchPrCommits(installationId: number, repo: string, number: numb
   return out;
 }
 
-async function fetchPrFiles(installationId: number, repo: string, number: number): Promise<string[]> {
-  const out: string[] = [];
+async function fetchPrFiles(installationId: number, repo: string, number: number): Promise<{ files: string[]; previousFilenames: string[] }> {
+  const files: string[] = [];
+  const previousFilenames: string[] = [];
   let page = 1;
   while (page <= 4) {
     const res = await appFetch(installationId, `/repos/${repo}/pulls/${number}/files?per_page=100&page=${page}`);
     if (!res.ok) break;
     const items = (await res.json()) as any[];
     if (!items?.length) break;
-    for (const it of items) out.push(it.filename);
+    for (const it of items) {
+      files.push(it.filename);
+      // P10: capture previous_filename when status='renamed' so a session that
+      // edited the file under its old path still scores a Jaccard hit.
+      if (it.status === "renamed" && typeof it.previous_filename === "string" && it.previous_filename.length > 0) {
+        previousFilenames.push(it.previous_filename);
+      }
+    }
     if (items.length < 100) break;
     page++;
   }
-  return out;
+  return { files, previousFilenames };
 }
 
 /**
@@ -113,7 +121,7 @@ export async function hydratePrFromWebhook(
   prPayload: PrPayload,
 ): Promise<{ prId: string }> {
   const repo = repoPayload.full_name;
-  const fileList = await fetchPrFiles(ctx.installationId, repo, prPayload.number);
+  const { files: fileList, previousFilenames } = await fetchPrFiles(ctx.installationId, repo, prPayload.number);
   const state = prPayload.merged ? "merged" : prPayload.state;
 
   const kind = isRevertTitle(prPayload.title) ? "revert" : "standard";
@@ -152,6 +160,7 @@ export async function hydratePrFromWebhook(
     mergedAt: prPayload.merged_at ? new Date(prPayload.merged_at) : null,
     url: prPayload.html_url,
     fileList,
+    previousFilenames,
     updatedAt: new Date(),
     mergeCommitSha: prPayload.merge_commit_sha,
     baseBranch: prPayload.base.ref,
@@ -175,6 +184,7 @@ export async function hydratePrFromWebhook(
         commits: upsertValues.commits,
         mergedAt: upsertValues.mergedAt,
         fileList: upsertValues.fileList,
+        previousFilenames: upsertValues.previousFilenames,
         updatedAt: upsertValues.updatedAt,
         mergeCommitSha: upsertValues.mergeCommitSha,
         baseBranch: upsertValues.baseBranch,

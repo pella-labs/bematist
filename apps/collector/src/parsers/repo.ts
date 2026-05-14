@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 export type ProviderName = "github" | "gitlab";
 
@@ -102,7 +102,10 @@ export function resolveRepo(cwd: string, cache: RepoCache): RepoInfo | null {
     return null;
   }
   try {
-    const url = execSync(`git -C "${root}" remote get-url origin`, {
+    // H8 fix: execFileSync to keep `root` out of the shell. The previous
+    // template-string into a shell allowed a hostile cwd containing $(…),
+    // backticks, or quoting to inject commands.
+    const url = execFileSync("git", ["-C", root, "remote", "get-url", "origin"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
@@ -122,7 +125,8 @@ export function resolveRepo(cwd: string, cache: RepoCache): RepoInfo | null {
 export function resolveBranch(cwd: string): string | null {
   if (!cwd) return null;
   try {
-    const out = execSync(`git -C "${cwd}" rev-parse --abbrev-ref HEAD`, {
+    // H8 fix: execFileSync — cwd is untrusted.
+    const out = execFileSync("git", ["-C", cwd, "rev-parse", "--abbrev-ref", "HEAD"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();

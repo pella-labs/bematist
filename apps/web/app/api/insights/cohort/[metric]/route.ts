@@ -27,7 +27,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ metric: 
   const orgSlug = url.searchParams.get("orgSlug") ?? "";
   const windowKey = url.searchParams.get("windowKey") ?? "30d";
   const cohortType = url.searchParams.get("cohortType") ?? "system"; // "system"|"ad_hoc"
-  const memberFilter = url.searchParams.getAll("members"); // ad-hoc only
+  // C4 fix: dedup ad-hoc member ids before any k-anonymity check. Repeating
+  // ?members=u&members=u previously inflated cohortSize past the k-floor.
+  const memberFilter = Array.from(new Set(url.searchParams.getAll("members")));
   const { metric } = await params;
   if (!ALLOWED_METRICS.has(metric)) {
     return NextResponse.json({ error: "unsupported metric" }, { status: 400 });

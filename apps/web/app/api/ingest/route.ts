@@ -8,7 +8,7 @@
 
 import { db, schema } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import crypto from "node:crypto";
 import { z } from "zod";
 import { encryptPrompt, getOrCreateUserDek } from "@/lib/crypto/prompts";
@@ -275,28 +275,33 @@ export async function POST(req: Request) {
   }
   await db.update(schema.apiToken).set({ lastUsedAt: new Date() }).where(eq(schema.apiToken.id, tk.id));
 
-  // Phase 3 T3.6: fire-and-forget rollup refresh for the days touched.
-  // Failures here must NOT 500 the ingest.
-  try {
-    const touched = new Map<string, Set<string>>();
-    const acceptedSet = new Set(accepted);
-    for (const s of body.sessions) {
-      if (!acceptedSet.has(s.externalSessionId)) continue;
-      const orgIdForSession = resolveOrgId(s.provider ?? "github", s.repo);
-      if (!orgIdForSession) continue;
-      const k = `${userId}|${orgIdForSession}`;
-      if (!touched.has(k)) touched.set(k, new Set());
-      const days = touched.get(k)!;
-      days.add(new Date(s.startedAt).toISOString().slice(0, 10));
-      days.add(new Date(s.endedAt).toISOString().slice(0, 10));
-    }
-    for (const [k, daysSet] of touched) {
-      const [uid, oid] = k.split("|");
-      void refreshDailyUserStats(uid, oid, Array.from(daysSet))
-        .catch(err => console.error("refresh-daily-user-stats failed", err));
-    }
-  } catch (err) {
-    console.error("rollup dispatch failed", err);
+  // Phase 3 T3.6 (H9 fix): rollup refresh after the response is flushed.
+  // Previously this was a fire-and-forget `void promise` which can be cut off
+  // when the runtime ends the request. `after()` keeps work alive past the
+  // response on serverless and on the long-running Node server alike.
+  const touched = new Map<string, Set<string>>();
+  const acceptedSet = new Set(accepted);
+  for (const s of body.sessions) {
+    if (!acceptedSet.has(s.externalSessionId)) continue;
+    const orgIdForSession = resolveOrgId(s.provider ?? "github", s.repo);
+    if (!orgIdForSession) continue;
+    const k = `${userId}|${orgIdForSession}`;
+    if (!touched.has(k)) touched.set(k, new Set());
+    const days = touched.get(k)!;
+    days.add(new Date(s.startedAt).toISOString().slice(0, 10));
+    days.add(new Date(s.endedAt).toISOString().slice(0, 10));
+  }
+  if (touched.size > 0) {
+    after(async () => {
+      for (const [k, daysSet] of touched) {
+        const [uid, oid] = k.split("|");
+        try {
+          await refreshDailyUserStats(uid, oid, Array.from(daysSet));
+        } catch (err) {
+          console.error("refresh-daily-user-stats failed", err);
+        }
+      }
+    });
   }
 
   return NextResponse.json({ inserted, accepted: accepted.length, rejected, promptsInserted, responsesInserted });

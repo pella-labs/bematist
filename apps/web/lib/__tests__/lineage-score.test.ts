@@ -54,6 +54,27 @@ describe("scoreLineage", () => {
     expect(r.reasonBreakdown.cwdMatch).toBe(0.6);
   });
 
+  it("C5 (P10): previousFilenames expand the Jaccard target so renamed-file sessions still match", () => {
+    // Session edited the file under its old path; pr.fileList only has the new
+    // path. Without prevFilenames the Jaccard is 0 and the session drops out.
+    // With prevFilenames the file is in the union, so Jaccard ≈ 1 and we keep it.
+    const renamedSession = {
+      ...baseSession,
+      filesEdited: ["apps/web/old-name.tsx"],
+    };
+    const renamedPr = {
+      ...basePr,
+      fileList: ["apps/web/new-name.tsx"],
+    };
+    const without = scoreLineage(renamedSession, renamedPr, [], null);
+    const withPrev = scoreLineage(renamedSession, renamedPr, [], null, [
+      "apps/web/old-name.tsx",
+    ]);
+    expect(without.fileJaccard).toBe(0);
+    expect(withPrev.fileJaccard).toBeGreaterThan(0);
+    expect(withPrev.score).toBeGreaterThan(without.score);
+  });
+
   it("threshold exception lowers floor for cwd+authorship combo", () => {
     // Make jaccard low and time misaligned so score is small but above 0.10.
     const lowSignalSession = {

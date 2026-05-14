@@ -17,6 +17,12 @@ import {
   modelPricing,
 } from "@/lib/db/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
+import {
+  subtractOverlap,
+  priceVersionFromMaxCreatedAt,
+  type SessionLink,
+  type SessionTokens,
+} from "@/lib/insights/rollup-math";
 
 export async function refreshCostPerPr(prId: string): Promise<void> {
   const prRow = await db.query.pr.findFirst({ where: eq(pr.id, prId) });
@@ -67,28 +73,62 @@ export async function refreshCostPerPr(prId: string): Promise<void> {
     }
   }
 
-  // P11: subtract sessions attributed to child PRs (pr.stackedOn = this prId).
-  const children = await db
-    .select({ id: pr.id })
-    .from(pr)
-    .where(eq(pr.stackedOn, prId));
-  if (children.length > 0) {
-    const childIds = children.map(c => c.id);
-    const childLinks = await db
-      .select({ sessionEventId: sessionPrLink.sessionEventId })
-      .from(sessionPrLink)
-      .where(inArray(sessionPrLink.prId, childIds));
-    const childSessionIds = Array.from(new Set(childLinks.map(l => l.sessionEventId)));
-    if (childSessionIds.length > 0) {
-      const childSessions = await db
-        .select()
-        .from(sessionEvent)
-        .where(inArray(sessionEvent.id, childSessionIds));
-      for (const s of childSessions) {
-        tokensIn = Math.max(0, tokensIn - s.tokensIn);
-        tokensOut = Math.max(0, tokensOut - s.tokensOut);
-        tokensCacheRead = Math.max(0, tokensCacheRead - s.tokensCacheRead);
-        tokensCacheWrite = Math.max(0, tokensCacheWrite - s.tokensCacheWrite);
+  // P11 (C2 fix): subtract only sessions linked to BOTH the parent and a
+  // child PR. Math is in subtractOverlap() — see rollup-math.ts for the why.
+  if (links.length > 0) {
+    const children = await db
+      .select({ id: pr.id })
+      .from(pr)
+      .where(eq(pr.stackedOn, prId));
+    if (children.length > 0) {
+      const childIds = children.map(c => c.id);
+      const childLinks = await db
+        .select({
+          sessionEventId: sessionPrLink.sessionEventId,
+          confidence: sessionPrLink.confidence,
+        })
+        .from(sessionPrLink)
+        .where(inArray(sessionPrLink.prId, childIds));
+      const parentLinksTyped: SessionLink[] = links.map(l => ({
+        sessionEventId: l.sessionEventId,
+        confidence: l.confidence as SessionLink["confidence"],
+      }));
+      const childLinksTyped: SessionLink[] = childLinks.map(l => ({
+        sessionEventId: l.sessionEventId,
+        confidence: l.confidence as SessionLink["confidence"],
+      }));
+      // Only fetch session rows we might subtract — the overlap set.
+      const parentSet = new Set(parentLinksTyped.map(l => l.sessionEventId));
+      const candidateOverlap = Array.from(
+        new Set(
+          childLinksTyped
+            .filter(l => l.confidence === "high" || l.confidence === "medium")
+            .map(l => l.sessionEventId)
+            .filter(id => parentSet.has(id)),
+        ),
+      );
+      if (candidateOverlap.length > 0) {
+        const childSessionRows = await db
+          .select()
+          .from(sessionEvent)
+          .where(inArray(sessionEvent.id, candidateOverlap));
+        const childSessions: SessionTokens[] = childSessionRows.map(s => ({
+          id: s.id,
+          tokensIn: s.tokensIn,
+          tokensOut: s.tokensOut,
+          tokensCacheRead: s.tokensCacheRead,
+          tokensCacheWrite: s.tokensCacheWrite,
+        }));
+        const adjusted = subtractOverlap(
+          { tokensIn, tokensOut, tokensCacheRead, tokensCacheWrite },
+          parentLinksTyped,
+          childLinksTyped,
+          childSessions,
+        );
+        tokensIn = adjusted.tokensIn;
+        tokensOut = adjusted.tokensOut;
+        tokensCacheRead = adjusted.tokensCacheRead;
+        tokensCacheWrite = adjusted.tokensCacheWrite;
       }
     }
   }
@@ -137,20 +177,17 @@ export async function refreshCostPerPr(prId: string): Promise<void> {
     bot: Math.round(rawPct.bot * factor),
   };
 
-  // priceVersion: max model_pricing.id whose model in modelsSeen.
+  // priceVersion (C1 fix): epoch seconds of the newest model_pricing row for
+  // any model seen on this PR's linked sessions. Pure helper in rollup-math.ts.
   let priceVersion = 0;
   if (modelsSeen.size > 0) {
-    const rows = await db
-      .select({ id: modelPricing.id })
+    const [maxRow] = await db
+      .select({
+        maxCreated: sql<Date | null>`max(${modelPricing.createdAt})`,
+      })
       .from(modelPricing)
       .where(inArray(modelPricing.model, Array.from(modelsSeen)));
-    // model_pricing.id is uuid — use createdAt order as proxy. Take latest by SQL.
-    const maxRow = await db
-      .select({ maxCreated: sql<Date>`max(${modelPricing.createdAt})` })
-      .from(modelPricing)
-      .where(inArray(modelPricing.model, Array.from(modelsSeen)));
-    priceVersion = rows.length;
-    void maxRow;
+    priceVersion = priceVersionFromMaxCreatedAt(maxRow?.maxCreated ?? null);
   }
 
   const values = {
