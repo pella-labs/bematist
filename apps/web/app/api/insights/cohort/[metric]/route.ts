@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 import { requireMembership } from "@/lib/auth-middleware";
 import { db } from "@/lib/db";
 import { dailyUserStats, cohortQueryLog, membership } from "@/lib/db/schema";
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import crypto from "node:crypto";
 
 const K_SYSTEM = 5;
@@ -87,6 +87,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ metric: 
       and(
         eq(dailyUserStats.orgId, auth.org.id),
         gte(dailyUserStats.day, since.toISOString().slice(0, 10)),
+        inArray(dailyUserStats.userId, memberIds),
       ),
     );
 
